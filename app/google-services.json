@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "162503312061",
+    "project_id": "potago",
+    "storage_bucket": "potago.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:162503312061:android:21ca56cdad2b2729ce2dd4",
+        "android_client_info": {
+          "package_name": "com.example.potago"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4P6a3Ys0oYA88-AB5xYY9FaBVpwW_zFw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
