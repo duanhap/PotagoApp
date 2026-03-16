@@ -80,8 +80,6 @@ private fun TopAppBar(
             SettingButton (onSettingClick)
         }
     }
-
-
 }
 @Composable
 private fun SettingButton(
