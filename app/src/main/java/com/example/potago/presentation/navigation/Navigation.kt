@@ -16,6 +16,7 @@ import com.example.potago.presentation.screen.auth.LoginScreen
 import com.example.potago.presentation.screen.auth.SignUpScreen
 import com.example.potago.presentation.screen.home.HomeScreen
 import com.example.potago.presentation.screen.library.LibraryScreen
+import com.example.potago.presentation.screen.myvideo.MyVideoScreen
 import com.example.potago.presentation.screen.potato.PotatoScreen
 import com.example.potago.presentation.screen.recommendvideo.RecommendVideoScreen
 import com.example.potago.presentation.screen.setting.SettingScreen
@@ -125,7 +126,9 @@ fun MainFlowContainer(rootNavController: NavController) {
             composable(Screen.RecommendVideo.route) {
                 RecommendVideoScreen(mainNavController)
             }
-
+            composable(Screen.MyVideo.route) {
+                MyVideoScreen(mainNavController)
+            }
         }
     }
 }
