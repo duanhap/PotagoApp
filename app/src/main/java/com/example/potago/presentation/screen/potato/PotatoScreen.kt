@@ -89,7 +89,7 @@ fun PotatoScreen(
 private fun SectionTitle(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.titleLarge,
+        style = MaterialTheme.typography.titleMedium,
         color = Color(0xFF111827)
     )
 }
@@ -156,13 +156,13 @@ private fun DateCard(
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.labelLarge,
                     color = Color(0xFF374151)
                 )
             }
             Text(
                 text = value,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = Color(0xFF111827)
             )
         }
@@ -232,13 +232,13 @@ private fun SummaryCard(
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.labelLarge,
                     color = Color(0xFF374151)
                 )
             }
             Text(
                 text = value,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = Color(0xFF111827)
             )
         }
@@ -287,7 +287,7 @@ private fun FeatureItem(
             Spacer(modifier = Modifier.width(14.dp))
             Text(
                 text = text,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = Color(0xFF4B5563)
             )
         }
