@@ -228,7 +228,7 @@ fun RecommendedVideosList(isLoading: Boolean) {
                     Text(
                         text = "忍者 🥷 - aisongmaker 🎶",
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
-                        maxLines = 1
+                        maxLines = 2
                     )
                 }
             }
@@ -258,6 +258,12 @@ fun RecentVideosList(isLoading: Boolean) {
                             .height(14.dp),
                         shape = RoundedCornerShape(4.dp)
                     )
+                    ShimmerItem(
+                        modifier = Modifier
+                            .fillMaxWidth(0.6f)
+                            .height(16.dp),
+                        shape = RoundedCornerShape(4.dp)
+                    )
                 }
             }
         } else {
@@ -274,7 +280,7 @@ fun RecentVideosList(isLoading: Boolean) {
                     Text(
                         text = "忍者 🥷 - aisongmaker 🎶",
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
-                        maxLines = 1
+                        maxLines = 2
                     )
                 }
             }
@@ -296,6 +302,19 @@ fun YourVideosList(isLoading: Boolean) {
                         .aspectRatio(16 / 9f),
                     shape = RoundedCornerShape(12.dp)
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                ShimmerItem(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(14.dp),
+                    shape = RoundedCornerShape(4.dp)
+                )
+                ShimmerItem(
+                    modifier = Modifier
+                        .fillMaxWidth(0.6f)
+                        .height(16.dp),
+                    shape = RoundedCornerShape(4.dp)
+                )
             }
         } else {
             items(3) {
@@ -305,6 +324,12 @@ fun YourVideosList(isLoading: Boolean) {
                         .aspectRatio(16 / 9f)
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color.LightGray)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "忍者 🥷 - aisongmaker 🎶",
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                    maxLines = 2
                 )
             }
         }
