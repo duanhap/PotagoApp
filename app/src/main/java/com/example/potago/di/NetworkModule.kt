@@ -2,6 +2,7 @@ package com.example.potago.di
 
 import com.example.potago.data.remote.FirebaseAuthDataSource
 import com.example.potago.data.remote.api.UserApiService
+import com.example.potago.data.remote.api.VideoApiService
 import com.example.potago.data.remote.interceptor.AuthInterceptor
 import com.google.firebase.auth.FirebaseAuth
 import dagger.Module
@@ -68,5 +69,11 @@ object NetworkModule {
     @Singleton
     fun provideUserApiService(retrofit: Retrofit): UserApiService {
         return retrofit.create(UserApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideVideoApiService(retrofit: Retrofit): VideoApiService {
+        return retrofit.create(VideoApiService::class.java)
     }
 }
