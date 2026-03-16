@@ -1,14 +1,15 @@
-package com.example.potago.presentation.screen.recommendvideo
+package com.example.potago.presentation.screen.myvideo
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,32 +18,56 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.potago.domain.model.Video
-import com.example.potago.presentation.screen.myvideo.MyVideoScreen
 import com.example.potago.presentation.ui.component.ShimmerItem
+import com.example.potago.R
+
 
 @Composable
-fun RecommendVideoScreen(
+fun MyVideoScreen(
     navController: NavController,
 ) {
-    // Giả lập trạng thái loading để demo shimmer
     var isLoading by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(2000)
+        kotlinx.coroutines.delay(1500)
         isLoading = false
     }
 
     Scaffold(
         topBar = {
-            TopAppBar(onBack = { navController.popBackStack() })
+            TopAppBar(
+                onBack = { navController.popBackStack() },
+                onAddClick = { /* Handle Add */ }
+            )
+        },
+        floatingActionButton = {
+            Surface(
+                shape = CircleShape,
+                border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+                color = Color.Transparent
+            ) {
+                FloatingActionButton(
+                    onClick = { /* Handle Folder */ },
+                    containerColor = Color.White,
+                    contentColor = Color(0xFF4285F4),
+                    shape = CircleShape
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_folder),
+                        contentDescription = "Folder",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
         }
     ) { innerPadding ->
-        RecommendVideoContent(
+        MyVideoContent(
             modifier = Modifier.padding(innerPadding),
             isLoading = isLoading
         )
@@ -50,23 +75,22 @@ fun RecommendVideoScreen(
 }
 
 @Composable
-private fun RecommendVideoContent(
+private fun MyVideoContent(
     modifier: Modifier = Modifier,
     isLoading: Boolean
 ) {
-    val languages = listOf("English", "日本語", "汉语")
-    var selectedLang by remember { mutableStateOf("English") }
+    val tabs = listOf("All", "Youtube", "Mine")
+    var selectedTab by remember { mutableStateOf("All") }
 
     val mockVideos = listOf(
-        Video(title = "Brainrot is Ruining Our Life | Learn English Podcast with Daily Conversations ( A2-B1)", id = 1),
-        Video(title = "A Stormy Day in England | Slow English Vlog", id = 2)
+        Video(title = "忍者 🥷 - aisongmaker 🎶", id = 1),
+        Video(title = "君は元気?🌌 - aisongmaker 🎶", id = 2)
     )
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 16.dp)
+        contentPadding = PaddingValues(bottom = 80.dp) // Space for FAB
     ) {
-        // Tab Row
         item {
             LazyRow(
                 modifier = Modifier
@@ -75,17 +99,16 @@ private fun RecommendVideoContent(
                 contentPadding = PaddingValues(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(languages) { lang ->
+                items(tabs) { tab ->
                     FilterTab(
-                        text = lang,
-                        isSelected = selectedLang == lang,
-                        onClick = { selectedLang = lang }
+                        text = tab,
+                        isSelected = selectedTab == tab,
+                        onClick = { selectedTab = tab }
                     )
                 }
             }
         }
 
-        // Video List
         if (isLoading) {
             items(3) {
                 VideoItemShimmer()
@@ -115,10 +138,10 @@ fun FilterTab(
     ) {
         Text(
             text = text,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 32.dp, vertical = 6.dp),
             style = MaterialTheme.typography.labelLarge.copy(
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                fontSize = 14.sp
+                fontSize = 13.sp
             )
         )
     }
@@ -138,7 +161,6 @@ fun VideoItem(video: Video) {
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color.LightGray)
         ) {
-            // Placeholder for image
             Surface(
                 color = Color.Black.copy(alpha = 0.7f),
                 shape = RoundedCornerShape(4.dp),
@@ -147,7 +169,7 @@ fun VideoItem(video: Video) {
                     .padding(8.dp)
             ) {
                 Text(
-                    text = "10:02",
+                    text = "5:23",
                     color = Color.White,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
@@ -159,9 +181,8 @@ fun VideoItem(video: Video) {
             text = video.title ?: "",
             style = MaterialTheme.typography.titleMedium.copy(
                 fontWeight = FontWeight.Bold,
-                lineHeight = 20.sp
-            ),
-            maxLines = 2
+                fontSize = 15.sp
+            )
         )
     }
 }
@@ -182,14 +203,7 @@ fun VideoItemShimmer() {
         Spacer(modifier = Modifier.height(12.dp))
         ShimmerItem(
             modifier = Modifier
-                .fillMaxWidth(0.8f)
-                .height(20.dp),
-            shape = RoundedCornerShape(4.dp)
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        ShimmerItem(
-            modifier = Modifier
-                .fillMaxWidth(0.5f)
+                .fillMaxWidth(0.6f)
                 .height(20.dp),
             shape = RoundedCornerShape(4.dp)
         )
@@ -197,7 +211,10 @@ fun VideoItemShimmer() {
 }
 
 @Composable
-private fun TopAppBar(onBack: () -> Unit) {
+private fun TopAppBar(
+    onBack: () -> Unit,
+    onAddClick: () -> Unit
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         tonalElevation = 3.dp,
@@ -218,16 +235,27 @@ private fun TopAppBar(onBack: () -> Unit) {
                 )
             }
             Text(
-                text = "Đề xuất video",
-                style = MaterialTheme.typography.displayMedium,
-                modifier = Modifier.weight(1f)
+                text = "Video của bạn",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.Bold
+                ),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 8.dp)
             )
+            IconButton(onClick = onAddClick) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add",
+                    modifier = Modifier.size(32.dp)
+                )
+            }
         }
     }
 }
 @Preview(showBackground = true)
 @Composable
-fun RecommendVideoScreenPreview(){
-    RecommendVideoScreen(navController = NavController(LocalContext.current))
+fun MyVideoScreenPreview(){
+    MyVideoScreen(navController = NavController(LocalContext.current))
 }
 
