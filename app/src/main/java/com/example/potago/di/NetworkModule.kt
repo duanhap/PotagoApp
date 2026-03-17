@@ -2,7 +2,9 @@ package com.example.potago.di
 
 import com.example.potago.data.remote.FirebaseAuthDataSource
 import com.example.potago.data.remote.api.UserApiService
+import com.example.potago.data.remote.api.VideoApiService
 import com.example.potago.data.remote.interceptor.AuthInterceptor
+import com.example.potago.data.remote.interceptor.TokenAuthenticator
 import com.google.firebase.auth.FirebaseAuth
 import dagger.Module
 import dagger.Provides
@@ -36,6 +38,10 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    fun provideTokenAuthenticator(): TokenAuthenticator = TokenAuthenticator()
+
+    @Provides
+    @Singleton
     fun provideLoggingInterceptor(): HttpLoggingInterceptor {
         return HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
@@ -46,11 +52,13 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(
         authInterceptor: AuthInterceptor,
+        tokenAuthenticator: TokenAuthenticator,
         loggingInterceptor: HttpLoggingInterceptor
     ): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
             .addInterceptor(loggingInterceptor) // Thêm log để debug
+            .authenticator(tokenAuthenticator)
             .build()
     }
 
@@ -68,5 +76,11 @@ object NetworkModule {
     @Singleton
     fun provideUserApiService(retrofit: Retrofit): UserApiService {
         return retrofit.create(UserApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideVideoApiService(retrofit: Retrofit): VideoApiService {
+        return retrofit.create(VideoApiService::class.java)
     }
 }
