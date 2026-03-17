@@ -1,13 +1,14 @@
 package com.example.potago.presentation.screen.recommendvideo
 
-import android.widget.Toast
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -43,7 +44,6 @@ fun RecommendVideoScreen(
 ) {
     val videos by viewModel.videos.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
-    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -76,7 +76,6 @@ private fun RecommendVideoContent(
     var selectedIndex by remember { mutableStateOf(0) }
     val listState = rememberLazyListState()
 
-    // Detect when reaching the end of the list
     val shouldLoadMore = remember {
         derivedStateOf {
             val lastVisibleItemIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
@@ -95,10 +94,10 @@ private fun RecommendVideoContent(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 16.dp)
     ) {
-        item {
+        item{
             Spacer(modifier = Modifier.height(80.dp))
+
         }
-        // Tab Row
         item {
             LazyRow(
                 modifier = Modifier
@@ -119,12 +118,16 @@ private fun RecommendVideoContent(
             }
         }
 
-        // Video List
-        items(videos) { video ->
-            VideoItem(video = video)
+        if (uiState is UiState.Success && videos.isEmpty()) {
+            item {
+                EmptyVideosView()
+            }
+        } else {
+            items(videos) { video ->
+                VideoItem(video = video)
+            }
         }
 
-        // Loading/Error states
         when (uiState) {
             is UiState.Loading -> {
                 if (videos.isEmpty()) {
@@ -155,6 +158,31 @@ private fun RecommendVideoContent(
             }
             else -> {}
         }
+    }
+}
+
+@Composable
+fun EmptyVideosView() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.7f),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Spacer(modifier = Modifier.height(120.dp))
+        Image(
+            painter = painterResource(id = R.drawable.horizon_sleep_mascot),
+            contentDescription = null,
+            modifier = Modifier.size(150.dp)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Chưa có video nào cả",
+            style = MaterialTheme.typography.titleMedium.copy(
+                color = Color.Gray,
+            )
+        )
     }
 }
 
@@ -203,7 +231,10 @@ fun VideoItem(video: Video) {
         Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = video.title ?: "Untitled",
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold,
+                lineHeight = 20.sp
+            ),
             maxLines = 2
         )
     }
