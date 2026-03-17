@@ -12,10 +12,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
+import com.example.potago.presentation.screen.addvideo.AddVideoScreen
 import com.example.potago.presentation.screen.auth.LoginScreen
 import com.example.potago.presentation.screen.auth.SignUpScreen
 import com.example.potago.presentation.screen.home.HomeScreen
 import com.example.potago.presentation.screen.library.LibraryScreen
+import com.example.potago.presentation.screen.managevideo.ManageVideoScreen
 import com.example.potago.presentation.screen.myvideo.MyVideoScreen
 import com.example.potago.presentation.screen.potato.PotatoScreen
 import com.example.potago.presentation.screen.recommendvideo.RecommendVideoScreen
@@ -41,6 +43,8 @@ sealed class Screen(val route: String) {
 
     object RecommendVideo : Screen("recommend_video")
     object MyVideo : Screen("my_video")
+    object ManageVideo : Screen("manage_video")
+    object AddVideo : Screen("add_video")
 }
 
 @Composable
@@ -128,6 +132,12 @@ fun MainFlowContainer(rootNavController: NavController) {
             }
             composable(Screen.MyVideo.route) {
                 MyVideoScreen(mainNavController)
+            }
+            composable(Screen.ManageVideo.route) {
+                ManageVideoScreen(mainNavController)
+            }
+            composable(Screen.AddVideo.route) {
+                AddVideoScreen(mainNavController)
             }
         }
     }

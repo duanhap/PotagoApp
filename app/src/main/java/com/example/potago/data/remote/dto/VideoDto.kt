@@ -14,7 +14,8 @@ data class VideoDto(
     @SerializedName("user_id") val userId: Int?,
     @SerializedName("public_video_id") val publicVideoId: Int?,
     @SerializedName("definition_lang_code") val definitionLangCode: String?,
-    @SerializedName("term_lang_code") val termLangCode: String?
+    @SerializedName("term_lang_code") val termLangCode: String?,
+    @SerializedName("job_id") val jobId: String? = null // Thêm dòng này
 )
 
 fun VideoDto.toDomain(): Video {
