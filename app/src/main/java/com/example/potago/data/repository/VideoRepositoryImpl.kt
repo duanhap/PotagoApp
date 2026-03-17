@@ -47,4 +47,18 @@ class VideoRepositoryImpl @Inject constructor(
             Result.Error(e.message ?: "Unknown error")
         }
     }
+    override suspend fun getRecentVideos(page: Int?, size: Int?): Result<List<Video>> {
+        return try {
+            val response = videoApiService.getRecentVideos(page, size)
+            if (response.success) {
+                val videos = response.data?.map { it.toDomain() } ?: emptyList()
+                Result.Success(videos)
+            } else {
+                Result.Error(response.message)
+            }
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "Unknown error")
+        }
+    }
 }
+

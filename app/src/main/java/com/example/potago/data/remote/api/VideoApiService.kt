@@ -18,4 +18,10 @@ interface VideoApiService {
         @Query("page") page: Int?,
         @Query("size") size: Int?
     ): ApiResponse<List<VideoDto>>
+
+    @GET("/api/videos/recent")
+    suspend fun getRecentVideos(
+        @Query("page") page: Int?,
+        @Query("size") size: Int?
+    ): ApiResponse<List<VideoDto>>
 }

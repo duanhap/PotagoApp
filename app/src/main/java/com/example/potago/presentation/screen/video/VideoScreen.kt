@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -33,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,6 +54,7 @@ fun VideoScreen(
 ) {
     val recommendedVideosState by viewModel.recommendedVideos.collectAsState()
     val myVideosState by viewModel.myVideos.collectAsState()
+    val recentVideosState by viewModel.recentVideos.collectAsState()
     val selectedLangIndex by viewModel.selectedLangIndex.collectAsState()
 
     Scaffold(
@@ -93,7 +96,7 @@ fun VideoScreen(
 
             item {
                 SectionHeader(title = "Gần đây xem", onSeeMoreClick = {}, showSeeMore = false)
-                RecentVideosList() // Placeholder
+                VideoListHorizontal(recentVideosState)
             }
 
             item {
@@ -199,30 +202,59 @@ fun FilterChips(
 
 @Composable
 fun VideoListHorizontal(uiState: UiState<List<Video>>) {
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.padding(vertical = 8.dp)
-    ) {
-        when (uiState) {
-            is UiState.Loading -> {
+    when (uiState) {
+        is UiState.Loading -> {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(vertical = 8.dp)
+            ) {
                 items(3) {
                     VideoItemShimmer()
                 }
             }
-            is UiState.Success -> {
-                uiState.data?.let { videos ->
+        }
+        is UiState.Success -> {
+            val videos = uiState.data
+            if (videos.isNullOrEmpty()) {
+                EmptyBoxView()
+            } else {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(vertical = 8.dp)
+                ) {
                     items(videos.size) { index ->
                         VideoItem(video = videos[index])
                     }
                 }
             }
-            is UiState.Error -> {
-                item {
-                    Text(text = uiState.message, color = Color.Red)
-                }
-            }
-            else -> {}
         }
+        is UiState.Error -> {
+            Text(text = uiState.message, color = Color.Red, modifier = Modifier.padding(vertical = 8.dp))
+        }
+        else -> {}
+    }
+}
+
+@Composable
+fun EmptyBoxView() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.empty_box),
+            contentDescription = null,
+            modifier = Modifier.size(100.dp)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Không có video nào",
+            style = MaterialTheme.typography.titleMedium.copy(
+                color = Color.Gray,
+            )
+        )
     }
 }
 
@@ -272,18 +304,6 @@ fun VideoItemShimmer() {
                 .height(16.dp),
             shape = RoundedCornerShape(4.dp)
         )
-    }
-}
-
-@Composable
-fun RecentVideosList() {
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.padding(vertical = 8.dp)
-    ) {
-        items(3) {
-            VideoItemShimmer()
-        }
     }
 }
 

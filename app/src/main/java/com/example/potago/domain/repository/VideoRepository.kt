@@ -6,4 +6,5 @@ import com.example.potago.domain.model.Video
 interface VideoRepository {
     suspend fun getPublicVideos(termLangCode: String?, page: Int?, size: Int?): Result<List<Video>>
     suspend fun getMyVideos(typeVideo: String?, page: Int?, size: Int?): Result<List<Video>>
+    suspend fun getRecentVideos(page: Int?, size: Int?): Result<List<Video>>
 }
