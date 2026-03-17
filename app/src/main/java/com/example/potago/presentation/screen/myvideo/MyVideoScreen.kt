@@ -23,16 +23,20 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.potago.R
 import com.example.potago.domain.model.Video
+import com.example.potago.presentation.navigation.Screen
 import com.example.potago.presentation.screen.UiState
 import com.example.potago.presentation.ui.component.ShimmerItem
 
@@ -44,31 +48,59 @@ fun MyVideoScreen(
     val videos by viewModel.videos.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val selectedTab by viewModel.selectedTab.collectAsState()
+    val processingJob by viewModel.processingJob.collectAsState()
+    
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refresh()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 onBackClick = { navController.popBackStack() },
-                onAddClick = { /* Handle Add */ }
+                onAddClick = { navController.navigate(Screen.AddVideo.route) }
             )
         },
         floatingActionButton = {
-            Surface(
-                shape = CircleShape,
-                border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
-                color = Color.Transparent
-            ) {
-                FloatingActionButton(
-                    onClick = { /* Handle Folder */ },
-                    containerColor = Color.White,
-                    contentColor = Color(0xFF4285F4),
-                    shape = CircleShape
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_folder),
-                        contentDescription = "Folder",
-                        modifier = Modifier.size(24.dp)
+            Box(contentAlignment = Alignment.Center) {
+                if (processingJob != null) {
+                    CircularProgressIndicator(
+                        progress = { (processingJob?.progress?.toFloat() ?: 0f) / 100f },
+                        modifier = Modifier.size(64.dp),
+                        color = Color(0xFF58CC02),
+                        strokeWidth = 3.dp,
+                        trackColor = Color(0xFFEEEEEE)
                     )
+                }
+                
+                Surface(
+                    shape = CircleShape,
+                    border = if (processingJob == null) BorderStroke(1.dp, Color(0x4D3B82F6)) else null,
+                    color = Color.Transparent
+                ) {
+                    FloatingActionButton(
+                        onClick = { navController.navigate(Screen.ManageVideo.route) },
+                        containerColor = Color.White,
+                        contentColor = Color(0xFF4285F4),
+                        shape = CircleShape,
+                        elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_folder),
+                            contentDescription = "Folder",
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
             }
         }
@@ -296,8 +328,7 @@ private fun TopAppBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+            verticalAlignment = Alignment.CenterVertically) {
             BackButton(onBackClick)
             Spacer(modifier = Modifier.width(16.dp))
             Text(
