@@ -8,7 +8,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -24,10 +23,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.example.potago.R
 import com.example.potago.presentation.screen.auth.BigPotagoButton
 
@@ -39,13 +40,13 @@ private val xpOptions = listOf(15, 30, 60, 120, 240)
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
 fun GoalScreen(
-    onBackClick: () -> Unit = {}
+    navController: NavController
 ) {
     var selectedXp by remember { mutableStateOf(xpOptions.first()) }
     var isDropdownOpen by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = { GoalTopBar(onBackClick = onBackClick) },
+        topBar = { GoalTopBar(onBackClick = { navController.popBackStack() }) },
         containerColor = Color.White
     ) { innerPadding ->
         Box(
@@ -276,7 +277,7 @@ private fun MascotWithTooltip() {
 // Top App Bar
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
-private fun GoalTopBar(onBackClick: () -> Unit) {
+private fun GoalTopBar(onBackClick :() -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         tonalElevation = 3.dp,
@@ -315,6 +316,7 @@ private fun GoalBackButton(onClick: () -> Unit) {
             painter = painterResource(id = R.drawable.ic_back),
             contentDescription = "Back",
             modifier = Modifier.scale(scale)
+                .size(20.dp)
         )
     }
 }
@@ -326,44 +328,44 @@ private fun GoalBackButton(onClick: () -> Unit) {
 @Composable
 fun GoalScreenPreview() {
     MaterialTheme {
-        GoalScreen()
+        GoalScreen(navController = NavController(LocalContext.current))
     }
 }
 
-@Preview(showBackground = true, showSystemUi = true, name = "Goal - Dropdown Open")
-@Composable
-fun GoalScreenDropdownOpenPreview() {
-    var selectedXp by remember { mutableStateOf(15) }
-    MaterialTheme {
-        Scaffold(
-            topBar = { GoalTopBar(onBackClick = {}) },
-            containerColor = Color.White
-        ) { padding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 20.dp)
-                ) {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Text(
-                        text = "Điểm kinh nghiệm mỗi ngày",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    XpDropdown(
-                        selectedXp = selectedXp,
-                        isOpen = true,
-                        options = xpOptions,
-                        onToggle = {},
-                        onSelect = { selectedXp = it }
-                    )
-                }
-            }
-        }
-    }
-}
+//@Preview(showBackground = true, showSystemUi = true, name = "Goal - Dropdown Open")
+//@Composable
+//fun GoalScreenDropdownOpenPreview() {
+//    var selectedXp by remember { mutableStateOf(15) }
+//    MaterialTheme {
+//        Scaffold(
+//            topBar = { GoalTopBar(onBackClick = {navController.popBackStack() }) },
+//            containerColor = Color.White
+//        ) { padding ->
+//            Box(
+//                modifier = Modifier
+//                    .fillMaxSize()
+//                    .padding(padding)
+//            ) {
+//                Column(
+//                    modifier = Modifier
+//                        .fillMaxSize()
+//                        .padding(horizontal = 20.dp)
+//                ) {
+//                    Spacer(modifier = Modifier.height(24.dp))
+//                    Text(
+//                        text = "Điểm kinh nghiệm mỗi ngày",
+//                        style = MaterialTheme.typography.titleMedium
+//                    )
+//                    Spacer(modifier = Modifier.height(12.dp))
+//                    XpDropdown(
+//                        selectedXp = selectedXp,
+//                        isOpen = true,
+//                        options = xpOptions,
+//                        onToggle = {},
+//                        onSelect = { selectedXp = it }
+//                    )
+//                }
+//            }
+//        }
+//    }
+//}

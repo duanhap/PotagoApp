@@ -3,6 +3,7 @@ package com.example.potago.presentation.screen.potato
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -62,6 +63,7 @@ fun PotatoScreen(
         Column(
             modifier = Modifier
                 .padding(innerPadding)
+                .background(color = Color.White)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 18.dp)
@@ -78,7 +80,11 @@ fun PotatoScreen(
             Spacer(modifier = Modifier.height(22.dp))
             SectionTitle(text = "Tính năng khác")
             Spacer(modifier = Modifier.height(12.dp))
-            OtherFeatureSection()
+            OtherFeatureSection(
+                onProfileClick = { navController.navigate(Screen.Setting.route) },
+                onGoalClick = { navController.navigate(Screen.Goal.route) }
+
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
         }
@@ -113,7 +119,7 @@ private fun InfoSection() {
             contentAlignment = Alignment.Center
         ) {
             Image(
-                painter = painterResource(id = R.drawable.ic_potato),
+                painter = painterResource(id = R.drawable.ic_garden_potago_screen),
                 contentDescription = "Potato illustration",
                 modifier = Modifier.size(120.dp)
             )
@@ -246,18 +252,23 @@ private fun SummaryCard(
 }
 
 @Composable
-private fun OtherFeatureSection() {
+private fun OtherFeatureSection(
+    onProfileClick: () -> Unit = {},
+    onGoalClick: () -> Unit = {}
+) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         FeatureItem(
             icon = Icons.Default.Person,
-            text = "Hồ sơ"
+            text = "Hồ sơ",
+            onClick = onProfileClick
         )
         FeatureItem(
             icon = Icons.Default.Settings,
-            text = "Mục tiêu"
+            text = "Mục tiêu",
+            onClick = onGoalClick
         )
     }
 }
@@ -265,7 +276,8 @@ private fun OtherFeatureSection() {
 @Composable
 private fun FeatureItem(
     icon: ImageVector,
-    text: String
+    text: String,
+    onClick: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -276,7 +288,8 @@ private fun FeatureItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 18.dp, vertical = 16.dp),
+                .padding(horizontal = 18.dp, vertical = 16.dp)
+                .clickable { onClick() }, // 👈 chỗ này
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
