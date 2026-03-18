@@ -248,7 +248,7 @@ private fun ProcessingVideoItem(
             ) {
                 Text(
                     text = job.video.title ?: "Đang tải tiêu đề...",
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.labelLarge,
                     maxLines = 3
                 )
 
