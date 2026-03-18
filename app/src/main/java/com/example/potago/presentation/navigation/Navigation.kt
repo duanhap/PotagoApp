@@ -14,6 +14,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
 import com.example.potago.presentation.screen.auth.LoginScreen
 import com.example.potago.presentation.screen.auth.SignUpScreen
+import com.example.potago.presentation.screen.goal.GoalScreen
 import com.example.potago.presentation.screen.home.HomeScreen
 import com.example.potago.presentation.screen.library.LibraryScreen
 import com.example.potago.presentation.screen.potato.PotatoScreen
@@ -36,6 +37,7 @@ sealed class Screen(val route: String) {
     object Video : Screen("video")
     object Potato : Screen("potato")
     object Setting : Screen("setting")
+    object Goal : Screen("goal")
 }
 
 @Composable
@@ -116,7 +118,10 @@ fun MainFlowContainer(rootNavController: NavController) {
                 PotatoScreen(mainNavController)
             }
             composable(Screen.Setting.route) {
-                SettingScreen(rootNavController)
+                SettingScreen(mainNavController)
+            }
+            composable(Screen.Goal.route) {
+                GoalScreen(mainNavController)
             }
         }
     }
