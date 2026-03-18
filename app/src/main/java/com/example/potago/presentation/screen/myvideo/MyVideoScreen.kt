@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -111,7 +112,10 @@ fun MyVideoScreen(
             uiState = uiState,
             selectedTab = selectedTab,
             onTabSelected = { viewModel.onTabSelected(it) },
-            onLoadMore = { viewModel.loadMoreVideos() }
+            onLoadMore = { viewModel.loadMoreVideos() },
+            onVideoClick = { videoId ->
+                navController.navigate(Screen.DetailedVideo(videoId))
+            }
         )
     }
 }
@@ -123,7 +127,8 @@ private fun MyVideoContent(
     uiState: UiState<Unit>,
     selectedTab: String,
     onTabSelected: (String) -> Unit,
-    onLoadMore: () -> Unit
+    onLoadMore: () -> Unit,
+    onVideoClick: (Int) -> Unit
 ) {
     val tabs = listOf("All", "Youtube", "File")
     val listState = rememberLazyListState()
@@ -173,7 +178,10 @@ private fun MyVideoContent(
             }
         } else {
             items(videos) { video ->
-                VideoItem(video = video)
+                VideoItem(
+                    video = video,
+                    onClick = { onVideoClick(video.id) }
+                )
             }
         }
 
@@ -261,10 +269,11 @@ fun FilterTab(
 }
 
 @Composable
-fun VideoItem(video: Video) {
+fun VideoItem(video: Video, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onClick() }
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
         AsyncImage(
@@ -388,10 +397,4 @@ private fun BackButton(
             modifier = Modifier.scale(scale)
         )
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun MyVideoScreenPreview(){
-    MyVideoScreen(navController = NavController(LocalContext.current))
 }
