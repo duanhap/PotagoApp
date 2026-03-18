@@ -1,5 +1,6 @@
 package com.example.potago.presentation.screen.recommendvideo
 
+import android.widget.Toast
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -34,8 +35,10 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.potago.R
 import com.example.potago.domain.model.Video
+import com.example.potago.presentation.navigation.Screen
 import com.example.potago.presentation.screen.UiState
 import com.example.potago.presentation.ui.component.ShimmerItem
+import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun RecommendVideoScreen(
@@ -44,6 +47,21 @@ fun RecommendVideoScreen(
 ) {
     val videos by viewModel.videos.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    // Xử lý điều hướng
+    LaunchedEffect(Unit) {
+        viewModel.navigationEvent.collectLatest { videoId ->
+            navController.navigate(Screen.DetailedVideo(videoId))
+        }
+    }
+
+    // Xử lý lỗi
+    LaunchedEffect(Unit) {
+        viewModel.errorEvent.collectLatest { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -59,6 +77,9 @@ fun RecommendVideoScreen(
             },
             onLoadMore = {
                 viewModel.loadMoreVideos()
+            },
+            onVideoClick = { videoId ->
+                viewModel.onVideoClick(videoId)
             }
         )
     }
@@ -70,7 +91,8 @@ private fun RecommendVideoContent(
     videos: List<Video>,
     uiState: UiState<Unit>,
     onLanguageSelected: (Int) -> Unit,
-    onLoadMore: () -> Unit
+    onLoadMore: () -> Unit,
+    onVideoClick: (Int) -> Unit
 ) {
     val languages = listOf("English", "日本語", "汉语")
     var selectedIndex by remember { mutableStateOf(0) }
@@ -96,7 +118,6 @@ private fun RecommendVideoContent(
     ) {
         item{
             Spacer(modifier = Modifier.height(80.dp))
-
         }
         item {
             LazyRow(
@@ -124,7 +145,10 @@ private fun RecommendVideoContent(
             }
         } else {
             items(videos) { video ->
-                VideoItem(video = video)
+                VideoItem(
+                    video = video,
+                    onClick = { onVideoClick(video.id) }
+                )
             }
         }
 
@@ -211,10 +235,11 @@ fun FilterTab(
 }
 
 @Composable
-fun VideoItem(video: Video) {
+fun VideoItem(video: Video, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onClick() }
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
         AsyncImage(

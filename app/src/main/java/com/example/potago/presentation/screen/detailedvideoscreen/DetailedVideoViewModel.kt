@@ -45,7 +45,6 @@ class DetailedVideoViewModel @Inject constructor(
     private fun loadData() {
         viewModelScope.launch {
             loadVideo()
-            loadSubtitles()
         }
     }
 
@@ -53,7 +52,11 @@ class DetailedVideoViewModel @Inject constructor(
         _videoState.value = UiState.Loading
         when (val result = getVideoUseCase(videoId)) {
             is Result.Success -> {
-                _videoState.value = UiState.Success(result.data)
+                val video = result.data
+                _videoState.value = UiState.Success(video)
+                // Sau khi có video, kiểm tra publicVideoId để lấy sub
+                val idForSubtitles = video.publicVideoId ?: video.id
+                loadSubtitles(idForSubtitles)
             }
             is Result.Error -> {
                 _videoState.value = UiState.Error(result.message)
@@ -64,9 +67,9 @@ class DetailedVideoViewModel @Inject constructor(
         }
     }
 
-    private suspend fun loadSubtitles() {
+    private suspend fun loadSubtitles(id: Int) {
         _subtitlesState.value = UiState.Loading
-        when (val result = getSubtitlesUseCase(videoId)) {
+        when (val result = getSubtitlesUseCase(id)) {
             is Result.Success -> {
                 _subtitlesState.value = UiState.Success(result.data)
             }
