@@ -7,6 +7,7 @@ import com.example.potago.data.remote.api.SyncJobRequest
 import com.example.potago.data.remote.api.VideoApiService
 import com.example.potago.data.remote.dto.toDomain
 import com.example.potago.domain.model.Result
+import com.example.potago.domain.model.Subtitle
 import com.example.potago.domain.model.Video
 import com.example.potago.domain.repository.JobStatus
 import com.example.potago.domain.repository.VideoRepository
@@ -62,6 +63,19 @@ class VideoRepositoryImpl @Inject constructor(
             if (response.success) {
                 val videos = response.data?.map { it.toDomain() } ?: emptyList()
                 Result.Success(videos)
+            } else {
+                Result.Error(response.message)
+            }
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
+    override suspend fun getVideo(videoId: Int): Result<Video> {
+        return try {
+            val response = videoApiService.getVideoById(videoId)
+            if (response.success && response.data != null) {
+                Result.Success(response.data.toDomain())
             } else {
                 Result.Error(response.message)
             }
@@ -138,6 +152,20 @@ class VideoRepositoryImpl @Inject constructor(
             val response = videoApiService.cancelJob(videoId, request)
             if (response.success) {
                 Result.Success(Unit)
+            } else {
+                Result.Error(response.message)
+            }
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
+    override suspend fun getSubtitles(videoId: Int): Result<List<Subtitle>> {
+        return try {
+            val response = videoApiService.getSubtitles(videoId)
+            if (response.success) {
+                val subtitles = response.data?.map { it.toDomain() } ?: emptyList()
+                Result.Success(subtitles)
             } else {
                 Result.Error(response.message)
             }
