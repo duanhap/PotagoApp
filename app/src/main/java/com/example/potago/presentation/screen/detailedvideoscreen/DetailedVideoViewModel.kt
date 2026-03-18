@@ -34,6 +34,10 @@ class DetailedVideoViewModel @Inject constructor(
     private val _selectedTabIndex = MutableStateFlow(0)
     val selectedTabIndex: StateFlow<Int> = _selectedTabIndex.asStateFlow()
 
+    // Quản lý thời gian thực của video
+    private val _currentTimeMs = MutableStateFlow(0L)
+    val currentTimeMs: StateFlow<Long> = _currentTimeMs.asStateFlow()
+
     init {
         loadData()
     }
@@ -77,5 +81,9 @@ class DetailedVideoViewModel @Inject constructor(
 
     fun onTabSelected(index: Int) {
         _selectedTabIndex.value = index
+    }
+
+    fun updateCurrentTime(time: Long) {
+        _currentTimeMs.value = time
     }
 }

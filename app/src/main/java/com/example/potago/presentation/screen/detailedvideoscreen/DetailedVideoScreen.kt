@@ -1,5 +1,10 @@
 package com.example.potago.presentation.screen.detailedvideoscreen
 
+import android.annotation.SuppressLint
+import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.annotation.OptIn
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -42,10 +47,6 @@ import com.example.potago.R
 import com.example.potago.domain.model.Subtitle
 import com.example.potago.domain.model.Video
 import com.example.potago.presentation.screen.UiState
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.utils.YouTubePlayerTracker
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 import kotlinx.coroutines.delay
 import java.util.regex.Pattern
 
@@ -57,11 +58,10 @@ fun DetailedVideoScreen(
     val subtitlesState by viewModel.subtitlesState.collectAsState()
     val videoState by viewModel.videoState.collectAsState()
     val selectedTabIndex by viewModel.selectedTabIndex.collectAsState()
+    val currentTimeMs by viewModel.currentTimeMs.collectAsState()
     
-    var youtubePlayer by remember { mutableStateOf<YouTubePlayer?>(null) }
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
-    
-    var currentTimeMs by remember { mutableLongStateOf(0L) }
+    var webViewInstance by remember { mutableStateOf<WebView?>(null) }
 
     Scaffold(
         topBar = {
@@ -79,131 +79,154 @@ fun DetailedVideoScreen(
             // Video Player Section
             when (videoState) {
                 is UiState.Loading -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(16 / 9f)
-                            .background(Color.Black),
-                        contentAlignment = Alignment.Center
-                    ) {
+                    Box(modifier = Modifier.fillMaxWidth().aspectRatio(16/9f).background(Color.Black), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = Color.White)
                     }
                 }
                 is UiState.Success -> {
                     val video = (videoState as UiState.Success<Video>).data
-                    
                     if (!video?.serverSourceUrl.isNullOrBlank()) {
                         ExoPlayerView(
                             videoUrl = video.serverSourceUrl!!,
-                            onPlayerReady = { player ->
-                                exoPlayer = player
-                            },
-                            onTimeUpdate = { time ->
-                                currentTimeMs = time
-                            }
+                            onPlayerReady = { exoPlayer = it },
+                            onTimeUpdate = { viewModel.updateCurrentTime(it) }
                         )
                     } else {
-                        YoutubePlayerLibraryView(
-                            videoUrl = video?.sourceUrl ?: "",
-                            onPlayerReady = { player ->
-                                youtubePlayer = player
-                            },
-                            onTimeUpdate = { time ->
-                                currentTimeMs = time
-                            }
+                        val videoId = video?.let { extractYoutubeVideoId(it.sourceUrl) }
+                        YoutubeWebView(
+                            videoId = videoId ?: "",
+                            onPlayerReady = { webViewInstance = it },
+                            onTimeUpdate = { viewModel.updateCurrentTime(it) }
                         )
                     }
                 }
                 is UiState.Error -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(16 / 9f)
-                            .background(Color.Black),
-                        contentAlignment = Alignment.Center
-                    ) {
+                    Box(modifier = Modifier.fillMaxWidth().aspectRatio(16/9f).background(Color.Black), contentAlignment = Alignment.Center) {
                         Text(text = "Lỗi tải video", color = Color.White)
                     }
                 }
-                else -> {}
+                else ->{}
             }
 
-            // Tab Section
-            TabRowSection(
-                selectedTabIndex = selectedTabIndex,
-                onTabSelected = { viewModel.onTabSelected(it) }
-            )
+            TabRowSection(selectedTabIndex = selectedTabIndex, onTabSelected = { viewModel.onTabSelected(it) })
 
-            // Content Section
             when (subtitlesState) {
-                is UiState.Loading -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                }
+                is UiState.Loading -> { Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
                 is UiState.Success -> {
                     val subtitles = (subtitlesState as UiState.Success<List<Subtitle>>).data
                     if (selectedTabIndex == 0) {
-                        if (!subtitles.isNullOrEmpty()) {
+                        subtitles?.let {
                             SubtitleList(
-                                subtitles = subtitles,
+                                subtitles = it,
                                 currentTimeMs = currentTimeMs,
                                 onSubtitleClick = { startTimeMs ->
                                     if (exoPlayer != null) {
                                         exoPlayer?.seekTo(startTimeMs.toLong())
-                                    } else if (youtubePlayer != null) {
-                                        youtubePlayer?.seekTo(startTimeMs / 1000f)
+                                    } else {
+                                        // Tua video YouTube qua WebView bằng Javascript
+                                        webViewInstance?.evaluateJavascript("seekTo(${startTimeMs / 1000f});", null)
                                     }
                                 }
                             )
-                        } else {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text(text = "Video này chưa có phụ đề")
-                            }
                         }
                     } else {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(text = "Tính năng xem từng câu đang phát triển")
-                        }
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(text = "Tính năng xem từng câu đang phát triển") }
                     }
                 }
-                is UiState.Error -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = (subtitlesState as UiState.Error).message, color = Color.Red)
-                    }
-                }
+                is UiState.Error -> { Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(text = (subtitlesState as UiState.Error).message, color = Color.Red) } }
                 else -> {}
             }
         }
     }
 }
 
-@OptIn(UnstableApi::class)
+@SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun ExoPlayerView(
-    videoUrl: String,
-    onPlayerReady: (ExoPlayer) -> Unit,
+fun YoutubeWebView(
+    videoId: String,
+    onPlayerReady: (WebView) -> Unit,
     onTimeUpdate: (Long) -> Unit
 ) {
+    val packageName = LocalContext.current.packageName
+    
+    // HTML nhúng YouTube tích hợp JS API để Android có thể lắng nghe thời gian
+    val embedHtml = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>body { margin: 0; padding: 0; background: black; } .container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; } iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }</style>
+        </head>
+        <body>
+            <div class="container">
+                <div id="player"></div>
+            </div>
+            <script>
+                var tag = document.createElement('script');
+                tag.src = "https://www.youtube.com/iframe_api";
+                var firstScriptTag = document.getElementsByTagName('script')[0];
+                firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+                var player;
+                function onYouTubeIframeAPIReady() {
+                    player = new YT.Player('player', {
+                        height: '100%', width: '100%',
+                        videoId: '$videoId',
+                        playerVars: { 'autoplay': 1, 'rel': 0, 'controls': 1, 'origin': 'https://$packageName' },
+                        events: { 'onReady': onPlayerReady }
+                    });
+                }
+
+                function onPlayerReady(event) {
+                    setInterval(function() {
+                        if (player && player.getCurrentTime) {
+                            Android.onTimeUpdate(player.getCurrentTime());
+                        }
+                    }, 200);
+                }
+
+                function seekTo(seconds) {
+                    if (player) player.seekTo(seconds, true);
+                }
+            </script>
+        </body>
+        </html>
+    """.trimIndent()
+
+    AndroidView(
+        modifier = Modifier.fillMaxWidth().aspectRatio(16 / 9f),
+        factory = { context ->
+            WebView(context).apply {
+                settings.apply {
+                    javaScriptEnabled = true
+                    domStorageEnabled = true
+                    mediaPlaybackRequiresUserGesture = false
+                }
+                addJavascriptInterface(object {
+                    @JavascriptInterface
+                    fun onTimeUpdate(seconds: Float) {
+                        onTimeUpdate((seconds * 1000).toLong())
+                    }
+                }, "Android")
+                
+                webViewClient = WebViewClient()
+                webChromeClient = WebChromeClient()
+                
+                loadDataWithBaseURL("https://$packageName", embedHtml, "text/html", "UTF-8", null)
+                onPlayerReady(this)
+            }
+        }
+    )
+}
+
+@OptIn(UnstableApi::class)
+@Composable
+fun ExoPlayerView(videoUrl: String, onPlayerReady: (ExoPlayer) -> Unit, onTimeUpdate: (Long) -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    
-    val player = remember {
-        ExoPlayer.Builder(context).build().apply {
-            val mediaItem = MediaItem.fromUri(videoUrl)
-            setMediaItem(mediaItem)
-            prepare()
-            onPlayerReady(this)
-        }
-    }
+    val player = remember { ExoPlayer.Builder(context).build().apply { setMediaItem(MediaItem.fromUri(videoUrl)); prepare(); onPlayerReady(this) } }
 
     LaunchedEffect(player) {
-        while (true) {
-            if (player.isPlaying) {
-                onTimeUpdate(player.currentPosition)
-            }
-            delay(200)
-        }
+        while (true) { if (player.isPlaying) onTimeUpdate(player.currentPosition); delay(200) }
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -216,279 +239,63 @@ fun ExoPlayerView(
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-            player.release()
-        }
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer); player.release() }
     }
 
-    AndroidView(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(16 / 9f),
-        factory = {
-            PlayerView(context).apply {
-                this.player = player
-                useController = true
-                setShowNextButton(false)
-                setShowPreviousButton(false)
-            }
-        }
-    )
-}
-
-@Composable
-fun YoutubePlayerLibraryView(
-    videoUrl: String,
-    onPlayerReady: (YouTubePlayer) -> Unit,
-    onTimeUpdate: (Long) -> Unit
-) {
-    val videoId = remember(videoUrl) { extractYoutubeVideoId(videoUrl) }
-    val lifecycleOwner = LocalLifecycleOwner.current
-    // Sử dụng tracker để tránh lỗi override onCurrentTime
-    val tracker = remember { YouTubePlayerTracker() }
-
-    if (videoId == null) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(16 / 9f)
-                .background(Color.Black),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = "Link YouTube không hợp lệ", color = Color.White)
-        }
-        return
-    }
-
-    // Vòng lặp theo dõi thời gian từ tracker
-    LaunchedEffect(tracker) {
-        while (true) {
-            onTimeUpdate((tracker.currentSecond * 1000).toLong())
-            delay(300) 
-        }
-    }
-
-    AndroidView(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(16 / 9f),
-        factory = { context ->
-            YouTubePlayerView(context).apply {
-                lifecycleOwner.lifecycle.addObserver(this)
-                addYouTubePlayerListener(object : AbstractYouTubePlayerListener() {
-                    override fun onReady(youTubePlayer: YouTubePlayer) {
-                        onPlayerReady(youTubePlayer)
-                        youTubePlayer.addListener(tracker) // Đăng ký tracker
-                        youTubePlayer.cueVideo(videoId, 0f)
-                    }
-                })
-            }
-        }
-    )
+    AndroidView(modifier = Modifier.fillMaxWidth().aspectRatio(16/9f), factory = { PlayerView(context).apply { this.player = player; useController = true } })
 }
 
 fun extractYoutubeVideoId(url: String): String? {
-    if (url.isBlank()) return null
-    val patterns = listOf(
-        "(?:v=|/v/|/embed/|/shorts/|youtu.be/|/videos/|embed\\?v=)([^#&?\\s]+)",
-        "youtu.be/([^#&?\\s]+)",
-        "youtube.com/watch\\?v=([^#&?\\s]+)",
-        "youtube.com/shorts/([^#&?\\s]+)"
-    )
+    val patterns = listOf("(?:v=|/v/|/embed/|/shorts/|youtu.be/|/videos/|embed\\?v=)([^#&?\\s]+)", "youtu.be/([^#&?\\s]+)", "youtube.com/watch\\?v=([^#&?\\s]+)")
     for (p in patterns) {
-        val compiledPattern = Pattern.compile(p)
-        val matcher = compiledPattern.matcher(url)
-        if (matcher.find()) {
-            val id = matcher.group(1)
-            if (id != null && id.length >= 10) return id
-        }
+        val matcher = Pattern.compile(p).matcher(url)
+        if (matcher.find()) return matcher.group(1)
     }
     return null
 }
 
 @Composable
-fun TabRowSection(
-    selectedTabIndex: Int,
-    onTabSelected: (Int) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp))
-            .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp))
-    ) {
-        TabItem(
-            text = "Xem danh sách",
-            iconRes = R.drawable.ic_list_detailed_video_screen,
-            isSelected = selectedTabIndex == 0,
-            onClick = { onTabSelected(0) },
-            modifier = Modifier.weight(1f)
-        )
-        TabItem(
-            text = "Xem từng câu",
-            iconRes = R.drawable.ic_card_detailed_video_screen,
-            isSelected = selectedTabIndex == 1,
-            onClick = { onTabSelected(1) },
-            modifier = Modifier.weight(1f)
-        )
+fun TabRowSection(selectedTabIndex: Int, onTabSelected: (Int) -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)).border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp))) {
+        TabItem(text = "Xem danh sách", iconRes = R.drawable.ic_list_detailed_video_screen, isSelected = selectedTabIndex == 0, onClick = { onTabSelected(0) }, modifier = Modifier.weight(1f))
+        TabItem(text = "Xem từng câu", iconRes = R.drawable.ic_card_detailed_video_screen, isSelected = selectedTabIndex == 1, onClick = { onTabSelected(1) }, modifier = Modifier.weight(1f))
     }
 }
 
 @Composable
-fun TabItem(
-    text: String,
-    iconRes: Int,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .background(if (isSelected) Color.White else Color(0xFFF3F4F6))
-            .clickable { onClick() }
-            .padding(vertical = 12.dp),
-        contentAlignment = Alignment.Center
-    ) {
+fun TabItem(text: String, iconRes: Int, isSelected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Box(modifier = modifier.background(if (isSelected) Color.White else Color(0xFFF3F4F6)).clickable { onClick() }.padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                painter = painterResource(id = iconRes),
-                contentDescription = null,
-                tint = if (isSelected) Color(0xFF3B82F6) else Color.Gray,
-                modifier = Modifier.size(20.dp)
-            )
+            Icon(painter = painterResource(id = iconRes), contentDescription = null, tint = if (isSelected) Color(0xFF3B82F6) else Color.Gray, modifier = Modifier.size(20.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = if (isSelected) Color(0xFF3B82F6) else Color.Gray
-                )
-            )
+            Text(text = text, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, color = if (isSelected) Color(0xFF3B82F6) else Color.Gray))
         }
     }
 }
 
 @Composable
-fun SubtitleList(
-    subtitles: List<Subtitle>,
-    currentTimeMs: Long,
-    onSubtitleClick: (Int) -> Unit
-) {
+fun SubtitleList(subtitles: List<Subtitle>, currentTimeMs: Long, onSubtitleClick: (Int) -> Unit) {
     val listState = rememberLazyListState()
-    
-    val activeIndex = remember(currentTimeMs, subtitles) {
-        subtitles.indexOfLast { subtitle ->
-            val start = subtitle.startTime?.toLong() ?: 0L
-            currentTimeMs >= start
-        }
-    }
-
-    LaunchedEffect(activeIndex) {
-        if (activeIndex != -1) {
-            listState.animateScrollToItem(activeIndex, scrollOffset = -200)
-        }
-    }
-
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize()
-    ) {
-        itemsIndexed(subtitles) { index, subtitle ->
-            SubtitleItem(
-                subtitle = subtitle,
-                isHighlighted = index == activeIndex,
-                onClick = { onSubtitleClick(subtitle.startTime ?: 0) }
-            )
-        }
+    val activeIndex = remember(currentTimeMs, subtitles) { subtitles.indexOfLast { (it.startTime?.toLong() ?: 0L) <= currentTimeMs } }
+    LaunchedEffect(activeIndex) { if (activeIndex != -1) listState.animateScrollToItem(activeIndex, scrollOffset = -200) }
+    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+        itemsIndexed(subtitles) { index, subtitle -> SubtitleItem(subtitle = subtitle, isHighlighted = index == activeIndex, onClick = { onSubtitleClick(subtitle.startTime ?: 0) }) }
     }
 }
 
 @Composable
-fun SubtitleItem(
-    subtitle: Subtitle, 
-    isHighlighted: Boolean,
-    onClick: () -> Unit
-) {
-    val backgroundColor by animateColorAsState(
-        targetValue = if (isHighlighted) Color(0xFFD6FFA3) else Color.White,
-        label = "bgColor"
-    )
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(backgroundColor)
-            .clickable { onClick() }
-            .drawBehind {
-                val strokeWidth = 1.dp.toPx()
-                drawLine(
-                    color = Color(0xFFEEEEEE),
-                    start = Offset(0f, size.height - strokeWidth / 2),
-                    end = Offset(size.width, size.height - strokeWidth / 2),
-                    strokeWidth = strokeWidth
-                )
-            }
-            .padding(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFFF3F4F6))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Text(
-                    text = formatTime(subtitle.startTime ?: 0),
-                    style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
-                )
-            }
-
-            Icon(
-                painter = painterResource(id = R.drawable.ic_save_detailed_video_screen),
-                contentDescription = "Save",
-                tint = Color.Gray,
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFFF3F4F6))
-                    .padding(6.dp)
-                    .clickable { /* Save logic */ }
-            )
+fun SubtitleItem(subtitle: Subtitle, isHighlighted: Boolean, onClick: () -> Unit) {
+    val backgroundColor by animateColorAsState(targetValue = if (isHighlighted) Color(0xFFD6FFA3) else Color.White, label = "bgColor")
+    Column(modifier = Modifier.fillMaxWidth().background(backgroundColor).clickable { onClick() }.drawBehind { val strokeWidth = 1.dp.toPx(); drawLine(color = Color(0xFFEEEEEE), start = Offset(0f, size.height - strokeWidth / 2), end = Offset(size.width, size.height - strokeWidth / 2), strokeWidth = strokeWidth) }.padding(16.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFFF3F4F6)).padding(horizontal = 8.dp, vertical = 4.dp)) { Text(text = formatTime(subtitle.startTime ?: 0), style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)) }
+            Icon(painter = painterResource(id = R.drawable.ic_save_detailed_video_screen), contentDescription = "Save", tint = Color.Gray, modifier = Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFF3F4F6)).padding(6.dp))
         }
-
         Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = subtitle.content ?: "",
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
-            )
-        )
-
-        if (!subtitle.pronunciation.isNullOrBlank()) {
-            Text(
-                text = subtitle.pronunciation,
-                style = MaterialTheme.typography.bodySmall.copy(
-                    color = Color.Gray,
-                    fontSize = 14.sp
-                )
-            )
-        }
-
+        Text(text = subtitle.content ?: "", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 18.sp))
+        if (!subtitle.pronunciation.isNullOrBlank()) Text(text = subtitle.pronunciation, style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray, fontSize = 14.sp))
         Spacer(modifier = Modifier.height(4.dp))
-
-        Text(
-            text = subtitle.translation ?: "",
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontSize = 15.sp
-            )
-        )
+        Text(text = subtitle.translation ?: "", style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp))
     }
 }
 
@@ -500,51 +307,20 @@ fun formatTime(ms: Int): String {
 }
 
 @Composable
-private fun TopAppBar(
-    onBackClick: () -> Unit = {},
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        tonalElevation = 3.dp,
-        shadowElevation = 4.dp,
-        color = Color(0xFFFFFFFF)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+private fun TopAppBar(onBackClick: () -> Unit = {}) {
+    Surface(modifier = Modifier.fillMaxWidth(), tonalElevation = 3.dp, shadowElevation = 4.dp, color = Color(0xFFFFFFFF)) {
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             BackButton(onBackClick)
             Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = "Chi tiết video",
-                style = MaterialTheme.typography.displayMedium,
-            )
+            Text(text = "Chi tiết video", style = MaterialTheme.typography.displayMedium)
         }
     }
 }
 
 @Composable
-private fun BackButton(
-    onClick: () -> Unit
-) {
+private fun BackButton(onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.85f else 1f,
-        label = "icon_scale"
-    )
-
-    IconButton(
-        onClick = onClick,
-        interactionSource = interactionSource
-    ) {
-        Icon(
-            painter = painterResource(id = R.drawable.ic_back),
-            contentDescription = "Back",
-            modifier = Modifier.scale(scale)
-        )
-    }
+    val scale by animateFloatAsState(targetValue = if (isPressed) 0.85f else 1f, label = "icon_scale")
+    IconButton(onClick = onClick, interactionSource = interactionSource) { Icon(painter = painterResource(id = R.drawable.ic_back), contentDescription = "Back", modifier = Modifier.scale(scale)) }
 }
