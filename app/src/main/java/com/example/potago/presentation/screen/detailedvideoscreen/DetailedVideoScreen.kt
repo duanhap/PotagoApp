@@ -70,12 +70,14 @@ fun DetailedVideoScreen(
             )
         }
     ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding))
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
                 .background(Color.White)
         ) {
+            Spacer(modifier = Modifier.height(70.dp))
+
             // Video Player Section
             when (videoState) {
                 is UiState.Loading -> {

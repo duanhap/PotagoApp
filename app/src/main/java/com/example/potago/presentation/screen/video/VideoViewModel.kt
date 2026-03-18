@@ -7,10 +7,14 @@ import com.example.potago.domain.model.Video
 import com.example.potago.domain.usecase.GetMyVideosUseCase
 import com.example.potago.domain.usecase.GetPublicVideosUseCase
 import com.example.potago.domain.usecase.GetRecentVideosUseCase
+import com.example.potago.domain.usecase.OpenPublicVideoUseCase
 import com.example.potago.presentation.screen.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -18,7 +22,8 @@ import javax.inject.Inject
 class VideoViewModel @Inject constructor(
     private val getPublicVideosUseCase: GetPublicVideosUseCase,
     private val getMyVideosUseCase: GetMyVideosUseCase,
-    private val getRecentVideosUseCase: GetRecentVideosUseCase
+    private val getRecentVideosUseCase: GetRecentVideosUseCase,
+    private val openPublicVideoUseCase: OpenPublicVideoUseCase
 ) : ViewModel() {
 
     private val _recommendedVideos = MutableStateFlow<UiState<List<Video>>>(UiState.Loading)
@@ -32,6 +37,13 @@ class VideoViewModel @Inject constructor(
 
     private val _selectedLangIndex = MutableStateFlow(0)
     val selectedLangIndex: StateFlow<Int> = _selectedLangIndex
+
+    // Event để điều hướng màn hình
+    private val _navigationEvent = MutableSharedFlow<Int>()
+    val navigationEvent: SharedFlow<Int> = _navigationEvent.asSharedFlow()
+
+    private val _errorEvent = MutableSharedFlow<String>()
+    val errorEvent: SharedFlow<String> = _errorEvent.asSharedFlow()
 
     private val langMap = mapOf(0 to "en", 1 to "ja", 2 to "zh")
 
@@ -57,6 +69,22 @@ class VideoViewModel @Inject constructor(
                 }
                 is Result.Error -> {
                     _recommendedVideos.value = UiState.Error(result.message ?: "Unknown error")
+                }
+                else -> {}
+            }
+        }
+    }
+
+    fun onRecommendedVideoClick(publicVideoId: Int) {
+        viewModelScope.launch {
+            // Khi nhấn vào video đề xuất, gọi API open để tạo bản sao (nếu cần)
+            when (val result = openPublicVideoUseCase(publicVideoId)) {
+                is Result.Success -> {
+                    // API trả về Video (là bản sao cá nhân), lấy ID này để sang màn Detail
+                    _navigationEvent.emit(result.data.id)
+                }
+                is Result.Error -> {
+                    _errorEvent.emit(result.message ?: "Không thể mở video")
                 }
                 else -> {}
             }

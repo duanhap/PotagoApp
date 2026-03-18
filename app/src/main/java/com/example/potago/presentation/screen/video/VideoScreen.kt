@@ -1,32 +1,16 @@
 package com.example.potago.presentation.screen.video
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,7 +18,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,6 +29,7 @@ import com.example.potago.domain.model.Video
 import com.example.potago.presentation.navigation.Screen
 import com.example.potago.presentation.screen.UiState
 import com.example.potago.presentation.ui.component.ShimmerItem
+import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun VideoScreen(
@@ -56,6 +40,21 @@ fun VideoScreen(
     val myVideosState by viewModel.myVideos.collectAsState()
     val recentVideosState by viewModel.recentVideos.collectAsState()
     val selectedLangIndex by viewModel.selectedLangIndex.collectAsState()
+    val context = LocalContext.current
+
+    // Xử lý điều hướng khi nhấn vào video đề xuất thành công
+    LaunchedEffect(Unit) {
+        viewModel.navigationEvent.collectLatest { videoId ->
+            navController.navigate(Screen.DetailedVideo(videoId))
+        }
+    }
+
+    // Xử lý thông báo lỗi
+    LaunchedEffect(Unit) {
+        viewModel.errorEvent.collectLatest { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -94,8 +93,8 @@ fun VideoScreen(
                 VideoListHorizontal(
                     uiState = recommendedVideosState,
                     onVideoClick = { videoId ->
-                        // Đề xuất thì chưa cần vào detailed video vội hoặc tùy logic
-                        // Theo yêu cầu chỉ nhấn vào Gần đây xem và Video của bạn
+                        // Khi nhấn vào video đề xuất, gọi hàm xử lý open API
+                        viewModel.onRecommendedVideoClick(videoId)
                     }
                 )
             }
@@ -259,6 +258,18 @@ fun VideoListHorizontal(
 
 @Composable
 fun EmptyBoxView() {
+
+    val images = listOf(
+        R.drawable.empty_box,
+        R.drawable.empty_box_1,
+        R.drawable.empty_box_2,
+        R.drawable.empty_box_3
+    )
+
+    val randomImage = remember {
+        images.random()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -266,11 +277,13 @@ fun EmptyBoxView() {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Image(
-            painter = painterResource(id = R.drawable.empty_box),
+            painter = painterResource(id = randomImage),
             contentDescription = null,
             modifier = Modifier.size(100.dp)
         )
+
         Spacer(modifier = Modifier.height(8.dp))
+
         Text(
             text = "Không có video nào",
             style = MaterialTheme.typography.titleMedium.copy(
