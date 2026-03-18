@@ -91,12 +91,23 @@ fun VideoScreen(
                         viewModel.onLanguageTabSelected(index)
                     }
                 )
-                VideoListHorizontal(recommendedVideosState)
+                VideoListHorizontal(
+                    uiState = recommendedVideosState,
+                    onVideoClick = { videoId ->
+                        // Đề xuất thì chưa cần vào detailed video vội hoặc tùy logic
+                        // Theo yêu cầu chỉ nhấn vào Gần đây xem và Video của bạn
+                    }
+                )
             }
 
             item {
                 SectionHeader(title = "Gần đây xem", onSeeMoreClick = {}, showSeeMore = false)
-                VideoListHorizontal(recentVideosState)
+                VideoListHorizontal(
+                    uiState = recentVideosState,
+                    onVideoClick = { videoId ->
+                        navController.navigate(Screen.DetailedVideo(videoId))
+                    }
+                )
             }
 
             item {
@@ -105,7 +116,12 @@ fun VideoScreen(
                     onSeeMoreClick = { navController.navigate(Screen.MyVideo.route) },
                     showSeeMore = true
                 )
-                VideoListHorizontal(myVideosState)
+                VideoListHorizontal(
+                    uiState = myVideosState,
+                    onVideoClick = { videoId ->
+                        navController.navigate(Screen.DetailedVideo(videoId))
+                    }
+                )
             }
         }
     }
@@ -201,7 +217,10 @@ fun FilterChips(
 }
 
 @Composable
-fun VideoListHorizontal(uiState: UiState<List<Video>>) {
+fun VideoListHorizontal(
+    uiState: UiState<List<Video>>,
+    onVideoClick: (Int) -> Unit
+) {
     when (uiState) {
         is UiState.Loading -> {
             LazyRow(
@@ -223,7 +242,10 @@ fun VideoListHorizontal(uiState: UiState<List<Video>>) {
                     modifier = Modifier.padding(vertical = 8.dp)
                 ) {
                     items(videos.size) { index ->
-                        VideoItem(video = videos[index])
+                        VideoItem(
+                            video = videos[index],
+                            onClick = { onVideoClick(videos[index].id) }
+                        )
                     }
                 }
             }
@@ -259,8 +281,12 @@ fun EmptyBoxView() {
 }
 
 @Composable
-fun VideoItem(video: Video) {
-    Column(modifier = Modifier.width(196.dp)) {
+fun VideoItem(video: Video, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .width(196.dp)
+            .clickable { onClick() }
+    ) {
         AsyncImage(
             model = video.thumbnail,
             contentDescription = null,

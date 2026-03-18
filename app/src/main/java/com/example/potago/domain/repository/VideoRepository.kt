@@ -1,12 +1,14 @@
 package com.example.potago.domain.repository
 
 import com.example.potago.domain.model.Result
+import com.example.potago.domain.model.Subtitle
 import com.example.potago.domain.model.Video
 
 interface VideoRepository {
     suspend fun getPublicVideos(termLangCode: String?, page: Int?, size: Int?): Result<List<Video>>
     suspend fun getMyVideos(typeVideo: String?, page: Int?, size: Int?): Result<List<Video>>
     suspend fun getRecentVideos(page: Int?, size: Int?): Result<List<Video>>
+    suspend fun getVideo(videoId: Int): Result<Video>
     suspend fun deleteVideo(videoId: Int): Result<Unit>
     
     suspend fun createMyVideo(
@@ -20,6 +22,8 @@ interface VideoRepository {
 
     suspend fun syncJobStatus(videoId: Int, jobId: String): Result<JobStatus>
     suspend fun cancelJob(videoId: Int, jobId: String): Result<Unit>
+
+    suspend fun getSubtitles(videoId: Int): Result<List<Subtitle>>
 }
 
 data class JobStatus(
