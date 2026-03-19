@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,7 +24,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,14 +40,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.annotation.DrawableRes
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.potago.R
 import com.example.potago.presentation.navigation.Screen
+import com.example.potago.presentation.ui.theme.PotagoTheme
 
 @Composable
 fun PotatoScreen(
@@ -150,13 +152,13 @@ private fun DateCard(
                     modifier = Modifier
                         .size(34.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFFDCFCE7)),
+                        .background(Color(0xFFD7FFA4)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "C",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF16A34A)
+                    Image(
+                        painter = painterResource(R.drawable.ic_solar_calendar),
+                        contentDescription = "Potato illustration",
+                        modifier = Modifier.size(24.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(10.dp))
@@ -183,17 +185,15 @@ private fun OverviewSection() {
     ) {
         SummaryCard(
             modifier = Modifier.weight(1f),
-            iconLabel = "X",
+            iconRes = R.drawable.ic_tabler_hexagon,
             iconBackground = Color(0xFFFEF3C7),
-            iconTextColor = Color(0xFFD97706),
             title = "XP",
             value = "2,450"
         )
         SummaryCard(
             modifier = Modifier.weight(1f),
-            iconLabel = "S",
+            iconRes = R.drawable.ic_water,
             iconBackground = Color(0xFFDBEAFE),
-            iconTextColor = Color(0xFF2563EB),
             title = "Streak",
             value = "12 Days"
         )
@@ -203,9 +203,8 @@ private fun OverviewSection() {
 @Composable
 private fun SummaryCard(
     modifier: Modifier = Modifier,
-    iconLabel: String,
+    @DrawableRes iconRes: Int,
     iconBackground: Color,
-    iconTextColor: Color,
     title: String,
     value: String
 ) {
@@ -229,10 +228,10 @@ private fun SummaryCard(
                         .background(iconBackground),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = iconLabel,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = iconTextColor
+                    Image(
+                        painter = painterResource(iconRes),
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(10.dp))
@@ -261,12 +260,12 @@ private fun OtherFeatureSection(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         FeatureItem(
-            icon = Icons.Default.Person,
+            iconRes = R.drawable.ic_iconamoon_profile,
             text = "Hồ sơ",
             onClick = onProfileClick
         )
         FeatureItem(
-            icon = Icons.Default.Settings,
+            iconRes = R.drawable.ic_octicon_goal_16,
             text = "Mục tiêu",
             onClick = onGoalClick
         )
@@ -275,7 +274,7 @@ private fun OtherFeatureSection(
 
 @Composable
 private fun FeatureItem(
-    icon: ImageVector,
+    @DrawableRes iconRes: Int,
     text: String,
     onClick: () -> Unit
 ) {
@@ -293,9 +292,10 @@ private fun FeatureItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = icon,
-                contentDescription = text,
-                tint = Color(0xFF6B7280)
+                painter = painterResource(iconRes),
+                contentDescription = null,
+                tint = Color(0xFF4B5563),
+                modifier = Modifier.size(22.dp)
             )
             Spacer(modifier = Modifier.width(14.dp))
             Text(
@@ -349,22 +349,35 @@ private fun SettingButton(
         label = "icon_scale"
     )
 
-    IconButton(
-        onClick = onClick,
-        interactionSource = interactionSource
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color.White)
+            .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(14.dp)),
+        contentAlignment = Alignment.Center
     ) {
-        Icon(
-            painter = painterResource(id = R.drawable.ic_setting),
-            contentDescription = "Setting",
-            modifier = Modifier.scale(scale)
-        )
+        IconButton(
+            onClick = onClick,
+            interactionSource = interactionSource,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_setting),
+                contentDescription = "Setting",
+                tint = Color(0xFF111827),
+                modifier = Modifier.scale(scale)
+            )
+        }
     }
 }
 
 @Preview(showBackground = true)
 @Composable
 fun PotatoScreenPreview() {
-    PotatoScreen(
-        navController = rememberNavController()
-    )
+    PotagoTheme(dynamicColor = false) {
+        PotatoScreen(
+            navController = rememberNavController()
+        )
+    }
 }
