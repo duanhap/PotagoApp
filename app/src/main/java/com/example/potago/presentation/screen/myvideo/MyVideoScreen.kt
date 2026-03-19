@@ -149,7 +149,8 @@ private fun MyVideoContent(
 
     LazyColumn(
         state = listState,
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize()
+            .background(color = Color.White),
         contentPadding = PaddingValues(bottom = 80.dp) // Space for FAB
     ) {
         item{

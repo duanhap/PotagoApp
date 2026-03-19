@@ -61,14 +61,15 @@ fun VideoScreen(
             TopAppBar()
         },
     ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding))
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
+                .background(color = Color.White),
             contentPadding = PaddingValues(start = 20.dp, end = 20.dp)
         ) {
             item {
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(80.dp))
                 Image(
                     painter = painterResource(id = R.drawable.video_screen_mascot),
                     contentDescription = null,
