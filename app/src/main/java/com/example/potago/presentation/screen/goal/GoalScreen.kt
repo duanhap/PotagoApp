@@ -230,7 +230,7 @@ private fun MascotWithTooltip() {
     ) {
         // Mascot
         Image(
-            painter = painterResource(id = R.drawable.normal_mascot),
+            painter = painterResource(id = R.drawable.ic_mascot_happy),
             contentDescription = "Mascot",
             modifier = Modifier.size(100.dp)
         )
