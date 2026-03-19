@@ -1,6 +1,5 @@
 package com.example.potago.presentation.screen.video
 
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,102 +26,122 @@ import coil.compose.AsyncImage
 import com.example.potago.R
 import com.example.potago.domain.model.Video
 import com.example.potago.presentation.navigation.Screen
+import com.example.potago.presentation.screen.UiEvent
 import com.example.potago.presentation.screen.UiState
 import com.example.potago.presentation.ui.component.ShimmerItem
-import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun VideoScreen(
     navController: NavController,
     viewModel: VideoViewModel = hiltViewModel()
 ) {
-    val recommendedVideosState by viewModel.recommendedVideos.collectAsState()
-    val myVideosState by viewModel.myVideos.collectAsState()
-    val recentVideosState by viewModel.recentVideos.collectAsState()
-    val selectedLangIndex by viewModel.selectedLangIndex.collectAsState()
-    val context = LocalContext.current
+    val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    // Xử lý điều hướng khi nhấn vào video đề xuất thành công
     LaunchedEffect(Unit) {
-        viewModel.navigationEvent.collectLatest { videoId ->
-            navController.navigate(Screen.DetailedVideo(videoId))
-        }
-    }
-
-    // Xử lý thông báo lỗi
-    LaunchedEffect(Unit) {
-        viewModel.errorEvent.collectLatest { message ->
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is UiEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+                is UiEvent.Navigate -> {
+                    navController.navigate(event.route) {
+                        event.popUpTo?.let {
+                            popUpTo(it) {
+                                inclusive = event.inclusive
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar()
-        },
+        topBar = { TopAppBar() },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding))
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(color = Color.White),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp)
-        ) {
-            item {
-                Spacer(modifier = Modifier.height(80.dp))
-                Image(
-                    painter = painterResource(id = R.drawable.video_screen_mascot),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxWidth(),
-                    contentScale = ContentScale.FillWidth
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-            }
+        VideoContent(
+            modifier = Modifier,
+            uiState = uiState,
+            onEvent = viewModel::onEvent,
+            onSeeMoreRecommended = { navController.navigate(Screen.RecommendVideo.route) },
+            onSeeMoreMyVideos = { navController.navigate(Screen.MyVideo.route) }
+        )
+    }
+}
 
-            item {
-                SectionHeader(
-                    title = "Đề xuất",
-                    onSeeMoreClick = { navController.navigate(Screen.RecommendVideo.route) },
-                    showSeeMore = true
-                )
-                FilterChips(
-                    selectedIndex = selectedLangIndex,
-                    onTabSelected = { index ->
-                        viewModel.onLanguageTabSelected(index)
-                    }
-                )
-                VideoListHorizontal(
-                    uiState = recommendedVideosState,
-                    onVideoClick = { videoId ->
-                        // Khi nhấn vào video đề xuất, gọi hàm xử lý open API
-                        viewModel.onRecommendedVideoClick(videoId)
-                    }
-                )
-            }
+@Composable
+private fun VideoContent(
+    modifier: Modifier = Modifier,
+    uiState: VideoUiState,
+    onEvent: (VideoEvent) -> Unit,
+    onSeeMoreRecommended: () -> Unit,
+    onSeeMoreMyVideos: () -> Unit
+) {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .background(color = Color.White),
+        contentPadding = PaddingValues(horizontal = 20.dp)
+    ) {
+        item {
+            Spacer(modifier = Modifier.height(90.dp))
+            Image(
+                painter = painterResource(id = R.drawable.video_screen_mascot),
+                contentDescription = null,
+                modifier = Modifier.fillMaxWidth(),
+                contentScale = ContentScale.FillWidth
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+        }
 
-            item {
-                SectionHeader(title = "Gần đây xem", onSeeMoreClick = {}, showSeeMore = false)
-                VideoListHorizontal(
-                    uiState = recentVideosState,
-                    onVideoClick = { videoId ->
-                        navController.navigate(Screen.DetailedVideo(videoId))
-                    }
-                )
-            }
+        item {
+            SectionHeader(
+                title = "Đề xuất",
+                onSeeMoreClick = onSeeMoreRecommended,
+                showSeeMore = true
+            )
+            FilterChips(
+                selectedIndex = uiState.selectedLangIndex,
+                onTabSelected = { index ->
+                    onEvent(VideoEvent.LanguageTabSelected(index))
+                }
+            )
+            VideoListHorizontal(
+                uiState = uiState.recommendedVideos,
+                onVideoClick = { videoId ->
+                    onEvent(VideoEvent.RecommendedVideoClicked(videoId))
+                }
+            )
+        }
 
-            item {
-                SectionHeader(
-                    title = "Video của bạn",
-                    onSeeMoreClick = { navController.navigate(Screen.MyVideo.route) },
-                    showSeeMore = true
-                )
-                VideoListHorizontal(
-                    uiState = myVideosState,
-                    onVideoClick = { videoId ->
-                        navController.navigate(Screen.DetailedVideo(videoId))
-                    }
-                )
-            }
+        item {
+            SectionHeader(title = "Gần đây xem", onSeeMoreClick = {}, showSeeMore = false)
+            VideoListHorizontal(
+                uiState = uiState.recentVideos,
+                onVideoClick = { videoId ->
+                    onEvent(VideoEvent.VideoClicked(videoId))
+                }
+            )
+        }
+
+        item {
+            SectionHeader(
+                title = "Video của bạn",
+                onSeeMoreClick = onSeeMoreMyVideos,
+                showSeeMore = true
+            )
+            VideoListHorizontal(
+                uiState = uiState.myVideos,
+                onVideoClick = { videoId ->
+                    onEvent(VideoEvent.VideoClicked(videoId))
+                }
+            )
+        }
+        item {
+            Spacer(modifier = Modifier.height(20.dp))
         }
     }
 }
@@ -133,7 +152,7 @@ private fun TopAppBar() {
         modifier = Modifier.fillMaxWidth(),
         tonalElevation = 3.dp,
         shadowElevation = 4.dp,
-        color = Color(0xFFFFFFFF)
+        color = Color.White
     ) {
         Row(
             modifier = Modifier
@@ -251,7 +270,11 @@ fun VideoListHorizontal(
             }
         }
         is UiState.Error -> {
-            Text(text = uiState.message, color = Color.Red, modifier = Modifier.padding(vertical = 8.dp))
+            Text(
+                text = uiState.message,
+                color = Color.Red,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
         }
         else -> {}
     }
@@ -259,17 +282,13 @@ fun VideoListHorizontal(
 
 @Composable
 fun EmptyBoxView() {
-
     val images = listOf(
         R.drawable.empty_box,
         R.drawable.empty_box_1,
         R.drawable.empty_box_2,
         R.drawable.empty_box_3
     )
-
-    val randomImage = remember {
-        images.random()
-    }
+    val randomImage = remember { images.random() }
 
     Column(
         modifier = Modifier
@@ -282,9 +301,7 @@ fun EmptyBoxView() {
             contentDescription = null,
             modifier = Modifier.size(100.dp)
         )
-
         Spacer(modifier = Modifier.height(8.dp))
-
         Text(
             text = "Không có video nào",
             style = MaterialTheme.typography.titleMedium.copy(
@@ -310,7 +327,7 @@ fun VideoItem(video: Video, onClick: () -> Unit) {
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color.LightGray),
             contentScale = ContentScale.Crop,
-            error = painterResource(id = R.drawable.video_screen_mascot) // Placeholder error
+            error = painterResource(id = R.drawable.video_screen_mascot)
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
