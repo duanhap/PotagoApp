@@ -113,7 +113,8 @@ private fun RecommendVideoContent(
 
     LazyColumn(
         state = listState,
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize()
+            .background(color = Color.White),
         contentPadding = PaddingValues(bottom = 16.dp)
     ) {
         item{

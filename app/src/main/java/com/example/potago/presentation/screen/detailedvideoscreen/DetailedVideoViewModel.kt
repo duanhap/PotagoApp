@@ -38,6 +38,10 @@ class DetailedVideoViewModel @Inject constructor(
     private val _currentTimeMs = MutableStateFlow(0L)
     val currentTimeMs: StateFlow<Long> = _currentTimeMs.asStateFlow()
 
+    // Quản lý câu hiện tại trong tab "Xem từng câu"
+    private val _currentSubtitleIndex = MutableStateFlow(0)
+    val currentSubtitleIndex: StateFlow<Int> = _currentSubtitleIndex.asStateFlow()
+
     init {
         loadData()
     }
@@ -88,5 +92,21 @@ class DetailedVideoViewModel @Inject constructor(
 
     fun updateCurrentTime(time: Long) {
         _currentTimeMs.value = time
+    }
+
+    fun nextSubtitle(total: Int) {
+        if (_currentSubtitleIndex.value < total - 1) {
+            _currentSubtitleIndex.value++
+        }
+    }
+
+    fun prevSubtitle() {
+        if (_currentSubtitleIndex.value > 0) {
+            _currentSubtitleIndex.value--
+        }
+    }
+
+    fun jumpToSubtitle(index: Int) {
+        _currentSubtitleIndex.value = index
     }
 }
