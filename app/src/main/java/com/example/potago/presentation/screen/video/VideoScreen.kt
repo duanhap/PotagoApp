@@ -216,7 +216,7 @@ fun FilterChips(
                 modifier = Modifier
                     .border(
                         width = 1.dp,
-                        color = if (isSelected) Color.Black else Color.LightGray,
+                        color = if (isSelected) Color.Black else Color.LightGray.copy(alpha = 0.5f),
                         shape = RoundedCornerShape(20.dp)
                     )
                     .clip(RoundedCornerShape(20.dp))
@@ -228,7 +228,7 @@ fun FilterChips(
                 Text(
                     text = filters[index],
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.Black
+                    color = if (isSelected) Color.Black else Color.Gray
                 )
             }
         }
