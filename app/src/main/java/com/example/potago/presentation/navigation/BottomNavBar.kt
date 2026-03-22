@@ -48,7 +48,7 @@ fun BottomNavBar(
     NavigationBar(
         containerColor = Color.White,
         tonalElevation = 0.dp, // Loại bỏ bóng đổ mặc định nếu muốn phẳng hoàn toàn
-        modifier = Modifier.shadow(30.dp)
+        modifier = Modifier.shadow(10.dp)
     ) {
         bottomNavItems.forEach { item ->
             val selected = currentRoute == item.route

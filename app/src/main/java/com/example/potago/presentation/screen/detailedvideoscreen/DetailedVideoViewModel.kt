@@ -42,6 +42,12 @@ class DetailedVideoViewModel @Inject constructor(
     private val _currentSubtitleIndex = MutableStateFlow(0)
     val currentSubtitleIndex: StateFlow<Int> = _currentSubtitleIndex.asStateFlow()
 
+    // Chế độ lặp lại câu (Repeat Mode)
+    private val _isRepeatMode = MutableStateFlow(false)
+    val isRepeatMode: StateFlow<Boolean> = _isRepeatMode.asStateFlow()
+    private val _isQuestionMode = MutableStateFlow(false)
+    val isQuestionMode: StateFlow<Boolean> = _isQuestionMode.asStateFlow()
+
     init {
         loadData()
     }
@@ -97,16 +103,35 @@ class DetailedVideoViewModel @Inject constructor(
     fun nextSubtitle(total: Int) {
         if (_currentSubtitleIndex.value < total - 1) {
             _currentSubtitleIndex.value++
+            // Khi nhấn next thủ công, tắt repeat mode nếu đang bật
+            if (_isRepeatMode.value) {
+                _isRepeatMode.value = false
+            }
         }
     }
 
     fun prevSubtitle() {
         if (_currentSubtitleIndex.value > 0) {
             _currentSubtitleIndex.value--
+            // Khi nhấn prev thủ công, tắt repeat mode nếu đang bật
+            if (_isRepeatMode.value) {
+                _isRepeatMode.value = false
+            }
         }
     }
 
     fun jumpToSubtitle(index: Int) {
         _currentSubtitleIndex.value = index
+    }
+
+    fun toggleRepeatMode() {
+        _isRepeatMode.value = !_isRepeatMode.value
+    }
+    fun toggleQuestionMode() {
+        _isQuestionMode.value = !_isQuestionMode.value
+    }
+
+    fun disableRepeatMode() {
+        _isRepeatMode.value = false
     }
 }

@@ -34,9 +34,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -72,23 +77,39 @@ fun DetailedVideoScreen(
     val selectedTabIndex by viewModel.selectedTabIndex.collectAsState()
     val currentTimeMs by viewModel.currentTimeMs.collectAsState()
     val currentSubtitleIndex by viewModel.currentSubtitleIndex.collectAsState()
-    
+    val isRepeatMode by viewModel.isRepeatMode.collectAsState()
+    val isQuestionMode by viewModel.isQuestionMode.collectAsState()
+
     // Hiển thị Mic bar khi ở tab "Xem từng câu" (index 1)
     val showMicBottomSheet = selectedTabIndex == 1
 
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
     var webViewInstance by remember { mutableStateOf<WebView?>(null) }
 
-    // Đồng bộ index câu với thời gian video
-    LaunchedEffect(currentTimeMs) {
-        if (subtitlesState is UiState.Success) {
-            val subs = (subtitlesState as UiState.Success<List<Subtitle>>).data ?: emptyList()
-            val index = subs.indexOfLast { (it.startTime?.toLong() ?: 0L) <= currentTimeMs }
-            val finalIndex = if (index == -1) 0 else index
-            if (finalIndex != currentSubtitleIndex) {
+    LaunchedEffect(currentTimeMs) {    if (subtitlesState is UiState.Success) {
+        val subs = (subtitlesState as UiState.Success<List<Subtitle>>).data ?: emptyList()
+        val index = subs.indexOfLast { (it.startTime?.toLong() ?: 0L) <= currentTimeMs }
+        val finalIndex = if (index == -1) 0 else index
+
+        if (finalIndex != currentSubtitleIndex) {
+            // LOGIC LẶP:
+            if (isRepeatMode) {
+                // Nếu đang bật Repeat Mode, lấy thông tin câu HIỆN TẠI (index đang hiển thị trên card)
+                val currentSub = subs.getOrNull(currentSubtitleIndex)
+                if (currentSub != null && currentTimeMs >= (currentSub.endTime?.toLong() ?: Long.MAX_VALUE)) {
+                    // Nếu thời gian video đã vượt quá endTime của câu đó -> seek về đầu câu
+                    if (exoPlayer != null) {
+                        exoPlayer?.seekTo(currentSub.startTime?.toLong() ?: 0L)
+                    } else {
+                        webViewInstance?.evaluateJavascript("seekTo(${(currentSub.startTime ?: 0) / 1000f});", null)
+                    }
+                }
+            } else {
+                // Chế độ bình thường: tự động nhảy index câu theo thời gian video (autonext)
                 viewModel.jumpToSubtitle(finalIndex)
             }
         }
+    }
     }
 
     val onSeek: (Int) -> Unit = { startTimeMs ->
@@ -158,12 +179,19 @@ fun DetailedVideoScreen(
                             SubtitleList(
                                 subtitles = subtitles,
                                 currentTimeMs = currentTimeMs,
-                                onSubtitleClick = { onSeek(it) }
+                                onSubtitleClick = { 
+                                    viewModel.disableRepeatMode()
+                                    onSeek(it) 
+                                }
                             )
                         } else {
                             SingleSubtitleView(
                                 subtitles = subtitles,
-                                currentIndex = currentSubtitleIndex
+                                currentIndex = currentSubtitleIndex,
+                                isRepeatMode = isRepeatMode,
+                                isQuestionMode = isQuestionMode,
+                                onToggleRepeat = { viewModel.toggleRepeatMode() },
+                                onToggleQuestion = { viewModel.toggleQuestionMode() }
                             )
                         }
                     }
@@ -177,18 +205,19 @@ fun DetailedVideoScreen(
                 val subtitles = (subtitlesState as UiState.Success<List<Subtitle>>).data ?: emptyList()
                 Box(
                     modifier = Modifier.fillMaxWidth()
-                        .offset(y= 15.dp)
+                        .height(80.dp)
+                        .offset(y= 16.dp)
                         .align(Alignment.BottomCenter)
                 ) {
                     Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        tonalElevation = 3.dp,
-                        color = Color.Black
+                        modifier = Modifier.fillMaxWidth().shadow(20.dp),
+                        tonalElevation = 0.dp,
+                        color = Color.White
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 8.dp, horizontal = 20.dp),
+                                .padding(vertical = 8.dp, horizontal = 50.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -242,7 +271,7 @@ fun DetailedVideoScreen(
                         painter = painterResource(id = R.drawable.ic_micro_green),
                         contentDescription = "Mic",
                         modifier = Modifier
-                            .size(80.dp)
+                            .size(75.dp)
                             .offset(y = -25.dp)
                             .align(Alignment.BottomCenter)
                             .clickable { /* TODO */ }
@@ -256,7 +285,11 @@ fun DetailedVideoScreen(
 @Composable
 fun SingleSubtitleView(
     subtitles: List<Subtitle>,
-    currentIndex: Int
+    currentIndex: Int,
+    isRepeatMode: Boolean,
+    isQuestionMode: Boolean,
+    onToggleRepeat: () -> Unit,
+    onToggleQuestion: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -270,32 +303,20 @@ fun SingleSubtitleView(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            UploadButtonLike(iconRes = R.drawable.ic_question) { /* TODO */ }
-            
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 12.dp)
-                    .border(1.2.dp, Color(0xFFE5E5E5), RoundedCornerShape(16.dp))
-                    .padding(vertical = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "Số câu đã luyện nói đúng : 0/3",
-                        style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray, fontSize = 11.sp)
-                    )
-                    Text(
-                        text = "Số câu đã luyện viết đúng : 0/3",
-                        style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray, fontSize = 11.sp)
-                    )
-                }
-            }
-
-            UploadButtonLike(iconRes = R.drawable.ic_random) { /* TODO */ }
+            UploadButtonLike(
+                iconRes = R.drawable.ic_question,
+                isActiveMode = isQuestionMode,
+                onClick = onToggleQuestion
+            )
+            EarnPointsButton(modifier = Modifier.weight(1f).padding(horizontal= 12.dp)){ /* TODO */ }
+            UploadButtonLike(
+                iconRes = R.drawable.ic_random,
+                isActiveMode = isRepeatMode,
+                onClick = onToggleRepeat
+            )
         }
 
-        Spacer(modifier = Modifier.height(15.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         // Card hiển thị câu với Animation
         Box(
@@ -380,8 +401,10 @@ fun SingleSubtitleView(
 @Composable
 fun UploadButtonLike(
     iconRes: Int,
+    isActiveMode : Boolean = false,
     onClick: () -> Unit
 ) {
+
     var isPressed by remember { mutableStateOf(false) }
     val animatedScale by animateFloatAsState(targetValue = if (isPressed) 0.96f else 1f, label = "")
     val animatedHeight by animateDpAsState(targetValue = if (isPressed) 52.dp else 48.dp, label = "")
@@ -391,9 +414,9 @@ fun UploadButtonLike(
             .width(56.dp)
             .height(52.dp)
             .graphicsLayer { scaleX = animatedScale; scaleY = animatedScale }
-            .border(1.2.dp, Color(0xFFE5E5E5), RoundedCornerShape(16.dp))
+            .border(1.2.dp, if (isActiveMode) Color(0xFF46A302)else Color(0xFFE5E5E5), RoundedCornerShape(16.dp))
             .clip(RoundedCornerShape(16.dp))
-            .background(color = Color(0xFFE5E5E5))
+            .background(color =if (isActiveMode) Color(0xFF46A302)else Color(0xFFE5E5E5))
     ) {
         Box(
             modifier = Modifier
@@ -409,7 +432,58 @@ fun UploadButtonLike(
                 },
             contentAlignment = Alignment.Center
         ) {
-            Icon(painter = painterResource(id = iconRes), contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(24.dp))
+            Icon(
+                painter = painterResource(id = iconRes),
+                contentDescription = null,
+                tint = if (isActiveMode) Color(0xFF58CC02) else Color.LightGray,
+                modifier = Modifier.size(24.dp))
+        }
+    }
+}
+@Composable
+private fun EarnPointsButton(
+    modifier: Modifier,
+    onClick: () -> Unit
+) {
+    var isClicked by remember { mutableStateOf(false) }
+    var isPressed by remember { mutableStateOf(false) }
+    val animatedScale by animateFloatAsState(targetValue = if (isPressed) 0.96f else 1f, label = "")
+    val animatedHeight by animateDpAsState(targetValue = if (isPressed) 52.dp else 48.dp, label = "")
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .graphicsLayer { scaleX = animatedScale; scaleY = animatedScale }
+            .border(1.2.dp, if (isClicked) Color(0xFF46A302)else Color(0xFFE5E5E5), RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .background(color =if (isClicked) Color(0xFF46A302)else Color(0xFFE5E5E5))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(animatedHeight)
+                .clip(RoundedCornerShape(16.dp))
+                .background(color = Color(0xFFFFFFFF))
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onPress = { isPressed = true; tryAwaitRelease(); isPressed = false },
+                        onTap = { isClicked = !isClicked ;onClick() }
+                    )
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "Số câu đã luyện nói đúng : 0/3",
+                    style = MaterialTheme.typography.labelSmall.copy(color = if (isClicked) Color(0xFF58CC02) else Color.LightGray, fontSize = 12.sp)
+                )
+                Text(
+                    text = "Số câu đã luyện viết đúng : 0/3",
+                    style = MaterialTheme.typography.labelSmall.copy(color = if (isClicked) Color(0xFF58CC02) else Color.LightGray, fontSize = 12.sp)
+                )
+            }
         }
     }
 }
