@@ -79,6 +79,10 @@ fun DetailedVideoScreen(
     val currentSubtitleIndex by viewModel.currentSubtitleIndex.collectAsState()
     val isRepeatMode by viewModel.isRepeatMode.collectAsState()
     val isQuestionMode by viewModel.isQuestionMode.collectAsState()
+    
+    val userInput by viewModel.userInput.collectAsState()
+    val checkResult by viewModel.checkResult.collectAsState()
+    val writingProgress by viewModel.writingProgress.collectAsState()
 
     // Hiển thị Mic bar khi ở tab "Xem từng câu" (index 1)
     val showMicBottomSheet = selectedTabIndex == 1
@@ -86,37 +90,56 @@ fun DetailedVideoScreen(
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
     var webViewInstance by remember { mutableStateOf<WebView?>(null) }
 
-    LaunchedEffect(currentTimeMs) {    if (subtitlesState is UiState.Success) {
-        val subs = (subtitlesState as UiState.Success<List<Subtitle>>).data ?: emptyList()
-        val index = subs.indexOfLast { (it.startTime?.toLong() ?: 0L) <= currentTimeMs }
-        val finalIndex = if (index == -1) 0 else index
-
-        if (finalIndex != currentSubtitleIndex) {
-            // LOGIC LẶP:
-            if (isRepeatMode) {
-                // Nếu đang bật Repeat Mode, lấy thông tin câu HIỆN TẠI (index đang hiển thị trên card)
-                val currentSub = subs.getOrNull(currentSubtitleIndex)
-                if (currentSub != null && currentTimeMs >= (currentSub.endTime?.toLong() ?: Long.MAX_VALUE)) {
-                    // Nếu thời gian video đã vượt quá endTime của câu đó -> seek về đầu câu
-                    if (exoPlayer != null) {
-                        exoPlayer?.seekTo(currentSub.startTime?.toLong() ?: 0L)
-                    } else {
-                        webViewInstance?.evaluateJavascript("seekTo(${(currentSub.startTime ?: 0) / 1000f});", null)
-                    }
-                }
-            } else {
-                // Chế độ bình thường: tự động nhảy index câu theo thời gian video (autonext)
-                viewModel.jumpToSubtitle(finalIndex)
-            }
-        }
-    }
-    }
-
     val onSeek: (Int) -> Unit = { startTimeMs ->
         if (exoPlayer != null) {
             exoPlayer?.seekTo(startTimeMs.toLong())
+            exoPlayer?.play()
         } else {
             webViewInstance?.evaluateJavascript("seekTo(${startTimeMs / 1000f});", null)
+        }
+    }
+
+    // Tự động play khi bật repeat mode
+    LaunchedEffect(isRepeatMode) {
+        if (isRepeatMode) {
+            val subs = (subtitlesState as? UiState.Success)?.data
+            val currentSub = subs?.getOrNull(currentSubtitleIndex)
+            if (currentSub != null) {
+                // Nếu đang ở cuối câu hoặc đã dừng, seek về đầu câu và chạy
+                onSeek(currentSub.startTime ?: 0)
+            } else {
+                exoPlayer?.play()
+                webViewInstance?.evaluateJavascript("player.playVideo();", null)
+            }
+        }
+    }
+
+    LaunchedEffect(currentTimeMs) {
+        if (subtitlesState is UiState.Success) {
+            val subs = (subtitlesState as UiState.Success<List<Subtitle>>).data ?: emptyList()
+            val currentSub = subs.getOrNull(currentSubtitleIndex)
+
+            // LOGIC DỪNG VIDEO KHI Ở CHẾ ĐỘ QUESTION MODE
+            if (isQuestionMode && currentSub != null && !isRepeatMode) {
+                if (currentTimeMs >= (currentSub.endTime?.toLong() ?: Long.MAX_VALUE)) {
+                    exoPlayer?.pause()
+                    webViewInstance?.evaluateJavascript("player.pauseVideo();", null)
+                }
+            }
+
+            val index = subs.indexOfLast { (it.startTime?.toLong() ?: 0L) <= currentTimeMs }
+            val finalIndex = if (index == -1) 0 else index
+
+            if (finalIndex != currentSubtitleIndex) {
+                if (isRepeatMode) {
+                    if (currentSub != null && (currentTimeMs + 300)  >= (currentSub.endTime?.toLong() ?: Long.MAX_VALUE)) {
+                        onSeek(currentSub.startTime ?: 0)
+                    }
+                } else if (!isQuestionMode) {
+                    // Chỉ tự động nhảy câu theo video nếu KHÔNG ở chế độ Question Mode
+                    viewModel.jumpToSubtitle(finalIndex)
+                }
+            }
         }
     }
 
@@ -191,7 +214,10 @@ fun DetailedVideoScreen(
                                 isRepeatMode = isRepeatMode,
                                 isQuestionMode = isQuestionMode,
                                 onToggleRepeat = { viewModel.toggleRepeatMode() },
-                                onToggleQuestion = { viewModel.toggleQuestionMode() }
+                                onToggleQuestion = { viewModel.toggleQuestionMode() },
+                                userInput = userInput,
+                                onUserInputChange = { viewModel.onUserInputChange(it) },
+                                writingProgress = writingProgress
                             )
                         }
                     }
@@ -199,6 +225,8 @@ fun DetailedVideoScreen(
                     else -> {}
                 }
             }
+
+
 
             // Thanh Mic Bar ở dưới cùng
             if (showMicBottomSheet && subtitlesState is UiState.Success) {
@@ -266,17 +294,32 @@ fun DetailedVideoScreen(
                         }
                     }
 
-                    // Mic nhô lên, nằm trên Surface
+                    // Mic nhô lên hoặc nút Check
                     Image(
-                        painter = painterResource(id = R.drawable.ic_micro_green),
-                        contentDescription = "Mic",
+                        painter = painterResource(id = if (isQuestionMode) R.drawable.ic_check_detailed_video_screen else R.drawable.ic_micro_green),
+                        contentDescription = "Action",
                         modifier = Modifier
                             .size(75.dp)
                             .offset(y = -25.dp)
                             .align(Alignment.BottomCenter)
-                            .clickable { /* TODO */ }
+                            .clickable {
+                                if (isQuestionMode) {
+                                    viewModel.checkAnswer()
+                                } else {
+                                    /* TODO Mic logic */
+                                }
+                            }
                     )
                 }
+            }
+            // Popup kết quả
+            if (checkResult != CheckResult.NONE && subtitlesState is UiState.Success) {
+                val currentSub = (subtitlesState as UiState.Success<List<Subtitle>>).data?.getOrNull(currentSubtitleIndex)
+                ResultPopup(
+                    checkResult = checkResult,
+                    correctAnswer = currentSub?.content ?: "",
+                    onDismiss = { viewModel.dismissResult() }
+                )
             }
         }
     }
@@ -289,12 +332,15 @@ fun SingleSubtitleView(
     isRepeatMode: Boolean,
     isQuestionMode: Boolean,
     onToggleRepeat: () -> Unit,
-    onToggleQuestion: () -> Unit
+    onToggleQuestion: () -> Unit,
+    userInput: String,
+    onUserInputChange: (String) -> Unit,
+    writingProgress: Int
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 20.dp, vertical = 15.dp),
+            .padding(horizontal = 20.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Hàng nút chức năng bên trên
@@ -308,7 +354,10 @@ fun SingleSubtitleView(
                 isActiveMode = isQuestionMode,
                 onClick = onToggleQuestion
             )
-            EarnPointsButton(modifier = Modifier.weight(1f).padding(horizontal= 12.dp)){ /* TODO */ }
+            EarnPointsButton(
+                modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+                writingProgress = writingProgress
+            ){ /* TODO */ }
             UploadButtonLike(
                 iconRes = R.drawable.ic_random,
                 isActiveMode = isRepeatMode,
@@ -318,25 +367,19 @@ fun SingleSubtitleView(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Card hiển thị câu với Animation
+        // Card hiển thị câu hoặc ô nhập
         Box(
             modifier = Modifier
                 .fillMaxWidth(),
             contentAlignment = Alignment.Center
         ) {
             AnimatedContent(
-                targetState = currentIndex,
+                targetState = currentIndex to isQuestionMode,
                 transitionSpec = {
-                    if (targetState > initialState) {
-                        (slideInHorizontally { width -> width } + fadeIn()).togetherWith(
-                            slideOutHorizontally { width -> -width } + fadeOut())
-                    } else {
-                        (slideInHorizontally { width -> -width } + fadeIn()).togetherWith(
-                            slideOutHorizontally { width -> width } + fadeOut())
-                    }.using(SizeTransform(clip = false))
+                    fadeIn().togetherWith(fadeOut())
                 },
                 label = "SubtitleSlideAnimation"
-            ) { targetIndex ->
+            ) { (targetIndex, questionMode) ->
                     val scrollState = rememberScrollState()
                     val subtitle = subtitles.getOrNull(targetIndex)
                     if (subtitle != null) {
@@ -347,54 +390,174 @@ fun SingleSubtitleView(
                                 .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(24.dp))
                                 .padding(20.dp)
                         ) {
-                            Column(
-                                modifier = Modifier.fillMaxSize()
-                                    .verticalScroll(scrollState),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFFF3F4F6)).padding(horizontal = 12.dp, vertical = 6.dp)) {
-                                    Text(text = formatTime(subtitle.startTime ?: 0), style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray))
+                            if (questionMode) {
+                                // Ô nhập cho chế độ Question
+                                TextField(
+                                    value = userInput,
+                                    onValueChange = onUserInputChange,
+                                    placeholder = { Text("Nhập ở đây...", color = Color.LightGray) },
+                                    modifier = Modifier.fillMaxSize(),
+                                    colors = TextFieldDefaults.colors(
+                                        focusedContainerColor = Color.Transparent,
+                                        unfocusedContainerColor = Color.Transparent,
+                                        disabledContainerColor = Color.Transparent,
+                                        focusedIndicatorColor = Color.Transparent,
+                                        unfocusedIndicatorColor = Color.Transparent,
+                                    ),
+                                    textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                )
+                            } else {
+                                Column(
+                                    modifier = Modifier.fillMaxSize()
+                                        .verticalScroll(scrollState),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFFF3F4F6)).padding(horizontal = 12.dp, vertical = 6.dp)) {
+                                            Text(text = formatTime(subtitle.startTime ?: 0), style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray))
+                                        }
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_save_detailed_video_screen),
+                                            contentDescription = "Save",
+                                            tint = Color.Gray,
+                                            modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFF3F4F6)).padding(8.dp).clickable { /* TODO */ }
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(15.dp))
+
+                                    Text(
+                                        text = subtitle.content ?: "",
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 18.sp, textAlign = TextAlign.Center),
+                                        modifier = Modifier.padding(horizontal = 8.dp)
+                                    )
+
+                                    if (!subtitle.pronunciation.isNullOrBlank()) {
+                                        Spacer(modifier = Modifier.height(10.dp))
+                                        Text(
+                                            text = subtitle.pronunciation,
+                                            style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray,  fontSize = 14.sp,textAlign = TextAlign.Center),
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(15.dp))
+
+                                    Text(
+                                        text = subtitle.translation ?: "",
+                                        style = MaterialTheme.typography.bodyMedium.copy(textAlign = TextAlign.Center, fontSize = 15.sp),
+                                        modifier = Modifier.padding(horizontal = 8.dp)
+                                    )
                                 }
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_save_detailed_video_screen),
-                                    contentDescription = "Save",
-                                    tint = Color.Gray,
-                                    modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFF3F4F6)).padding(8.dp).clickable { /* TODO */ }
-                                )
                             }
-
-                            Spacer(modifier = Modifier.height(15.dp))
-
-                            Text(
-                                text = subtitle.content ?: "",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 18.sp, textAlign = TextAlign.Center),
-                                modifier = Modifier.padding(horizontal = 8.dp)
-                            )
-
-                            if (!subtitle.pronunciation.isNullOrBlank()) {
-                                Spacer(modifier = Modifier.height(10.dp))
-                                Text(
-                                    text = subtitle.pronunciation,
-                                    style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray,  fontSize = 14.sp,textAlign = TextAlign.Center),
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(15.dp))
-
-                            Text(
-                                text = subtitle.translation ?: "",
-                                style = MaterialTheme.typography.bodyMedium.copy(textAlign = TextAlign.Center, fontSize = 15.sp),
-                                modifier = Modifier.padding(horizontal = 8.dp)
-                            )
-
-
                         }
                     }
                 }
-            }
         }
-        // Đã xóa hàng điều hướng cũ ở đây vì đã đưa ra ngoài Scaffold
+    }
+}
+
+@Composable
+fun ResultPopup(
+    checkResult: CheckResult,
+    correctAnswer: String,
+    onDismiss: () -> Unit
+) {
+    val isCorrect = checkResult == CheckResult.CORRECT
+    val bgColor = if (isCorrect) Color(0xFFD7FFA4) else Color(0xFFFFDFE0)
+    val textColor = if (isCorrect) Color(0xFF46A302) else Color(0xFFEE2D30)
+    val buttonColor = if (isCorrect) Color(0xFF58CC02) else Color(0xFFFF6063)
+    val buttonShadowColor = if (isCorrect) Color(0xFF46A302) else Color(0xFFFF383C)
+    val iconRes = if (isCorrect) R.drawable.ic_check_green_circle else R.drawable.ic_close_red_circle
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.3f))
+            .clickable(enabled = false) {},
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .background(bgColor)
+                .padding(20.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = if (isCorrect) "CHÍNH XÁC !" else "ĐÁP ÁN ĐÚNG LÀ :",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        color = textColor,
+                    )
+                )
+            }
+            
+            if (!isCorrect) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = correctAnswer,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        color = textColor,
+                    )
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            // Custom Button like BigPotagoButton
+            CustomPopupButton(
+                text = if (isCorrect) "TIẾP TỤC" else "ĐÃ HIỂU",
+                buttonColor = buttonColor,
+                shadowColor = buttonShadowColor,
+                onClick = onDismiss
+            )
+        }
+    }
+}
+
+@Composable
+fun CustomPopupButton(
+    text: String,
+    buttonColor: Color,
+    shadowColor: Color,
+    onClick: () -> Unit
+) {
+    var isPressed by remember { mutableStateOf(false) }
+    val animatedHeight by animateDpAsState(targetValue = if (isPressed) 52.dp else 48.dp, label = "")
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(shadowColor)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(animatedHeight)
+                .clip(RoundedCornerShape(16.dp))
+                .background(buttonColor)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onPress = { isPressed = true; tryAwaitRelease(); isPressed = false },
+                        onTap = { onClick() }
+                    )
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = text,
+                color = Color.White,
+                style = MaterialTheme.typography.titleMedium
+            )
+        }
     }
 }
 
@@ -440,9 +603,11 @@ fun UploadButtonLike(
         }
     }
 }
+
 @Composable
 private fun EarnPointsButton(
     modifier: Modifier,
+    writingProgress: Int,
     onClick: () -> Unit
 ) {
     var isClicked by remember { mutableStateOf(false) }
@@ -480,7 +645,7 @@ private fun EarnPointsButton(
                     style = MaterialTheme.typography.labelSmall.copy(color = if (isClicked) Color(0xFF58CC02) else Color.LightGray, fontSize = 12.sp)
                 )
                 Text(
-                    text = "Số câu đã luyện viết đúng : 0/3",
+                    text = "Số câu đã luyện viết đúng : $writingProgress/3",
                     style = MaterialTheme.typography.labelSmall.copy(color = if (isClicked) Color(0xFF58CC02) else Color.LightGray, fontSize = 12.sp)
                 )
             }
@@ -517,7 +682,7 @@ fun YoutubeWebView(
                     player = new YT.Player('player', {
                         height: '100%', width: '100%',
                         videoId: '$videoId',
-                        playerVars: { 'autoplay': 1, 'rel': 0, 'controls': 1, 'origin': 'https://$packageName' },
+                        playerVars: { 'autoplay': 1, 'rel': 0, 'controls': 1, 'fs': 0, 'origin': 'https://$packageName' },
                         events: { 'onReady': onPlayerReady }
                     });
                 }
@@ -527,11 +692,14 @@ fun YoutubeWebView(
                         if (player && player.getCurrentTime) {
                             Android.onTimeUpdate(player.getCurrentTime());
                         }
-                    }, 200);
+                    }, 500);
                 }
 
                 function seekTo(seconds) {
-                    if (player) player.seekTo(seconds, true);
+                    if (player) {
+                        player.seekTo(seconds, true);
+                        player.playVideo();
+                    }
                 }
             </script>
         </body>
