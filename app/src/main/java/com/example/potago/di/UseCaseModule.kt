@@ -48,4 +48,16 @@ object UseCaseModule {
     fun provideRegisterUserUseCase(
         repository: UserRepository
     ): RegisterBackendUseCase = RegisterBackendUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideGetUserSettingsUseCase(
+        repository: UserRepository
+    ): GetUserSettingsUseCase = GetUserSettingsUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideUpdateUserSettingsUseCase(
+        repository: UserRepository
+    ): UpdateUserSettingsUseCase = UpdateUserSettingsUseCase(repository)
 }
