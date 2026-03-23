@@ -3,9 +3,14 @@ package com.example.potago.data.repository
 import com.example.potago.data.local.UserDataStore
 import com.example.potago.data.remote.api.UserApiService
 import com.example.potago.data.remote.dto.RegisterRequest
+import com.example.potago.data.remote.dto.UpdateUserSettingsRequest
+import com.example.potago.data.remote.dto.SettingDto
 import com.example.potago.data.remote.dto.toUser
+import com.example.potago.data.remote.dto.toDomain
 import com.example.potago.domain.model.User
+import com.example.potago.domain.model.Setting
 import com.example.potago.domain.model.Result
+import com.google.gson.Gson
 import com.example.potago.domain.repository.UserRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -14,6 +19,8 @@ class UserRepositoryImpl @Inject constructor(
     private val apiService: UserApiService,
     private val userDataStore: UserDataStore
 ) : UserRepository {
+
+    private val gson = Gson()
 
     override suspend fun getUserProfile(): Result<User> {
         return try {
@@ -42,6 +49,41 @@ class UserRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Result.Error("Registration failed: ${e.message}")
+        }
+    }
+
+    override suspend fun getUserSettings(): Result<Setting> {
+        return try {
+            val response = apiService.getUserSettings()
+            if (response.success && response.data != null) {
+                Result.Success(response.data.toDomain())
+            } else {
+                Result.Error(response.message ?: "Unknown Error")
+            }
+        } catch (e: Exception) {
+            Result.Error("Network error: ${e.message}")
+        }
+    }
+
+    override suspend fun saveUserSettings(
+        notification: Boolean,
+        language: String,
+        experienceGoal: Int
+    ): Result<Setting> {
+        return try {
+            val request = UpdateUserSettingsRequest(
+                notification = notification,
+                language = language,
+                experienceGoal = experienceGoal
+            )
+            val response = apiService.saveUserSettings(request)
+            if (response.success && response.data != null) {
+                Result.Success(response.data.toDomain())
+            } else {
+                Result.Error(response.message ?: "Unknown Error")
+            }
+        } catch (e: Exception) {
+            Result.Error("Network error: ${e.message}")
         }
     }
 
