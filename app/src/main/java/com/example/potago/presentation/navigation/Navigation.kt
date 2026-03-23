@@ -17,6 +17,7 @@ import androidx.navigation.navigation
 import com.example.potago.presentation.screen.addvideo.AddVideoScreen
 import com.example.potago.presentation.screen.auth.LoginScreen
 import com.example.potago.presentation.screen.auth.SignUpScreen
+import com.example.potago.presentation.screen.goal.GoalScreen
 import com.example.potago.presentation.screen.detailedvideoscreen.DetailedVideoScreen
 import com.example.potago.presentation.screen.home.HomeScreen
 import com.example.potago.presentation.screen.library.LibraryScreen
@@ -43,6 +44,7 @@ sealed class Screen(val route: String) {
     object Video : Screen("video")
     object Potato : Screen("potato")
     object Setting : Screen("setting")
+    object Goal : Screen("goal")
 
     object RecommendVideo : Screen("recommend_video")
     object MyVideo : Screen("my_video")
@@ -131,7 +133,10 @@ fun MainFlowContainer(rootNavController: NavController) {
                 PotatoScreen(mainNavController)
             }
             composable(Screen.Setting.route) {
-                SettingScreen(rootNavController)
+                SettingScreen(mainNavController)
+            }
+            composable(Screen.Goal.route) {
+                GoalScreen(mainNavController)
             }
             composable(Screen.RecommendVideo.route) {
                 RecommendVideoScreen(mainNavController)
