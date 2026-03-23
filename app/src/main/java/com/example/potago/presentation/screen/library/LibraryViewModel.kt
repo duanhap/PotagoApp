@@ -3,8 +3,11 @@ package com.example.potago.presentation.screen.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.potago.domain.model.Result
+import com.example.potago.domain.model.SetencePattern
 import com.example.potago.domain.model.WordSet
 import com.example.potago.domain.usecase.GetRecentWordSetsUseCase
+import com.example.potago.domain.usecase.GetRecentSentencePatternsUseCase
+import com.example.potago.domain.usecase.GetSentencePatternsUseCase
 import com.example.potago.domain.usecase.GetWordSetsUseCase
 import com.example.potago.presentation.screen.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,13 +19,23 @@ import javax.inject.Inject
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val getWordSetsUseCase: GetWordSetsUseCase,
-    private val getRecentWordSetsUseCase: GetRecentWordSetsUseCase
+    private val getRecentWordSetsUseCase: GetRecentWordSetsUseCase,
+    private val getSentencePatternsUseCase: GetSentencePatternsUseCase,
+    private val getRecentSentencePatternsUseCase: GetRecentSentencePatternsUseCase
 ) : ViewModel() {
     private val _recentWordSets = MutableStateFlow<UiState<List<WordSet>>>(UiState.Loading)
     val recentWordSets: StateFlow<UiState<List<WordSet>>> = _recentWordSets
 
     private val _allWordSets = MutableStateFlow<UiState<List<WordSet>>>(UiState.Loading)
     val allWordSets: StateFlow<UiState<List<WordSet>>> = _allWordSets
+
+    private val _recentSentencePatterns =
+        MutableStateFlow<UiState<List<SetencePattern>>>(UiState.Loading)
+    val recentSentencePatterns: StateFlow<UiState<List<SetencePattern>>> = _recentSentencePatterns
+
+    private val _allSentencePatterns =
+        MutableStateFlow<UiState<List<SetencePattern>>>(UiState.Loading)
+    val allSentencePatterns: StateFlow<UiState<List<SetencePattern>>> = _allSentencePatterns
 
     init {
         refreshLibrary()
@@ -31,6 +44,8 @@ class LibraryViewModel @Inject constructor(
     fun refreshLibrary() {
         loadRecentWordSets()
         loadAllWordSets()
+        loadRecentSentencePatterns()
+        loadAllSentencePatterns()
     }
 
     private fun loadRecentWordSets() {
@@ -50,6 +65,28 @@ class LibraryViewModel @Inject constructor(
             when (val result = getWordSetsUseCase()) {
                 is Result.Success -> _allWordSets.value = UiState.Success(result.data)
                 is Result.Error -> _allWordSets.value = UiState.Error(result.message)
+                else -> {}
+            }
+        }
+    }
+
+    private fun loadRecentSentencePatterns() {
+        viewModelScope.launch {
+            _recentSentencePatterns.value = UiState.Loading
+            when (val result = getRecentSentencePatternsUseCase()) {
+                is Result.Success -> _recentSentencePatterns.value = UiState.Success(result.data)
+                is Result.Error -> _recentSentencePatterns.value = UiState.Error(result.message)
+                else -> {}
+            }
+        }
+    }
+
+    private fun loadAllSentencePatterns() {
+        viewModelScope.launch {
+            _allSentencePatterns.value = UiState.Loading
+            when (val result = getSentencePatternsUseCase()) {
+                is Result.Success -> _allSentencePatterns.value = UiState.Success(result.data)
+                is Result.Error -> _allSentencePatterns.value = UiState.Error(result.message)
                 else -> {}
             }
         }
