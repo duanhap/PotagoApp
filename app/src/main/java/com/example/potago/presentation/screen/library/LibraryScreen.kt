@@ -80,29 +80,49 @@ private fun LibraryScreenContent(
     onRetry: () -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(LibraryTab.COURSE) }
+    var isAddOverlayVisible by remember { mutableStateOf(false) }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF3F4F6))
     ) {
-        LibraryHeader()
-        LibraryTabSection(
-            selectedTab = selectedTab,
-            onSelectTab = { selectedTab = it }
-        )
-
-        if (selectedTab == LibraryTab.COURSE) {
-            CourseTabContent(
-                recentState = recentWordSetsState,
-                allState = allWordSetsState,
-                onRetry = onRetry
+        Column {
+            LibraryHeader(
+                onAddClick = { isAddOverlayVisible = true }
             )
-        } else {
-            SentenceTabContent(
-                recentState = recentSentencePatternsState,
-                allState = allSentencePatternsState,
-                onRetry = onRetry
+            LibraryTabSection(
+                selectedTab = selectedTab,
+                onSelectTab = { selectedTab = it }
+            )
+
+            if (selectedTab == LibraryTab.COURSE) {
+                CourseTabContent(
+                    recentState = recentWordSetsState,
+                    allState = allWordSetsState,
+                    onRetry = onRetry
+                )
+            } else {
+                SentenceTabContent(
+                    recentState = recentSentencePatternsState,
+                    allState = allSentencePatternsState,
+                    onRetry = onRetry
+                )
+            }
+        }
+
+        if (isAddOverlayVisible) {
+            AddOverlay(
+                selectedTab = selectedTab,
+                onDismiss = { isAddOverlayVisible = false },
+                onChooseCourse = {
+                    isAddOverlayVisible = false
+                    // TODO: navigate to "create word set" screen if you already have one.
+                },
+                onChooseSentence = {
+                    isAddOverlayVisible = false
+                    // TODO: navigate to "create sentence pattern" screen if you already have one.
+                }
             )
         }
     }
@@ -114,7 +134,9 @@ private enum class LibraryTab {
 }
 
 @Composable
-private fun LibraryHeader() {
+private fun LibraryHeader(
+    onAddClick: () -> Unit
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = Color.White,
@@ -139,13 +161,127 @@ private fun LibraryHeader() {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_add),
                     contentDescription = "Add",
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clickable(onClick = onAddClick),
                     tint = Color.Unspecified
                 )
             }
             HorizontalDivider(
                 thickness = 1.dp,
                 color = Color(0xFFF3F4F6)
+            )
+        }
+    }
+}
+
+@Composable
+private fun AddOverlay(
+    selectedTab: LibraryTab,
+    onDismiss: () -> Unit,
+    onChooseCourse: () -> Unit,
+    onChooseSentence: () -> Unit
+) {
+    // Full-screen dim layer
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0x99000000))
+            .clickable(onClick = onDismiss)
+    )
+
+    // Bottom sheet
+    Box(
+        modifier = Modifier
+            .fillMaxSize(),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .background(
+                    color = Color.White,
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                )
+                .padding(horizontal = 20.dp, vertical = 16.dp)
+        ) {
+            // Drag handle
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .width(40.dp)
+                    .height(4.dp)
+                    .background(Color(0xFFE5E7EB), shape = RoundedCornerShape(999.dp))
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            val courseSelected = selectedTab == LibraryTab.COURSE
+            val sentenceSelected = selectedTab == LibraryTab.SENTENCE
+
+            AddOverlayButton(
+                selected = courseSelected,
+                iconRes = R.drawable.ic_folder,
+                text = "Học phần",
+                onClick = onChooseCourse
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            AddOverlayButton(
+                selected = sentenceSelected,
+                iconRes = R.drawable.ic_library,
+                text = "Mẫu câu",
+                onClick = onChooseSentence
+            )
+        }
+    }
+}
+
+@Composable
+private fun AddOverlayButton(
+    selected: Boolean,
+    iconRes: Int,
+    text: String,
+    onClick: () -> Unit
+) {
+    val selectedBg = Color(0xFFD7FFA4) // light green
+    val borderColor = Color(0xFF46A302)
+    val unselectedBg = Color.White
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .background(
+                color = if (selected) selectedBg else unselectedBg,
+                shape = RoundedCornerShape(16.dp)
+            )
+            .border(
+                width = 1.dp,
+                color = if (selected) borderColor else Color(0xFFE5E7EB),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                painter = painterResource(id = iconRes),
+                contentDescription = text,
+                modifier = Modifier.size(24.dp),
+                tint = Color.Black
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = text,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
             )
         }
     }
