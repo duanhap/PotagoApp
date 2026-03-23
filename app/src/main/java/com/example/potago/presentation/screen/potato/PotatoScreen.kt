@@ -33,6 +33,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -46,13 +47,36 @@ import androidx.compose.ui.unit.dp
 import androidx.annotation.DrawableRes
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.potago.R
 import com.example.potago.presentation.navigation.Screen
 import com.example.potago.presentation.ui.theme.PotagoTheme
+import java.text.NumberFormat
+import java.util.Locale
 
 @Composable
 fun PotatoScreen(
-    navController: NavController
+    navController: NavController,
+    viewModel: PotatoViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val xpText = NumberFormat.getIntegerInstance(Locale.getDefault()).format(uiState.xp)
+
+    PotatoScreenContent(
+        navController = navController,
+        xpText = xpText,
+        streakText = uiState.streakText,
+        createdAtText = uiState.createdAtText
+    )
+    }
+
+
+@Composable
+private fun PotatoScreenContent(
+    navController: NavController,
+    xpText: String,
+    streakText: String,
+    createdAtText: String
 ) {
     Scaffold(
         topBar = {
@@ -72,12 +96,15 @@ fun PotatoScreen(
         ) {
             SectionTitle(text = "Thông tin")
             Spacer(modifier = Modifier.height(12.dp))
-            InfoSection()
+            InfoSection(createdAtText = createdAtText)
 
             Spacer(modifier = Modifier.height(22.dp))
             SectionTitle(text = "Tổng quan")
             Spacer(modifier = Modifier.height(12.dp))
-            OverviewSection()
+            OverviewSection(
+                xpText = xpText,
+                streakText = streakText
+            )
 
             Spacer(modifier = Modifier.height(22.dp))
             SectionTitle(text = "Tính năng khác")
@@ -103,7 +130,7 @@ private fun SectionTitle(text: String) {
 }
 
 @Composable
-private fun InfoSection() {
+private fun InfoSection(createdAtText: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -111,7 +138,7 @@ private fun InfoSection() {
         DateCard(
             modifier = Modifier.weight(1f),
             label = "Ngày tạo",
-            value = "12/12/2025"
+            value = createdAtText
         )
 
         Box(
@@ -178,7 +205,10 @@ private fun DateCard(
 }
 
 @Composable
-private fun OverviewSection() {
+private fun OverviewSection(
+    xpText: String,
+    streakText: String
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -188,14 +218,14 @@ private fun OverviewSection() {
             iconRes = R.drawable.ic_tabler_hexagon,
             iconBackground = Color(0xFFFEF3C7),
             title = "XP",
-            value = "2,450"
+            value = xpText
         )
         SummaryCard(
             modifier = Modifier.weight(1f),
             iconRes = R.drawable.ic_water,
             iconBackground = Color(0xFFDBEAFE),
             title = "Streak",
-            value = "12 Days"
+            value = streakText
         )
     }
 }
@@ -374,8 +404,11 @@ private fun SettingButton(
 @Composable
 fun PotatoScreenPreview() {
     PotagoTheme(dynamicColor = false) {
-        PotatoScreen(
-            navController = rememberNavController()
+        PotatoScreenContent(
+            navController = rememberNavController(),
+            xpText = NumberFormat.getIntegerInstance(Locale.getDefault()).format(999),
+            streakText = "12 Days",
+            createdAtText = "14/03/2026"
         )
     }
 }
