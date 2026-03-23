@@ -17,7 +17,7 @@ data class User(
 data class Streak(
     val id: Long = 0,
     val lengthStreak: Int = 0,
-    val startDate: Int = 0, // DDL says int(10), maybe a timestamp
+    val startDate: String ="",
     val currentStreak: Boolean = false,
     val userId: Int = 0
 )
@@ -79,7 +79,7 @@ data class MatchGame(
     val wordSetId: Long = 0
 )
 
-data class SentencePattern(
+data class SetencePattern(
     val id: Int = 0,
     val name: String = "",
     val description: String = "",
@@ -92,14 +92,14 @@ data class SentencePattern(
     val userId: Int = 0
 )
 
-data class Sentence(
+data class Setence(
     val id: Int = 0,
     val term: String = "",
     val definition: String = "",
     val createdAt: String = "",
     val status: String = "",
     val numberOfMistakes: Int? = null,
-    val sentencePatternId: Int = 0
+    val setencePatternId: Int = 0
 )
 
 data class WritingGame(
@@ -113,6 +113,7 @@ data class Setting(
     val id: Int = 0,
     val notification: Boolean = false,
     val language: String? = null,
+    val experienceGoal: Int = 0,
     val userId: Int = 0
 )
 
@@ -126,17 +127,25 @@ data class Item(
 
 data class Video(
     val id: Int = 0,
-    val title: String = "",
-    val thumbnail: String = "",
+    val title: String? = null,
+    val thumbnail: String? = null,
     val sourceUrl: String = "",
     val lastOpened: String? = null,
-    val typeVideo: Int? = null,
+    val typeVideo: String? = null,
     val createdAt: String? = null,
-    val userId: Int? = null
+    val userId: Int? = null,
+    val publicVideoId: Int? = null,
+    val definitionLanguageCode: String = "",
+    val termLanguageCode: String = "",
+    val serverSourceUrl: String? = null
 )
 
 data class Subtitle(
     val id: Int = 0,
-    val sourceUrl: Int = 0, // DDL says int, but usually it's a string URL? I'll follow DDL for now
+    val startTime: Int? = null,
+    val endTime: Int? = null,
+    val content: String? = null,
+    val pronunciation: String? = null,
+    val translation: String? = null,
     val videoId: Int = 0
 )

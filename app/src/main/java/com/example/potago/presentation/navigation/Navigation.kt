@@ -7,29 +7,36 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import androidx.navigation.navigation
+import com.example.potago.presentation.screen.addvideo.AddVideoScreen
 import com.example.potago.presentation.screen.auth.LoginScreen
 import com.example.potago.presentation.screen.auth.SignUpScreen
 import com.example.potago.presentation.screen.goal.GoalScreen
+import com.example.potago.presentation.screen.detailedvideoscreen.DetailedVideoScreen
 import com.example.potago.presentation.screen.home.HomeScreen
 import com.example.potago.presentation.screen.library.LibraryScreen
+import com.example.potago.presentation.screen.managevideo.ManageVideoScreen
+import com.example.potago.presentation.screen.myvideo.MyVideoScreen
 import com.example.potago.presentation.screen.potato.PotatoScreen
+import com.example.potago.presentation.screen.recommendvideo.RecommendVideoScreen
 import com.example.potago.presentation.screen.setting.SettingScreen
 import com.example.potago.presentation.screen.splash.SplashScreen
 import com.example.potago.presentation.screen.video.VideoScreen
 
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
-    
+
     // Auth Flow
     object AuthGraph : Screen("auth_graph")
     object Login : Screen("login")
     object SignUp : Screen("signup")
-    
+
     // Main Flow
     object MainGraph : Screen("main_graph")
     object Home : Screen("home")
@@ -38,6 +45,14 @@ sealed class Screen(val route: String) {
     object Potato : Screen("potato")
     object Setting : Screen("setting")
     object Goal : Screen("goal")
+
+    object RecommendVideo : Screen("recommend_video")
+    object MyVideo : Screen("my_video")
+    object ManageVideo : Screen("manage_video")
+    object AddVideo : Screen("add_video")
+    object DetailedVideo : Screen("detailed_video/{videoId}") {
+        operator fun invoke(videoId: Int) = "detailed_video/$videoId"
+    }
 }
 
 @Composable
@@ -122,6 +137,24 @@ fun MainFlowContainer(rootNavController: NavController) {
             }
             composable(Screen.Goal.route) {
                 GoalScreen(mainNavController)
+            }
+            composable(Screen.RecommendVideo.route) {
+                RecommendVideoScreen(mainNavController)
+            }
+            composable(Screen.MyVideo.route) {
+                MyVideoScreen(mainNavController)
+            }
+            composable(Screen.ManageVideo.route) {
+                ManageVideoScreen(mainNavController)
+            }
+            composable(Screen.AddVideo.route) {
+                AddVideoScreen(mainNavController)
+            }
+            composable(
+                route = Screen.DetailedVideo.route,
+                arguments = listOf(navArgument("videoId") { type = NavType.IntType })
+            ) {
+                DetailedVideoScreen(mainNavController)
             }
         }
     }
