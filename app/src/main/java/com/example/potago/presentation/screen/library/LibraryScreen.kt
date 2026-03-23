@@ -34,7 +34,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.potago.R
+import com.example.potago.domain.model.SetencePattern
 import com.example.potago.domain.model.WordSet
 import com.example.potago.presentation.screen.UiState
 import java.time.OffsetDateTime
@@ -55,9 +55,31 @@ fun LibraryScreen(
     navController: NavController,
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
-    var selectedTab by remember { mutableStateOf(LibraryTab.COURSE) }
     val recentWordSetsState by viewModel.recentWordSets.collectAsState()
     val allWordSetsState by viewModel.allWordSets.collectAsState()
+
+    val recentSentencePatternsState by viewModel.recentSentencePatterns.collectAsState()
+    val allSentencePatternsState by viewModel.allSentencePatterns.collectAsState()
+
+    // Hoisted the UI content to a stateless Composable to allow Previews
+    LibraryScreenContent(
+        recentWordSetsState = recentWordSetsState,
+        allWordSetsState = allWordSetsState,
+        recentSentencePatternsState = recentSentencePatternsState,
+        allSentencePatternsState = allSentencePatternsState,
+        onRetry = { viewModel.refreshLibrary() }
+    )
+}
+
+@Composable
+private fun LibraryScreenContent(
+    recentWordSetsState: UiState<List<WordSet>>,
+    allWordSetsState: UiState<List<WordSet>>,
+    recentSentencePatternsState: UiState<List<SetencePattern>>,
+    allSentencePatternsState: UiState<List<SetencePattern>>,
+    onRetry: () -> Unit
+) {
+    var selectedTab by remember { mutableStateOf(LibraryTab.COURSE) }
 
     Column(
         modifier = Modifier
@@ -74,15 +96,14 @@ fun LibraryScreen(
             CourseTabContent(
                 recentState = recentWordSetsState,
                 allState = allWordSetsState,
-                onRetry = viewModel::refreshLibrary
+                onRetry = onRetry
             )
         } else {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                EmptyContentState(message = "Chưa có mẫu câu nào cả")
-            }
+            SentenceTabContent(
+                recentState = recentSentencePatternsState,
+                allState = allSentencePatternsState,
+                onRetry = onRetry
+            )
         }
     }
 }
@@ -193,8 +214,9 @@ private fun CourseTabContent(
     val recentWordSets = (recentState as? UiState.Success)?.data.orEmpty()
     val allWordSets = (allState as? UiState.Success)?.data.orEmpty()
     val fallbackRecent = if (recentWordSets.isEmpty()) allWordSets.take(3) else recentWordSets
+    // Nếu ít nhất một phía (recent/all) có data thì ưu tiên render list, không show error.
     val errorMessage = when {
-        allWordSets.isNotEmpty() -> null
+        fallbackRecent.isNotEmpty() -> null
         allState is UiState.Error -> allState.message
         recentState is UiState.Error -> recentState.message
         else -> null
@@ -254,6 +276,133 @@ private fun CourseTabContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SentenceTabContent(
+    recentState: UiState<List<SetencePattern>>,
+    allState: UiState<List<SetencePattern>>,
+    onRetry: () -> Unit
+) {
+    val isLoading = allState is UiState.Loading && recentState is UiState.Loading
+    val recentSentencePatterns = (recentState as? UiState.Success)?.data.orEmpty()
+    val allSentencePatterns = (allState as? UiState.Success)?.data.orEmpty()
+
+    val fallbackRecent = if (recentSentencePatterns.isEmpty()) allSentencePatterns.take(3) else recentSentencePatterns
+    // Nếu ít nhất một phía (recent/all) có data thì ưu tiên render list, không show error.
+    val errorMessage = when {
+        fallbackRecent.isNotEmpty() -> null
+        allState is UiState.Error -> allState.message
+        recentState is UiState.Error -> recentState.message
+        else -> null
+    }
+
+    when {
+        isLoading -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Color.Black)
+            }
+        }
+
+        errorMessage != null -> {
+            ErrorContentState(
+                message = errorMessage,
+                onRetry = onRetry
+            )
+        }
+
+        fallbackRecent.isEmpty() && allSentencePatterns.isEmpty() -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                EmptyContentState(message = "Chưa có mẫu câu nào cả")
+            }
+        }
+
+        else -> {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (fallbackRecent.isNotEmpty()) {
+                    item {
+                        SectionTitle(text = "Gần đây")
+                    }
+                    items(fallbackRecent, key = { "recent_sentence_${it.id}" }) { pattern ->
+                        SentencePatternCard(pattern = pattern)
+                    }
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+
+                if (allSentencePatterns.isNotEmpty()) {
+                    item {
+                        SectionTitle(text = "Tất cả")
+                    }
+                    items(allSentencePatterns, key = { "all_sentence_${it.id}" }) { pattern ->
+                        SentencePatternCard(pattern = pattern)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SentencePatternCard(pattern: SetencePattern) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(58.dp)
+                .background(Color(0xFF89E219), RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_folder),
+                contentDescription = "Sentence icon",
+                modifier = Modifier.size(24.dp),
+                tint = Color.White
+            )
+        }
+        Spacer(modifier = Modifier.width(20.dp))
+
+        Column {
+            Text(
+                text = pattern.name.ifBlank { "Không có tên" },
+                fontSize = 16.sp,
+                lineHeight = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+            Text(
+                text = buildSentencePatternMeta(pattern),
+                fontSize = 14.sp,
+                lineHeight = 24.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0x80000000)
+            )
+        }
+    }
+}
+
+private fun buildSentencePatternMeta(pattern: SetencePattern): String {
+    val termLang = pattern.termLanguageCode.uppercase()
+    val defLang = pattern.definitionLanguageCode.uppercase()
+    val monthYearText = formatMonthYear(pattern.createdAt)
+    return if (monthYearText.isEmpty()) {
+        "$termLang - $defLang"
+    } else {
+        "$termLang - $defLang - $monthYearText"
     }
 }
 
@@ -381,5 +530,12 @@ private fun EmptyContentState(message: String) {
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun LibraryScreenPreview() {
-    LibraryScreen(navController = NavController(LocalContext.current))
+    // Used the stateless LibraryScreenContent for Preview to avoid hiltViewModel() crash
+    LibraryScreenContent(
+        recentWordSetsState = UiState.Success(emptyList()),
+        allWordSetsState = UiState.Success(emptyList()),
+        recentSentencePatternsState = UiState.Success(emptyList()),
+        allSentencePatternsState = UiState.Success(emptyList()),
+        onRetry = {}
+    )
 }
