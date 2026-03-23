@@ -91,4 +91,14 @@ dependencies {
 
     //datastore
     implementation(libs.datastore.preferences)
+
+    //AsyncImage
+    implementation("io.coil-kt:coil-compose:2.6.0")
+
+    implementation(libs.youtube.player)
+    
+    // Media3 (ExoPlayer)
+    implementation(libs.media3.common)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
 }

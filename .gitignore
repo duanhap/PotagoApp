@@ -13,3 +13,8 @@
 .externalNativeBuild
 .cxx
 local.properties
+Potago.ddl
+SSH
+SSH.pub
+/.idea
+/.cursor

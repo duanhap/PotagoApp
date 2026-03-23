@@ -334,8 +334,6 @@ private fun TopAppBar(
             HorizontalDivider(color = Color(0xFFE5E7EB))
         }
     }
-
-
 }
 @Composable
 private fun SettingButton(
