@@ -31,6 +31,12 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.potago.R
 import com.example.potago.presentation.screen.auth.BigPotagoButton
+import com.example.potago.presentation.screen.UiEvent
+import com.example.potago.presentation.navigation.Screen
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.CircularProgressIndicator
 
 // ─── Dữ liệu lựa chọn XP ────────────────────────────────────────────────────
 private val xpOptions = listOf(15, 30, 60, 120, 240)
@@ -40,12 +46,59 @@ private val xpOptions = listOf(15, 30, 60, 120, 240)
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
 fun GoalScreen(
-    navController: NavController
+    navController: NavController,
+    viewModel: GoalViewModel = hiltViewModel()
 ) {
-    var selectedXp by remember { mutableStateOf(xpOptions.first()) }
+    val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is UiEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+                is UiEvent.Navigate -> {
+                    navController.navigate(event.route) {
+                        event.popUpTo?.let { popUpTo(it) { inclusive = event.inclusive } }
+                    }
+                }
+            }
+        }
+    }
+
+    GoalScreenContent(
+        navController = navController,
+        isSaving = uiState.isSaving,
+        snackbarHostState = snackbarHostState,
+        selectedXpFromVm = uiState.selectedXp,
+        isLoadingSettings = uiState.isLoadingSettings,
+        onSaveGoal = { xp -> viewModel.onSaveGoal(xp) }
+    )
+}
+
+@Composable
+private fun GoalScreenContent(
+    navController: NavController,
+    isSaving: Boolean,
+    snackbarHostState: SnackbarHostState,
+    selectedXpFromVm: Int?,
+    isLoadingSettings: Boolean,
+    onSaveGoal: (Int) -> Unit
+) {
+    var selectedXp by remember { mutableStateOf(selectedXpFromVm) }
     var isDropdownOpen by remember { mutableStateOf(false) }
 
+    androidx.compose.runtime.LaunchedEffect(selectedXpFromVm) {
+        selectedXp = selectedXpFromVm
+    }
+
+    LaunchedEffect(isLoadingSettings) {
+        if (isLoadingSettings) isDropdownOpen = false
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = { GoalTopBar(onBackClick = { navController.popBackStack() }) },
         containerColor = Color.White
     ) { innerPadding ->
@@ -74,6 +127,7 @@ fun GoalScreen(
                 XpDropdown(
                     selectedXp = selectedXp,
                     isOpen = isDropdownOpen,
+                    isLoading = isLoadingSettings,
                     options = xpOptions,
                     onToggle = { isDropdownOpen = !isDropdownOpen },
                     onSelect = { xp ->
@@ -95,9 +149,9 @@ fun GoalScreen(
 
                 BigPotagoButton(
                     text = "LƯU",
-                    enabled = true,
-                    isLoading = false,
-                    onClick = { /* TODO: save goal */ }
+                    enabled = !isSaving && !isLoadingSettings && selectedXp != null,
+                    isLoading = isSaving,
+                    onClick = { selectedXp?.let(onSaveGoal) }
                 )
 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -111,8 +165,9 @@ fun GoalScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun XpDropdown(
-    selectedXp: Int,
+    selectedXp: Int?,
     isOpen: Boolean,
+    isLoading: Boolean,
     options: List<Int>,
     onToggle: () -> Unit,
     onSelect: (Int) -> Unit
@@ -138,30 +193,38 @@ private fun XpDropdown(
                 .border(2.dp, borderColor, topShape)
                 .clip(topShape)
                 .background(Color(0xFFF9FAFB))
-                .clickable { onToggle() }
+                .clickable(enabled = !isLoading) { onToggle() }
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = "$selectedXp xp",
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    color = if (isOpen) Color(0xCC000000) else Color(0xFFCCCCCC)
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    strokeWidth = 2.dp,
+                    color = Color(0xFF89E219)
                 )
-            )
-            Icon(
-                imageVector = Icons.Default.KeyboardArrowDown,
-                contentDescription = if (isOpen) "Đóng" else "Mở",
-                tint = Color(0xFF9CA3AF),
-                modifier = Modifier
-                    .size(20.dp)
-                    .rotate(arrowRotation)
-            )
+            } else {
+                Text(
+                    text = selectedXp?.let { "$it xp" } ?: "-",
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        color = if (isOpen) Color(0xCC000000) else Color(0xFFCCCCCC)
+                    )
+                )
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (isOpen) "Đóng" else "Mở",
+                    tint = Color(0xFF9CA3AF),
+                    modifier = Modifier
+                        .size(20.dp)
+                        .rotate(arrowRotation)
+                )
+            }
         }
 
         // ── Dropdown list ────────────────────────────────────────────────
         AnimatedVisibility(
-            visible = isOpen,
+            visible = isOpen && !isLoading,
             enter = expandVertically(animationSpec = tween(200)),
             exit = shrinkVertically(animationSpec = tween(200))
         ) {
@@ -182,7 +245,7 @@ private fun XpDropdown(
                 options.forEachIndexed { index, xp ->
                     XpOptionItem(
                         xp = xp,
-                        isSelected = xp == options.firstOrNull(),
+                        isSelected = selectedXp != null && xp == selectedXp,
                         isHighlighted = index % 2 == 0, // highlight rows đan xen như Figma
                         onClick = { onSelect(xp) }
                     )
@@ -199,7 +262,11 @@ private fun XpOptionItem(
     isHighlighted: Boolean,
     onClick: () -> Unit
 ) {
-    val bgColor = if (isHighlighted) Color(0xFFF3F4F6) else Color.White
+    val bgColor = when {
+        isSelected -> Color(0xFFD7FFA4)
+        isHighlighted -> Color(0xFFF3F4F6)
+        else -> Color.White
+    }
 
     Row(
         modifier = Modifier
@@ -213,7 +280,7 @@ private fun XpOptionItem(
         Text(
             text = "$xp xp",
             style = MaterialTheme.typography.bodyLarge.copy(
-                color = Color(0xCC000000)
+                color = if (isSelected) Color(0xFF111827) else Color(0xCC000000)
             )
         )
     }
@@ -328,7 +395,15 @@ private fun GoalBackButton(onClick: () -> Unit) {
 @Composable
 fun GoalScreenPreview() {
     MaterialTheme {
-        GoalScreen(navController = NavController(LocalContext.current))
+        val snackbarHostState = remember { SnackbarHostState() }
+        GoalScreenContent(
+            navController = NavController(LocalContext.current),
+            isSaving = false,
+            snackbarHostState = snackbarHostState,
+            selectedXpFromVm = 15,
+            isLoadingSettings = false,
+            onSaveGoal = {}
+        )
     }
 }
 
