@@ -18,11 +18,16 @@ import com.example.potago.domain.model.Video
 import com.example.potago.domain.usecase.GetSubtitlesUseCase
 import com.example.potago.domain.usecase.GetVideoUseCase
 import com.example.potago.presentation.screen.UiState
+import com.example.potago.presentation.screen.UiEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.time.delay
 import java.io.File
 import javax.inject.Inject
 
@@ -41,6 +46,9 @@ class DetailedVideoViewModel @Inject constructor(
     private val application: Application,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+
+    private val _uiEvent = Channel<UiEvent>()
+    val uiEvent = _uiEvent.receiveAsFlow()
 
     private val videoId: Int = checkNotNull(savedStateHandle["videoId"])
 
@@ -90,6 +98,10 @@ class DetailedVideoViewModel @Inject constructor(
     private val _spokenWordIndices = MutableStateFlow<Set<Int>>(emptySet())
     val spokenWordIndices: StateFlow<Set<Int>> = _spokenWordIndices.asStateFlow()
 
+    // Transcript của những gì người dùng đang nói
+    private val _spokenTranscript = MutableStateFlow("")
+    val spokenTranscript: StateFlow<String> = _spokenTranscript.asStateFlow()
+
     // Speech Recognition & Audio recording
     private var speechRecognizer: SpeechRecognizer? = null
     private val audioFilePath: String by lazy {
@@ -97,6 +109,11 @@ class DetailedVideoViewModel @Inject constructor(
     }
     private var mediaRecorder: MediaRecorder? = null
     private var mediaPlayer: MediaPlayer? = null
+    private var recordedAudioBytes = java.io.ByteArrayOutputStream()
+    
+    // Manual timeout logic
+    private var recognitionStartTime = 0L
+    private var isRestartingRecognition = false
 
     // Logic Question Mode
     private val _userInput = MutableStateFlow("")
@@ -114,25 +131,32 @@ class DetailedVideoViewModel @Inject constructor(
         }
     }.asStateFlow()
 
-    init {
-        loadData()
-    }
+    private val _showRewardPopup = MutableStateFlow(false)
+    val showRewardPopup: StateFlow<Boolean> = _showRewardPopup.asStateFlow()
 
-    private fun loadData() {
-        viewModelScope.launch {
-            loadVideo()
+    private val _isRewardEarned = MutableStateFlow(false)
+    val isRewardEarned: StateFlow<Boolean> = _isRewardEarned.asStateFlow()
+
+    init {
+        val videoId = savedStateHandle.get<Int>("videoId") ?: -1
+        if (videoId != -1) {
+            loadAllData(videoId)
         }
     }
 
-    private suspend fun loadVideo() {
+    private fun loadAllData(videoId: Int) {
+        viewModelScope.launch {
+            // Tải song song Video và Subtitle để tiết kiệm thời gian
+            launch { fetchVideo(videoId) }
+            launch { fetchSubtitles(videoId) }
+        }
+    }
+
+    private suspend fun fetchVideo(videoId: Int) {
         _videoState.value = UiState.Loading
         when (val result = getVideoUseCase(videoId)) {
             is Result.Success -> {
-                val video = result.data
-                _videoState.value = UiState.Success(video)
-                // Sau khi có video, kiểm tra publicVideoId để lấy sub
-                val idForSubtitles = video.publicVideoId ?: video.id
-                loadSubtitles(idForSubtitles)
+                _videoState.value = UiState.Success(result.data)
             }
             is Result.Error -> {
                 _videoState.value = UiState.Error(result.message)
@@ -143,7 +167,7 @@ class DetailedVideoViewModel @Inject constructor(
         }
     }
 
-    private suspend fun loadSubtitles(id: Int) {
+    private suspend fun fetchSubtitles(id: Int) {
         _subtitlesState.value = UiState.Loading
         when (val result = getSubtitlesUseCase(id)) {
             is Result.Success -> {
@@ -236,6 +260,15 @@ class DetailedVideoViewModel @Inject constructor(
         _checkResult.value = CheckResult.NONE
     }
 
+    fun claimReward() {
+        _showRewardPopup.value = true
+    }
+
+    fun onRewardDismissed() {
+        _showRewardPopup.value = false
+        _isRewardEarned.value = true
+    }
+
     private fun resetQuestionState() {
         _userInput.value = ""
         _checkResult.value = CheckResult.NONE
@@ -265,6 +298,7 @@ class DetailedVideoViewModel @Inject constructor(
         _isRepeatMode.value = false
         _speakingScore.value = 0
         _spokenWordIndices.value = emptySet()
+        _spokenTranscript.value = ""
     }
 
     fun exitRecordTestMode() {
@@ -279,6 +313,7 @@ class DetailedVideoViewModel @Inject constructor(
         _recordState.value = RecordState.IDLE
         _speakingScore.value = 0
         _spokenWordIndices.value = emptySet()
+        _spokenTranscript.value = ""
         stopAudioPlayback()
     }
 
@@ -291,114 +326,213 @@ class DetailedVideoViewModel @Inject constructor(
     }
 
     private fun startListeningAndRecording() {
+        if (!SpeechRecognizer.isRecognitionAvailable(application)) {
+            Log.e("Speech", "Speech recognition NOT available on this device/emulator")
+            // Optional: Show warning to user
+        }
+
         _recordState.value = RecordState.RECORDING
         _speakingScore.value = 0
         _spokenWordIndices.value = emptySet()
+        _spokenTranscript.value = ""
 
-        // 1. Start Media Recording for playback
-        try {
-            mediaRecorder = MediaRecorder().apply {
-                setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION) // Changed to VOICE_RECOGNITION to reduce conflict
-                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                setOutputFile(audioFilePath)
-                prepare()
-                start()
-            }
-        } catch (e: Exception) {
-            Log.e("Record", "MediaRecorder failed: ${e.message}")
-            try {
-                // Fallback to standard MIC if VOICE_RECOGNITION fails
-                mediaRecorder?.release()
-                mediaRecorder = MediaRecorder().apply {
-                    setAudioSource(MediaRecorder.AudioSource.MIC)
-                    setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-                    setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                    setOutputFile(audioFilePath)
-                    prepare()
-                    start()
-                }
-            } catch (e2: Exception) {
-                Log.e("Record", "MediaRecorder fallback failed: ${e2.message}")
-            }
+        // 1. Chuẩn bị buffer để hứng âm thanh trực tiếp từ Speech
+        recordedAudioBytes.reset()
+        mediaRecorder = null // Không dùng MediaRecorder nữa
+        
+        // 2. Start Speech Recognition
+        
+        // 2. Start Speech Recognition
+        recognitionStartTime = System.currentTimeMillis()
+        isRestartingRecognition = false
+        
+        val rawLang = (videoState.value as? UiState.Success)?.data?.termLanguageCode ?: "en-US"
+        val lang = when(rawLang.lowercase()) {
+            "en" -> "en-US"
+            "vi" -> "vi-VN"
+            else -> rawLang
+        }
+        
+        if (speechRecognizer == null) {
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(application)
         }
 
-        // 2. Start Speech Recognition
-        val lang = (videoState.value as? UiState.Success)?.data?.termLanguageCode ?: "en-US"
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(application)
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, lang)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
+            putExtra("android.speech.extra.DICTATION_MODE", true)
+            // Ép hệ thống không ngắt quãng sớm - Dùng cả 2 kiểu key
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 7000L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 7000L)
+            putExtra("android.speech.extras.SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS", 7000L)
+            putExtra("android.speech.extras.SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS", 7000L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 3000L)
         }
+        Log.d("Speech", "Starting recognition with timeout: 7000ms")
 
         speechRecognizer?.setRecognitionListener(object : RecognitionListener {
-            override fun onReadyForSpeech(params: Bundle?) {}
-            override fun onBeginningOfSpeech() {}
-            override fun onRmsChanged(rmsdB: Float) {}
-            override fun onBufferReceived(buffer: ByteArray?) {}
-            override fun onEndOfSpeech() {}
+            override fun onReadyForSpeech(params: Bundle?) { 
+                Log.d("Speech", "onReadyForSpeech") 
+                _spokenTranscript.value = "... (Đang nghe)"
+            }
+            override fun onBeginningOfSpeech() { 
+                Log.d("Speech", "onBeginningOfSpeech") 
+                _spokenTranscript.value = "... (Đang nhận diện)"
+            }
+            override fun onRmsChanged(rmsdB: Float) {
+                if (rmsdB > 2) Log.v("Speech", "Level: $rmsdB")
+            }
+            override fun onBufferReceived(buffer: ByteArray?) {
+                // Hứng các mẩu âm thanh đang được nhận diện
+                buffer?.let {
+                    Log.v("Speech", "Buffer received: ${it.size} bytes")
+                    recordedAudioBytes.write(it)
+                }
+            }
+            override fun onEndOfSpeech() { Log.d("Speech", "onEndOfSpeech") }
             override fun onError(error: Int) {
+                if (_recordState.value != RecordState.RECORDING) return
+                
                 Log.e("Speech", "Error code: $error")
-                // Only stop if it's not a temporary error
-                if (_recordState.value == RecordState.RECORDING) {
-                    stopListeningAndRecording()
+                
+                val timeElapsed = System.currentTimeMillis() - recognitionStartTime
+                if ((error == 7 || error == 6) && timeElapsed < 5000 && !isRestartingRecognition) {
+                    // Nếu lỗi do im lặng sớm (trước 5s), tự động bắt đầu nghe lại
+                    Log.d("Speech", "Early timeout detected, restarting... (Time: $timeElapsed ms)")
+                    isRestartingRecognition = true
+                    viewModelScope.launch {
+                        delay(200) // Nghỉ một chút trước khi restart
+                        if (_recordState.value == RecordState.RECORDING) {
+                            try {
+                                speechRecognizer?.startListening(intent)
+                                isRestartingRecognition = false
+                            } catch (e: Exception) {
+                                Log.e("Speech", "Restart failed: ${e.message}")
+                            }
+                        }
+                    }
+                } else if (_recordState.value == RecordState.RECORDING) {
+                    // Nếu thực sự hết thời gian hoặc lỗi khác
+                    if (error == 7 || error == 6) {
+                        _spokenTranscript.value = "(Không nghe rõ, hãy thử lại)"
+                    }
+                    try {
+                        speechRecognizer?.cancel()
+                    } catch (e: Exception) {}
+                    
+                    stopMediaRecorderOnly()
+                    _recordState.value = RecordState.READY
                 }
             }
             override fun onResults(results: Bundle?) {
                 val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 val spokenText = matches?.firstOrNull() ?: ""
-                Log.d("Speech", "Final results: $spokenText")
-                calculateSpeakingResult(spokenText)
-                if (_recordState.value == RecordState.RECORDING) {
-                    stopListeningAndRecording()
+                Log.d("Speech", "Final: $spokenText")
+                if (spokenText.isNotBlank()) {
+                    _spokenTranscript.value = spokenText
+                    calculateSpeakingResult(spokenText)
                 }
+                stopListeningAndRecording()
             }
             override fun onPartialResults(partialResults: Bundle?) {
                 val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 val spokenText = matches?.firstOrNull() ?: ""
-                calculateSpeakingResult(spokenText)
+                Log.d("Speech", "Partial: $spokenText")
+                if (spokenText.isNotBlank()) {
+                    _spokenTranscript.value = spokenText
+                    calculateSpeakingResult(spokenText)
+                }
             }
             override fun onEvent(eventType: Int, params: Bundle?) {}
         })
-        
-        try {
-            speechRecognizer?.startListening(intent)
-        } catch (e: Exception) {
-            Log.e("Speech", "SpeechRecognizer failed: ${e.message}")
-        }
+
+        speechRecognizer?.startListening(intent)
     }
 
     private fun stopListeningAndRecording() {
+        if (_recordState.value != RecordState.RECORDING) return
+        
         try {
             speechRecognizer?.stopListening()
         } catch (e: Exception) {
             Log.e("Speech", "Stop listening failed: ${e.message}")
         }
         
-        try {
-            mediaRecorder?.apply {
-                stop()
-                release()
-            }
-            mediaRecorder = null
-        } catch (e: Exception) {
-            Log.e("Record", "MediaRecorder stop failed: ${e.message}")
-        }
+        stopMediaRecorderOnly()
         _recordState.value = RecordState.READY
     }
 
+    private fun stopMediaRecorderOnly() {
+        Log.d("Record", "Stopping. Total buffer size: ${recordedAudioBytes.size()}")
+        // Lưu dữ liệu hứng được vào file WAV
+        if (recordedAudioBytes.size() > 0) {
+            saveRecordedBytesToWavFile()
+        }
+    }
+
+    private fun saveRecordedBytesToWavFile() {
+        val pcmData = recordedAudioBytes.toByteArray()
+        val wavFile = File(audioFilePath.replace(".m4a", ".wav")) // Đổi đuôi thành .wav
+        
+        try {
+            val out = java.io.FileOutputStream(wavFile)
+            // Viết Header cho file WAV (16kHz, 16bit, Mono)
+            writeWavHeader(out, pcmData.size)
+            out.write(pcmData)
+            out.close()
+            Log.d("Record", "WAV file saved: ${wavFile.absolutePath} size: ${pcmData.size}")
+        } catch (e: Exception) {
+            Log.e("Record", "Save WAV failed: ${e.message}")
+        }
+    }
+
+    private fun writeWavHeader(out: java.io.OutputStream, dataSize: Int) {
+        val totalSize = dataSize + 36
+        val sampleRate = 16000 // Tần số mẫu chuẩn của Speech Recognition
+        val channels = 1
+        val byteRate = sampleRate * 2
+
+        out.write("RIFF".toByteArray())
+        out.write(intToByteArray(totalSize))
+        out.write("WAVE".toByteArray())
+        out.write("fmt ".toByteArray())
+        out.write(intToByteArray(16)) // Format size
+        out.write(shortToByteArray(1.toShort())) // PCM
+        out.write(shortToByteArray(channels.toShort()))
+        out.write(intToByteArray(sampleRate))
+        out.write(intToByteArray(byteRate))
+        out.write(shortToByteArray(2.toShort())) // Block align
+        out.write(shortToByteArray(16.toShort())) // Bits per sample
+        out.write("data".toByteArray())
+        out.write(intToByteArray(dataSize))
+    }
+
+    private fun intToByteArray(i: Int): ByteArray = byteArrayOf(
+        (i and 0xff).toByte(),
+        (i shr 8 and 0xff).toByte(),
+        (i shr 16 and 0xff).toByte(),
+        (i shr 24 and 0xff).toByte()
+    )
+
+    private fun shortToByteArray(s: Short): ByteArray = byteArrayOf(
+        (s.toInt() and 0xff).toByte(),
+        (s.toInt() shr 8 and 0xff).toByte()
+    )
+
     fun playBackLastRecord() {
-        val file = File(audioFilePath)
+        val wavPath = audioFilePath.replace(".m4a", ".wav")
+        val file = File(wavPath)
         if (!file.exists() || file.length() == 0L) {
-            Log.e("Playback", "Recording file not found or empty")
+            Log.e("Playback", "Recording file not found: $wavPath")
             return
         }
 
         stopAudioPlayback()
         mediaPlayer = MediaPlayer().apply {
             try {
-                setDataSource(audioFilePath)
+                setDataSource(wavPath)
                 prepare()
                 start()
                 setOnCompletionListener { 

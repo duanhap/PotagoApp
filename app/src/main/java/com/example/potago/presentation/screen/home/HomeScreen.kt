@@ -28,28 +28,36 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.example.potago.R
+import com.example.potago.presentation.navigation.Screen
+import com.example.potago.presentation.screen.video.VideoEvent
+import com.example.potago.presentation.screen.video.VideoListHorizontal
+import com.example.potago.presentation.screen.video.VideoViewModel
 import kotlinx.coroutines.delay
 
 @Composable
 fun HomeScreen(
-    navController: NavController
+    navController: NavController,
+    videoViewModel: VideoViewModel = hiltViewModel()
 ) {
+    val videoUiState by videoViewModel.uiState.collectAsState()
     Scaffold(
         topBar = {
             TopAppBar()
         }
     ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding))
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.White)
-                .padding(innerPadding)
                 .padding(horizontal = 20.dp)
         ) {
             item {
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(80.dp))
                 MascotAndBubbleHome()
                 Spacer(modifier = Modifier.height(10.dp))
             }
@@ -72,9 +80,24 @@ fun HomeScreen(
 
             // --- Section Video gần đây ---
             item {
-                SectionHeader(title = "Chưa có video nào", onSeeMoreClick = {})
-                // Placeholder content since no data
-                EmptyBoxView(text = "Chưa có video nào")
+                SectionHeader(
+                    title = "Video gần đây", 
+                    onSeeMoreClick = {
+                        navController.navigate(Screen.Video.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
+                VideoListHorizontal(
+                    uiState = videoUiState.recentVideos,
+                    onVideoClick = { videoId ->
+                        navController.navigate(Screen.DetailedVideo(videoId))
+                    }
+                )
                 Spacer(modifier = Modifier.height(20.dp))
             }
 
