@@ -49,15 +49,15 @@ fun HomeScreen(
             TopAppBar()
         }
     ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding))
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.White)
-                .padding(innerPadding)
                 .padding(horizontal = 20.dp)
         ) {
             item {
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(80.dp))
                 MascotAndBubbleHome()
                 Spacer(modifier = Modifier.height(10.dp))
             }

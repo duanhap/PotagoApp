@@ -131,25 +131,32 @@ class DetailedVideoViewModel @Inject constructor(
         }
     }.asStateFlow()
 
-    init {
-        loadData()
-    }
+    private val _showRewardPopup = MutableStateFlow(false)
+    val showRewardPopup: StateFlow<Boolean> = _showRewardPopup.asStateFlow()
 
-    private fun loadData() {
-        viewModelScope.launch {
-            loadVideo()
+    private val _isRewardEarned = MutableStateFlow(false)
+    val isRewardEarned: StateFlow<Boolean> = _isRewardEarned.asStateFlow()
+
+    init {
+        val videoId = savedStateHandle.get<Int>("videoId") ?: -1
+        if (videoId != -1) {
+            loadAllData(videoId)
         }
     }
 
-    private suspend fun loadVideo() {
+    private fun loadAllData(videoId: Int) {
+        viewModelScope.launch {
+            // Tải song song Video và Subtitle để tiết kiệm thời gian
+            launch { fetchVideo(videoId) }
+            launch { fetchSubtitles(videoId) }
+        }
+    }
+
+    private suspend fun fetchVideo(videoId: Int) {
         _videoState.value = UiState.Loading
         when (val result = getVideoUseCase(videoId)) {
             is Result.Success -> {
-                val video = result.data
-                _videoState.value = UiState.Success(video)
-                // Sau khi có video, kiểm tra publicVideoId để lấy sub
-                val idForSubtitles = video.publicVideoId ?: video.id
-                loadSubtitles(idForSubtitles)
+                _videoState.value = UiState.Success(result.data)
             }
             is Result.Error -> {
                 _videoState.value = UiState.Error(result.message)
@@ -160,7 +167,7 @@ class DetailedVideoViewModel @Inject constructor(
         }
     }
 
-    private suspend fun loadSubtitles(id: Int) {
+    private suspend fun fetchSubtitles(id: Int) {
         _subtitlesState.value = UiState.Loading
         when (val result = getSubtitlesUseCase(id)) {
             is Result.Success -> {
@@ -251,6 +258,15 @@ class DetailedVideoViewModel @Inject constructor(
             _userInput.value = ""
         }
         _checkResult.value = CheckResult.NONE
+    }
+
+    fun claimReward() {
+        _showRewardPopup.value = true
+    }
+
+    fun onRewardDismissed() {
+        _showRewardPopup.value = false
+        _isRewardEarned.value = true
     }
 
     private fun resetQuestionState() {

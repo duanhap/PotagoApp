@@ -3,6 +3,7 @@ package com.example.potago.presentation.screen.detailedvideoscreen
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
+import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
@@ -11,10 +12,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.compose.animation.*
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
@@ -41,6 +46,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
@@ -58,7 +64,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.buildAnnotatedString
 
+import androidx.compose.ui.graphics.Shadow
+
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -95,6 +104,8 @@ fun DetailedVideoScreen(
     
     val userInput by viewModel.userInput.collectAsState()
     val checkResult by viewModel.checkResult.collectAsState()
+    val showRewardPopup by viewModel.showRewardPopup.collectAsState()
+    val isRewardEarned by viewModel.isRewardEarned.collectAsState()
     val writingProgress by viewModel.writingProgress.collectAsState()
 
     // Record Test Mode States
@@ -176,7 +187,7 @@ fun DetailedVideoScreen(
 
             if (finalIndex != currentSubtitleIndex) {
                 if (isRepeatMode) {
-                    if (currentSub != null && (currentTimeMs + 300)  >= (currentSub.endTime?.toLong() ?: Long.MAX_VALUE)) {
+                    if (currentSub != null && (currentTimeMs + 3000)  >= (currentSub.endTime?.toLong() ?: Long.MAX_VALUE)) {
                         onSeek(currentSub.startTime ?: 0)
                     }
                 } else if (!isQuestionMode && !isRecordTestMode) {
@@ -269,7 +280,9 @@ fun DetailedVideoScreen(
                                 userInput = userInput,
                                 onUserInputChange = { viewModel.onUserInputChange(it) },
                                 writingProgress = writingProgress,
-                                speakingProgress = speakingProgress
+                                speakingProgress = speakingProgress,
+                                isRewardEarned = isRewardEarned,
+                                onClaimReward = { viewModel.claimReward() }
                             )
                         }
                     }
@@ -342,16 +355,6 @@ fun DetailedVideoScreen(
                                 .fillMaxWidth()
                                 .verticalScroll(scrollState)
                                 .padding(8.dp)
-                                .graphicsLayer(alpha = 0.99f)
-                                .drawWithContent {
-                                    // Hiệu ứng mờ dần ở phía trên
-                                    val brush = Brush.verticalGradient(
-                                        0.0f to Color.Transparent,
-                                        0.4f to Color.White
-                                    )
-                                    drawContent()
-                                    drawRect(brush, blendMode = BlendMode.DstIn)
-                                }
                         )
                     }
                 }
@@ -468,6 +471,13 @@ fun DetailedVideoScreen(
                     checkResult = checkResult,
                     correctAnswer = currentSub?.content ?: "",
                     onDismiss = { viewModel.dismissResult() }
+                )
+            }
+
+            // Reward Popup
+            if (showRewardPopup) {
+                RewardPopup(
+                    onDismiss = { viewModel.onRewardDismissed() }
                 )
             }
         }
@@ -632,10 +642,12 @@ fun SingleSubtitleView(
     isQuestionMode: Boolean,
     onToggleRepeat: () -> Unit,
     onToggleQuestion: () -> Unit,
+    onClaimReward : () -> Unit,
     userInput: String,
     onUserInputChange: (String) -> Unit,
     writingProgress: Int,
-    speakingProgress: Int
+    speakingProgress: Int,
+    isRewardEarned: Boolean
 ) {
     Column(
         modifier = Modifier
@@ -657,8 +669,10 @@ fun SingleSubtitleView(
             EarnPointsButton(
                 modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
                 writingProgress = writingProgress,
-                speakingProgress = speakingProgress
-            ){ /* TODO */ }
+                speakingProgress = speakingProgress,
+                isRewardEarned = isRewardEarned,
+                onClaimReward
+            )
             UploadButtonLike(
                 iconRes = R.drawable.ic_random,
                 isActiveMode = isRepeatMode,
@@ -863,6 +877,116 @@ fun CustomPopupButton(
 }
 
 @Composable
+fun RewardPopup(
+    onDismiss: () -> Unit
+) {
+    val infiniteTransition = rememberInfiniteTransition()
+
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = -5f,
+        targetValue = 5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 800,
+                easing = LinearEasing
+            ),
+            repeatMode = RepeatMode.Reverse
+        )
+    )
+
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.5f))
+            .clickable(enabled = false) {},
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Box(
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            // Background Image
+            Image(
+                painter = painterResource(id = R.drawable.ic_record_test_mode_reward),
+                contentDescription = null,
+                modifier = Modifier.fillMaxWidth(),
+                contentScale = ContentScale.FillWidth
+            )
+
+            Column(
+                modifier = Modifier
+                    .matchParentSize()
+                    .padding(horizontal = 20.dp, vertical = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Spacer(modifier = Modifier.width(10.dp))
+                // White Box Content
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth().padding(vertical = 50.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Experience Points
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "15",
+                                style = MaterialTheme.typography.displayLarge.copy(
+                                    color = Color(0xFFA16207),
+                                    fontSize = 42.sp
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_experience_points),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(50.dp)
+                                    .graphicsLayer { rotationZ = -45f +rotation}
+                            )
+                        }
+
+                        // Diamond Points
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "20",
+                                style = MaterialTheme.typography.displayLarge.copy(
+                                    color = Color(0xFFF44336),
+                                    fontSize = 42.sp
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_ruby_detailed_video_screen),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(50.dp)
+                                    .graphicsLayer { rotationZ = 21f +rotation}
+                            )
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(60.dp))
+
+                // Action Button
+                CustomPopupButton(
+                    text = "NHẬN",
+                    buttonColor = Color(0xFF58CC02),
+                    shadowColor = Color(0xFF46A302),
+                    onClick = onDismiss
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun UploadButtonLike(
     iconRes: Int,
     isActiveMode : Boolean = false,
@@ -910,46 +1034,56 @@ private fun EarnPointsButton(
     modifier: Modifier,
     writingProgress: Int,
     speakingProgress: Int,
+    isRewardEarned: Boolean,
     onClick: () -> Unit
 ) {
-    val isAllDone = writingProgress >= 3 && speakingProgress >= 3
+    val isAllDone = writingProgress >= 1 && speakingProgress >= 1
+    val isClickable = isAllDone && !isRewardEarned
     var isPressed by remember { mutableStateOf(false) }
     val animatedScale by animateFloatAsState(targetValue = if (isPressed) 0.96f else 1f, label = "")
     val animatedHeight by animateDpAsState(targetValue = if (isPressed) 52.dp else 48.dp, label = "")
+
+    val borderColor = if (isRewardEarned) Color(0xFF4B5563) else if (isAllDone) Color(0xFF46A302) else Color(0xFFE5E5E5)
+    val bgColor = if (isRewardEarned) Color(0xFFF3F4F6) else Color.White
+    val textColor = if (isRewardEarned) Color.Gray else if (isAllDone) Color(0xFF58CC02) else Color.LightGray
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(52.dp)
             .graphicsLayer { scaleX = animatedScale; scaleY = animatedScale }
-            .border(1.2.dp, if (isAllDone) Color(0xFF46A302)else Color(0xFFE5E5E5), RoundedCornerShape(16.dp))
+            .border(1.2.dp, borderColor, RoundedCornerShape(16.dp))
             .clip(RoundedCornerShape(16.dp))
-            .background(color =if (isAllDone) Color(0xFF46A302)else Color(0xFFE5E5E5))
+            .background(color = if (isRewardEarned) Color(0xFF4B5563) else if (isAllDone) Color(0xFF46A302) else Color(0xFFE5E5E5))
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(animatedHeight)
                 .clip(RoundedCornerShape(16.dp))
-                .background(color = Color(0xFFFFFFFF))
+                .background(color = bgColor)
                 .padding(horizontal = 12.dp, vertical = 8.dp)
-                .pointerInput(isAllDone) {
-                    detectTapGestures(
-                        onPress = { if(isAllDone) { isPressed = true; tryAwaitRelease(); isPressed = false } },
-                        onTap = { if(isAllDone) onClick() }
-                    )
+                .pointerInput(isClickable) {
+                    if (isClickable) {
+                        detectTapGestures(
+                            onPress = { isPressed = true; tryAwaitRelease(); isPressed = false },
+                            onTap = { onClick() }
+                        )
+                    }
                 },
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = "Số câu đã luyện nói đúng : $speakingProgress/3",
-                    style = MaterialTheme.typography.labelSmall.copy(color = if (isAllDone) Color(0xFF58CC02) else Color.LightGray, fontSize = 12.sp)
+                    text = if (isRewardEarned) "Đã nhận thưởng" else "Số câu đã luyện nói đúng : $speakingProgress/3",
+                    style = MaterialTheme.typography.labelSmall.copy(color = textColor, fontSize = 12.sp)
                 )
-                Text(
-                    text = "Số câu đã luyện viết đúng : $writingProgress/3",
-                    style = MaterialTheme.typography.labelSmall.copy(color = if (isAllDone) Color(0xFF58CC02) else Color.LightGray, fontSize = 12.sp)
-                )
+                if (!isRewardEarned) {
+                    Text(
+                        text = "Số câu đã luyện viết đúng : $writingProgress/3",
+                        style = MaterialTheme.typography.labelSmall.copy(color = textColor, fontSize = 12.sp)
+                    )
+                }
             }
         }
     }
@@ -962,7 +1096,8 @@ fun YoutubeWebView(
     onPlayerReady: (WebView) -> Unit,
     onTimeUpdate: (Long) -> Unit
 ) {
-    val packageName = LocalContext.current.packageName
+    val context = LocalContext.current
+    val packageName = context.packageName
     val embedHtml = """
         <!DOCTYPE html>
         <html>
@@ -1010,8 +1145,8 @@ fun YoutubeWebView(
 
     AndroidView(
         modifier = Modifier.fillMaxWidth().aspectRatio(16 / 9f),
-        factory = { context ->
-            WebView(context).apply {
+        factory = { ctx ->
+            WebView(ctx).apply {
                 settings.apply {
                     javaScriptEnabled = true
                     domStorageEnabled = true
@@ -1137,4 +1272,10 @@ private fun BackButton(onClick: () -> Unit) {
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(targetValue = if (isPressed) 0.85f else 1f, label = "icon_scale")
     IconButton(onClick = onClick, interactionSource = interactionSource) { Icon(painter = painterResource(id = R.drawable.ic_back), contentDescription = "Back", modifier = Modifier.scale(scale)) }
+}
+
+@Preview (showBackground = true)
+@Composable
+fun RewardPopupShow(){
+    RewardPopup(onDismiss = {})
 }
