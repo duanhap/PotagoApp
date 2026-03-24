@@ -43,24 +43,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.buildAnnotatedString
+
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -77,6 +74,7 @@ import androidx.navigation.NavController
 import com.example.potago.R
 import com.example.potago.domain.model.Subtitle
 import com.example.potago.domain.model.Video
+import com.example.potago.presentation.screen.UiEvent
 import com.example.potago.presentation.screen.UiState
 import kotlinx.coroutines.delay
 import java.util.regex.Pattern
@@ -101,10 +99,11 @@ fun DetailedVideoScreen(
 
     // Record Test Mode States
     val isRecordTestMode by viewModel.isRecordTestMode.collectAsState()
-    val recordState by viewModel.recordState.collectAsState()
     val speakingScore by viewModel.speakingScore.collectAsState()
     val speakingProgress by viewModel.speakingProgress.collectAsState()
     val spokenWordIndices by viewModel.spokenWordIndices.collectAsState()
+    val spokenTranscript by viewModel.spokenTranscript.collectAsState()
+    val recordState by viewModel.recordState.collectAsState()
 
     // Permission launcher
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -133,6 +132,15 @@ fun DetailedVideoScreen(
             exoPlayer?.play()
         } else {
             webViewInstance?.evaluateJavascript("seekTo(${startTimeMs / 1000f});", null)
+        }
+    }
+
+    // Lắng nghe sự kiện từ ViewModel (như yêu cầu pause video khi thu âm)
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collect { event ->
+            if (event is UiEvent.ShowSnackbar && event.message == "Đang lắng nghe...") {
+                pauseVideo()
+            }
         }
     }
 
@@ -306,6 +314,48 @@ fun DetailedVideoScreen(
             // Thanh Mic Bar ở dưới cùng
             if (showMicBottomSheet && subtitlesState is UiState.Success) {
                 val subtitles = (subtitlesState as UiState.Success<List<Subtitle>>).data ?: emptyList()
+                
+                // ✍️ Hiển thị văn bản đang nói (Transcript)
+                if (isRecordTestMode && spokenTranscript.isNotBlank()) {
+                    val scrollState = rememberScrollState()
+                    LaunchedEffect(spokenTranscript) {
+                        scrollState.animateScrollTo(scrollState.maxValue)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 100.dp) // Nằm trên Mic Bar
+                            .align(Alignment.BottomCenter)
+                            .padding(horizontal = 40.dp)
+                            .heightIn(max = 120.dp) // Giới hạn chiều cao tương đương 3-4 dòng
+                            .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                    ) {
+                        Text(
+                            text = spokenTranscript,
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                color = Color.Yellow,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp
+                            ),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(scrollState)
+                                .padding(8.dp)
+                                .graphicsLayer(alpha = 0.99f)
+                                .drawWithContent {
+                                    // Hiệu ứng mờ dần ở phía trên
+                                    val brush = Brush.verticalGradient(
+                                        0.0f to Color.Transparent,
+                                        0.4f to Color.White
+                                    )
+                                    drawContent()
+                                    drawRect(brush, blendMode = BlendMode.DstIn)
+                                }
+                        )
+                    }
+                }
+
                 Box(
                     modifier = Modifier.fillMaxWidth()
                         .height(80.dp)
