@@ -92,7 +92,10 @@ fun HomeScreen(
                         title = "Cửa hàng",
                         iconBgColor = Color(0xFFF3E8FF), // Light purple
                         iconTint = Color(0xFF9333EA), // Purple
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        onItemClick = {
+    //                        navController.navigate(Screen.ShopScreen.route)
+                        }
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     FeatureBox(
@@ -100,7 +103,10 @@ fun HomeScreen(
                         title = "Thêm thư mục",
                         iconBgColor = Color(0xFFFFEDD5), // Light orange
                         iconTint = Color(0xFFF97316), // Orange
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        onItemClick = {
+//                        navController.navigate(Screen.ShopScreen.route)
+                        }
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     FeatureBox(
@@ -108,7 +114,10 @@ fun HomeScreen(
                         title = "Xếp hạng",
                         iconBgColor = Color(0xFFFEF9C3), // Light yellow
                         iconTint = Color(0xFFEAB308), // Yellow
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        onItemClick = {
+//                        navController.navigate(Screen.RankScreen.route)
+                        }
                     )
                 }
                 Spacer(modifier = Modifier.height(30.dp))
@@ -339,7 +348,8 @@ fun FeatureBox(
     title: String,
     iconBgColor: Color,
     iconTint: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onItemClick: () -> Unit = {}
 ) {
     Surface(
         modifier = modifier
@@ -347,7 +357,7 @@ fun FeatureBox(
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White)
             .border(1.dp, Color(0xFFF3F4F6), RoundedCornerShape(16.dp))
-            .clickable { /* Handle click */ }
+            .clickable { onItemClick }
     ) {
         Column(
             modifier = Modifier
