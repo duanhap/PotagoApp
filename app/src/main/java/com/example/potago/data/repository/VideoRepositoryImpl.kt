@@ -126,6 +126,19 @@ class VideoRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun openPublicVideo(publicVideoId: Int): Result<Video> {
+        return try {
+            val response = videoApiService.openPublicVideo(publicVideoId)
+            if (response.success && response.data != null) {
+                Result.Success(response.data.toDomain())
+            } else {
+                Result.Error(response.message)
+            }
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
     override suspend fun syncJobStatus(videoId: Int, jobId: String): Result<JobStatus> {
         return try {
             val request = SyncJobRequest(job_id = jobId)

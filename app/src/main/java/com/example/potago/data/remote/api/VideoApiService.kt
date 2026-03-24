@@ -45,6 +45,11 @@ interface VideoApiService {
         @Body request: CreateVideoRequest
     ): ApiResponse<VideoDto>
 
+    @POST("/api/videos/public/{public_video_id}/open")
+    suspend fun openPublicVideo(
+        @Path("public_video_id") publicVideoId: Int
+    ): ApiResponse<VideoDto>
+
     @POST("/api/subtitles/{video_id}/sync-job")
     suspend fun syncJobStatus(
         @Path("video_id") videoId: Int,

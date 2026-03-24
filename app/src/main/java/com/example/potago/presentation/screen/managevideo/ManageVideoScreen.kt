@@ -6,16 +6,15 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,7 +27,6 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -57,10 +55,10 @@ fun ManageVideoScreen(
     viewModel: ManageVideoViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
     val sheetState = rememberModalBottomSheetState()
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var videoToDelete by remember { mutableStateOf<Video?>(null) }
-    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collect { event ->
@@ -68,7 +66,13 @@ fun ManageVideoScreen(
                 is UiEvent.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(event.message)
                 }
-                else -> {}
+                is UiEvent.Navigate -> {
+                    navController.navigate(event.route) {
+                        event.popUpTo?.let {
+                            popUpTo(it) { inclusive = event.inclusive }
+                        }
+                    }
+                }
             }
         }
     }
@@ -77,20 +81,22 @@ fun ManageVideoScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                onBackClick = { if (!uiState.isCanceling && !uiState.isDeleting) navController.popBackStack() }
+                onBackClick = {
+                    if (!uiState.isCanceling && !uiState.isDeleting) navController.popBackStack()
+                }
             )
         }
     ) { innerPadding ->
+        // Giữ nguyên theo yêu cầu: Box này dùng để làm đẹp giao diện
         Box(modifier = Modifier.padding(innerPadding))
 
         ManageVideoContent(
             uiState = uiState,
-            onLoadMore = { viewModel.loadProcessedVideos() },
+            onEvent = viewModel::onEvent,
             onDeleteClick = { video ->
                 videoToDelete = video
                 showDeleteConfirm = true
-            },
-            onCancelJob = { viewModel.cancelJob() }
+            }
         )
 
         if (showDeleteConfirm) {
@@ -102,7 +108,7 @@ fun ManageVideoScreen(
             ) {
                 DeleteConfirmationContent(
                     onConfirm = {
-                        videoToDelete?.id?.let { viewModel.deleteVideo(it) }
+                        videoToDelete?.id?.let { viewModel.onEvent(ManageVideoEvent.DeleteVideo(it)) }
                         showDeleteConfirm = false
                     },
                     onDismiss = { showDeleteConfirm = false }
@@ -110,17 +116,16 @@ fun ManageVideoScreen(
             }
         }
 
-        // Lớp phủ chặn tương tác khi đang xử lý (Xóa, Hủy, hoặc Loading lần đầu)
+        // Lớp phủ chặn tương tác khi đang xử lý
         val isBusy = uiState.isCanceling || uiState.isDeleting || (uiState.uiState is UiState.Loading && uiState.processedVideos.isEmpty())
         if (isBusy) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Transparent)
-                    .pointerInput(Unit) { /* Swallow all touch events */ }
+                    .pointerInput(Unit) { }
             )
         }
-
     }
 }
 
@@ -128,13 +133,11 @@ fun ManageVideoScreen(
 private fun ManageVideoContent(
     modifier: Modifier = Modifier,
     uiState: ManageVideoUiState,
-    onLoadMore: () -> Unit,
-    onDeleteClick: (Video) -> Unit,
-    onCancelJob: () -> Unit
+    onEvent: (ManageVideoEvent) -> Unit,
+    onDeleteClick: (Video) -> Unit
 ) {
     val listState = rememberLazyListState()
 
-    // Lọc video đang xử lý để không hiện ở dưới
     val filteredVideos = remember(uiState.processedVideos, uiState.processingJob) {
         uiState.processedVideos.filter { it.id != uiState.processingJob?.video?.id }
     }
@@ -148,7 +151,7 @@ private fun ManageVideoContent(
 
     LaunchedEffect(shouldLoadMore.value) {
         if (shouldLoadMore.value) {
-            onLoadMore()
+            onEvent(ManageVideoEvent.LoadMore)
         }
     }
 
@@ -159,9 +162,11 @@ private fun ManageVideoContent(
             .background(Color.White),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp)
     ) {
-        item{
+        // Giữ nguyên theo yêu cầu: Khoảng cách tạo độ thoáng cho UI
+        item {
             Spacer(modifier = Modifier.height(80.dp))
         }
+
         item {
             Text(
                 text = "Video đang xử lý",
@@ -172,7 +177,7 @@ private fun ManageVideoContent(
                 ProcessingVideoItem(
                     job = uiState.processingJob,
                     isLoading = uiState.isCanceling,
-                    onCancel = onCancelJob
+                    onCancel = { onEvent(ManageVideoEvent.CancelJob) }
                 )
             } else {
                 EmptyProcessingVideosView()
@@ -248,7 +253,7 @@ private fun ProcessingVideoItem(
             ) {
                 Text(
                     text = job.video.title ?: "Đang tải tiêu đề...",
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.labelLarge,
                     maxLines = 3
                 )
 
@@ -258,7 +263,7 @@ private fun ProcessingVideoItem(
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(16.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -274,151 +279,6 @@ private fun ProcessingVideoItem(
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
             )
         }
-    }
-}
-@Composable
-private fun CancelButton(
-    buttonEnabled: Boolean = true,
-    isLoading: Boolean = false,
-    onClick: () -> Unit
-) {
-    var isPressed by remember { mutableStateOf(false) }
-
-    val animatedScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.96f else 1f,
-        label = ""
-    )
-    val animatedHeight by animateDpAsState(
-        targetValue = if (isPressed) 48.dp else 45.dp,
-        label = ""
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(48.dp)
-            .graphicsLayer {
-                scaleX = animatedScale
-                scaleY = animatedScale
-            }
-            .border(1.2.dp, Color(0xFFE5E5E5), RoundedCornerShape(16.dp))
-            .clip(RoundedCornerShape(16.dp))
-            .background(color = Color(0xFFE5E5E5) )
-    ) {
-        Box(modifier = Modifier
-            .fillMaxWidth()
-            .height(animatedHeight)
-            .clip(RoundedCornerShape(16.dp))
-            .background(color = Color(0xFFFFFFFF))
-            .pointerInput(buttonEnabled && !isLoading) {
-                detectTapGestures(
-                    onPress = {
-                        if (!buttonEnabled || isLoading) return@detectTapGestures
-                        isPressed = true
-                        tryAwaitRelease()
-                        isPressed = false
-                    },
-                    onTap = {
-                        if (buttonEnabled && !isLoading) {
-                            onClick()
-                        }
-                    }
-                )
-            }, contentAlignment = Alignment.Center){
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    color = Color.Gray,
-                    strokeWidth = 2.dp
-                )
-            } else {
-                Icon(painter = painterResource(id = R.drawable.ic_cancel), contentDescription = "Cancel", tint = Color.Gray)
-            }
-        }
-    }
-}
-
-@Composable
-fun StripedProgressIndicator(
-    progress: Float,
-    modifier: Modifier = Modifier
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "striped_progress")
-    val offset by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 60f, // Tăng khoảng cách để animation mượt hơn
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "offset"
-    )
-
-    Canvas(modifier = modifier.clip(RoundedCornerShape(6.dp))) {
-        val width = size.width
-        val height = size.height
-
-        // Background
-        drawRoundRect(
-            color = Color(0xFFEEEEEE),
-            size = size,
-            cornerRadius = CornerRadius(height / 2, height / 2)
-        )
-
-        // Progress background
-        val progressWidth = width * progress
-        if (progressWidth > 0) {
-            clipRect(right = progressWidth) {
-                drawRoundRect(
-                    //color = Color(0xFF58CC02),
-                    color = Color(0xFF4B4B4B),
-                    size = size,
-                    cornerRadius = CornerRadius(height / 2, height / 2)
-                )
-
-                // Stripes (Mấy cái chéo chéo di chuyển)
-                val stripeWidth = 15.dp.toPx()
-                val gap = 15.dp.toPx()
-                val skewWidth = 10.dp.toPx()
-                
-                // Vẽ đủ số lượng stripe để phủ kín và animation trôi chảy
-                var x = -stripeWidth * 2 + offset.dp.toPx()
-                while (x < width + stripeWidth) {
-                    val path = Path().apply {
-                        moveTo(x + skewWidth, 0f)
-                        lineTo(x + stripeWidth + skewWidth, 0f)
-                        lineTo(x + stripeWidth, height)
-                        lineTo(x, height)
-                        close()
-                    }
-                    //drawPath(path, color = Color(0xFF89E219).copy(alpha = 0.5f))
-                    drawPath(path, color = Color(0xFF9CA3AF))
-
-                    x += stripeWidth + gap
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun EmptyProcessingVideosView() {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.horizon_sleep_mascot),
-            contentDescription = null,
-            modifier = Modifier.size(120.dp)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "Không có video nào đang xử lý",
-            style = MaterialTheme.typography.titleMedium.copy(
-                color = Color.Gray,
-            )
-        )
     }
 }
 
@@ -455,7 +315,7 @@ private fun ProcessedVideoItem(
             )
 
             Text(
-                text = formatDate(video.createdAt ?: "Unknow"),
+                text = formatDate(video.createdAt ?: "Unknown"),
                 style = MaterialTheme.typography.bodyMedium.copy(color = Color.Gray)
             )
         }
@@ -478,6 +338,25 @@ private fun ProcessedVideoItem(
 }
 
 @Composable
+private fun EmptyProcessingVideosView() {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.horizon_sleep_mascot),
+            contentDescription = null,
+            modifier = Modifier.size(120.dp)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Không có video nào đang xử lý",
+            style = MaterialTheme.typography.titleMedium.copy(color = Color.Gray)
+        )
+    }
+}
+
+@Composable
 private fun DeleteConfirmationContent(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
@@ -489,21 +368,20 @@ private fun DeleteConfirmationContent(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         MascotAndBubbleDelete(text = "Xác nhận xóa chứ !?")
-        
+
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             SmallWhiteButton(
                 text = "Từ chối",
-                icon = {},
                 modifier = Modifier.weight(1f),
                 onClick = onDismiss
             )
-            SmallGreenButton( text = "Xác nhận",
-                icon = {},
+            SmallGreenButton(
+                text = "Xác nhận",
                 modifier = Modifier.weight(1f),
                 onClick = onConfirm
             )
@@ -515,7 +393,6 @@ private fun DeleteConfirmationContent(
 fun SmallGreenButton(
     text: String,
     modifier: Modifier = Modifier,
-    icon: @Composable () -> Unit,
     buttonEnabled: Boolean = true,
     onClick: () -> Unit
 ) {
@@ -554,22 +431,18 @@ fun SmallGreenButton(
                         tryAwaitRelease()
                         isPressed = false
                     },
-                    onTap = {
-                        if (buttonEnabled) {
-                            onClick()
-                        }
-                    }
+                    onTap = { if (buttonEnabled) onClick() }
                 )
             }, contentAlignment = Alignment.Center){
             Text(
-                    text = text,
-                    style = TextStyle(
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Black,
-                        fontSize = 14.sp,
-                        color = Color(0xFFFFFFFF)
-                    )
+                text = text,
+                style = TextStyle(
+                    fontFamily = Nunito,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 14.sp,
+                    color = Color.White
                 )
+            )
         }
     }
 }
@@ -578,7 +451,6 @@ fun SmallGreenButton(
 fun SmallWhiteButton(
     text: String,
     modifier: Modifier = Modifier,
-    icon: @Composable () -> Unit,
     buttonEnabled: Boolean = true,
     onClick: () -> Unit
 ) {
@@ -602,13 +474,13 @@ fun SmallWhiteButton(
             }
             .border(1.2.dp, Color(0xFFE5E5E5), RoundedCornerShape(16.dp))
             .clip(RoundedCornerShape(16.dp))
-            .background(color = Color(0xFFE5E5E5) )
+            .background(color = Color(0xFFE5E5E5))
     ) {
         Box(modifier = modifier
             .fillMaxWidth()
             .height(animatedHeight)
             .clip(RoundedCornerShape(16.dp))
-            .background(color = Color(0xFFFFFFFF))
+            .background(color = Color.White)
             .pointerInput(buttonEnabled) {
                 detectTapGestures(
                     onPress = {
@@ -617,11 +489,7 @@ fun SmallWhiteButton(
                         tryAwaitRelease()
                         isPressed = false
                     },
-                    onTap = {
-                        if (buttonEnabled) {
-                            onClick()
-                        }
-                    }
+                    onTap = { if (buttonEnabled) onClick() }
                 )
             }, contentAlignment = Alignment.Center){
             Text(
@@ -694,20 +562,131 @@ private fun MascotAndBubbleDelete(text: String) {
 }
 
 @Composable
-private fun TopAppBar(
-    onBackClick: () -> Unit = {},
+private fun CancelButton(
+    buttonEnabled: Boolean = true,
+    isLoading: Boolean = false,
+    onClick: () -> Unit
 ) {
+    var isPressed by remember { mutableStateOf(false) }
+
+    val animatedScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        label = ""
+    )
+    val animatedHeight by animateDpAsState(
+        targetValue = if (isPressed) 48.dp else 45.dp,
+        label = ""
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .graphicsLayer {
+                scaleX = animatedScale
+                scaleY = animatedScale
+            }
+            .border(1.2.dp, Color(0xFFE5E5E5), RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .background(color = Color(0xFFE5E5E5) )
+    ) {
+        Box(modifier = Modifier
+            .fillMaxWidth()
+            .height(animatedHeight)
+            .clip(RoundedCornerShape(16.dp))
+            .background(color = Color.White)
+            .pointerInput(buttonEnabled && !isLoading) {
+                detectTapGestures(
+                    onPress = {
+                        if (!buttonEnabled || isLoading) return@detectTapGestures
+                        isPressed = true
+                        tryAwaitRelease()
+                        isPressed = false
+                    },
+                    onTap = { if (buttonEnabled && !isLoading) onClick() }
+                )
+            }, contentAlignment = Alignment.Center){
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = Color.Gray,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Icon(painter = painterResource(id = R.drawable.ic_cancel), contentDescription = "Cancel", tint = Color.Gray)
+            }
+        }
+    }
+}
+
+@Composable
+fun StripedProgressIndicator(
+    progress: Float,
+    modifier: Modifier = Modifier
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "striped_progress")
+    val offset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 60f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "offset"
+    )
+
+    Canvas(modifier = modifier.clip(RoundedCornerShape(6.dp))) {
+        val width = size.width
+        val height = size.height
+
+        drawRoundRect(
+            color = Color(0xFFEEEEEE),
+            size = size,
+            cornerRadius = CornerRadius(height / 2, height / 2)
+        )
+
+        val progressWidth = width * progress
+        if (progressWidth > 0) {
+            clipRect(right = progressWidth) {
+                drawRoundRect(
+                    color = Color(0xFF4B4B4B),
+                    size = size,
+                    cornerRadius = CornerRadius(height / 2, height / 2)
+                )
+
+                val stripeWidth = 15.dp.toPx()
+                val gap = 15.dp.toPx()
+                val skewWidth = 10.dp.toPx()
+
+                var x = -stripeWidth * 2 + offset.dp.toPx()
+                while (x < width + stripeWidth) {
+                    val path = Path().apply {
+                        moveTo(x + skewWidth, 0f)
+                        lineTo(x + stripeWidth + skewWidth, 0f)
+                        lineTo(x + stripeWidth, height)
+                        lineTo(x, height)
+                        close()
+                    }
+                    drawPath(path, color = Color(0xFF9CA3AF))
+                    x += stripeWidth + gap
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TopAppBar(onBackClick: () -> Unit = {}) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         tonalElevation = 3.dp,
         shadowElevation = 4.dp,
-        color = Color(0xFFFFFFFF)
+        color = Color.White
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically) {
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             BackButton(onBackClick)
             Spacer(modifier = Modifier.width(16.dp))
             Text(
@@ -719,21 +698,11 @@ private fun TopAppBar(
 }
 
 @Composable
-private fun BackButton(
-    onClick: () -> Unit
-) {
+private fun BackButton(onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.85f else 1f,
-        label = "icon_scale"
-    )
-
-    IconButton(
-        onClick = onClick,
-        interactionSource = interactionSource
-    ) {
+    val scale by animateFloatAsState(targetValue = if (isPressed) 0.85f else 1f, label = "")
+    IconButton(onClick = onClick, interactionSource = interactionSource) {
         Icon(
             painter = painterResource(id = R.drawable.ic_back),
             contentDescription = "Back",
@@ -742,11 +711,13 @@ private fun BackButton(
     }
 }
 
-
 fun formatDate(dateStr: String): String {
-    val inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.getDefault())
-    val outputFormatter = DateTimeFormatter.ofPattern("'Tháng' M 'năm' yyyy", Locale("vi"))
-
-    val date = LocalDate.parse(dateStr, inputFormatter)
-    return date.format(outputFormatter)
+    return try {
+        val inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.getDefault())
+        val outputFormatter = DateTimeFormatter.ofPattern("'Tháng' M 'năm' yyyy", Locale("vi"))
+        val date = LocalDate.parse(dateStr, inputFormatter)
+        date.format(outputFormatter)
+    } catch (e: Exception) {
+        dateStr
+    }
 }

@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -46,7 +47,8 @@ fun BottomNavBar(
 ) {
     NavigationBar(
         containerColor = Color.White,
-        tonalElevation = 0.dp // Loại bỏ bóng đổ mặc định nếu muốn phẳng hoàn toàn
+        tonalElevation = 0.dp, // Loại bỏ bóng đổ mặc định nếu muốn phẳng hoàn toàn
+        modifier = Modifier.shadow(10.dp)
     ) {
         bottomNavItems.forEach { item ->
             val selected = currentRoute == item.route
