@@ -1,14 +1,23 @@
 package com.example.potago.presentation.screen.detailedvideoscreen
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.content.pm.PackageManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
@@ -18,6 +27,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -47,11 +57,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -72,6 +86,7 @@ fun DetailedVideoScreen(
     navController: NavController,
     viewModel: DetailedVideoViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val subtitlesState by viewModel.subtitlesState.collectAsState()
     val videoState by viewModel.videoState.collectAsState()
     val selectedTabIndex by viewModel.selectedTabIndex.collectAsState()
@@ -84,11 +99,33 @@ fun DetailedVideoScreen(
     val checkResult by viewModel.checkResult.collectAsState()
     val writingProgress by viewModel.writingProgress.collectAsState()
 
+    // Record Test Mode States
+    val isRecordTestMode by viewModel.isRecordTestMode.collectAsState()
+    val recordState by viewModel.recordState.collectAsState()
+    val speakingScore by viewModel.speakingScore.collectAsState()
+    val speakingProgress by viewModel.speakingProgress.collectAsState()
+    val spokenWordIndices by viewModel.spokenWordIndices.collectAsState()
+
+    // Permission launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (isGranted) {
+                viewModel.enterRecordTestMode()
+            }
+        }
+    )
+
     // Hiển thị Mic bar khi ở tab "Xem từng câu" (index 1)
     val showMicBottomSheet = selectedTabIndex == 1
 
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
     var webViewInstance by remember { mutableStateOf<WebView?>(null) }
+
+    val pauseVideo = {
+        exoPlayer?.pause()
+        webViewInstance?.evaluateJavascript("player.pauseVideo();", null)
+    }
 
     val onSeek: (Int) -> Unit = { startTimeMs ->
         if (exoPlayer != null) {
@@ -122,8 +159,7 @@ fun DetailedVideoScreen(
             // LOGIC DỪNG VIDEO KHI Ở CHẾ ĐỘ QUESTION MODE
             if (isQuestionMode && currentSub != null && !isRepeatMode) {
                 if (currentTimeMs >= (currentSub.endTime?.toLong() ?: Long.MAX_VALUE)) {
-                    exoPlayer?.pause()
-                    webViewInstance?.evaluateJavascript("player.pauseVideo();", null)
+                    pauseVideo()
                 }
             }
 
@@ -135,11 +171,18 @@ fun DetailedVideoScreen(
                     if (currentSub != null && (currentTimeMs + 300)  >= (currentSub.endTime?.toLong() ?: Long.MAX_VALUE)) {
                         onSeek(currentSub.startTime ?: 0)
                     }
-                } else if (!isQuestionMode) {
-                    // Chỉ tự động nhảy câu theo video nếu KHÔNG ở chế độ Question Mode
+                } else if (!isQuestionMode && !isRecordTestMode) {
+                    // Chỉ tự động nhảy câu theo video nếu KHÔNG ở chế độ Question Mode/Record Mode
                     viewModel.jumpToSubtitle(finalIndex)
                 }
             }
+        }
+    }
+
+    // Pause video when entering record mode
+    LaunchedEffect(isRecordTestMode) {
+        if (isRecordTestMode) {
+            pauseVideo()
         }
     }
 
@@ -217,7 +260,8 @@ fun DetailedVideoScreen(
                                 onToggleQuestion = { viewModel.toggleQuestionMode() },
                                 userInput = userInput,
                                 onUserInputChange = { viewModel.onUserInputChange(it) },
-                                writingProgress = writingProgress
+                                writingProgress = writingProgress,
+                                speakingProgress = speakingProgress
                             )
                         }
                     }
@@ -226,7 +270,38 @@ fun DetailedVideoScreen(
                 }
             }
 
-
+            // --- Record Mode Overlay ---
+            if (isRecordTestMode && subtitlesState is UiState.Success) {
+                val currentSub = (subtitlesState as UiState.Success<List<Subtitle>>).data?.getOrNull(currentSubtitleIndex)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .clickable(enabled = false) {}
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        Spacer(modifier = Modifier.weight(2.5f))
+                        
+                        // White Box Content
+                        RecordContentBox(
+                            modifier = Modifier.weight(3f),
+                            subtitle = currentSub?.content ?: "",
+                            score = speakingScore,
+                            spokenIndices = spokenWordIndices
+                        )
+                        
+                        Spacer(modifier = Modifier.weight(0.5f))
+                        
+                        // Mascot and Bubble
+                        MascotAndBubbleRecord(
+                            modifier = Modifier.weight(2f)
+                        )
+                        Spacer(modifier = Modifier.weight(2f))
+                    }
+                }
+            }
 
             // Thanh Mic Bar ở dưới cùng
             if (showMicBottomSheet && subtitlesState is UiState.Success) {
@@ -240,7 +315,7 @@ fun DetailedVideoScreen(
                     Surface(
                         modifier = Modifier.fillMaxWidth().shadow(20.dp),
                         tonalElevation = 0.dp,
-                        color = Color.White
+                        color = if (isRecordTestMode )Color.Black else Color.White
                     ) {
                         Row(
                             modifier = Modifier
@@ -249,64 +324,88 @@ fun DetailedVideoScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            // Left Action Button
                             IconButton(
                                 onClick = {
-                                    if (currentSubtitleIndex > 0) {
-                                        val prevIndex = currentSubtitleIndex - 1
-                                        viewModel.prevSubtitle()
-                                        subtitles.getOrNull(prevIndex)?.startTime?.let { onSeek(it) }
+                                    if (isRecordTestMode) {
+                                        viewModel.exitRecordTestMode()
+                                    } else {
+                                        if (currentSubtitleIndex > 0) {
+                                            val prevIndex = currentSubtitleIndex - 1
+                                            viewModel.prevSubtitle()
+                                            subtitles.getOrNull(prevIndex)?.startTime?.let { onSeek(it) }
+                                        }
                                     }
                                 },
-                                enabled = currentSubtitleIndex > 0
+                                enabled = isRecordTestMode || currentSubtitleIndex > 0
                             ) {
                                 Icon(
-                                    painter = painterResource(id = R.drawable.ic_back),
-                                    contentDescription = "Previous",
-                                    modifier = Modifier.size(32.dp),
-                                    tint = if (currentSubtitleIndex > 0) Color(0xFF89E219) else Color.LightGray
+                                    painter = painterResource(id = if (isRecordTestMode) R.drawable.ic_cancel_round else R.drawable.ic_back),
+                                    contentDescription = "Left Action",
+                                    modifier = if (isRecordTestMode) Modifier.size(25.dp) else Modifier.size(32.dp),
+                                    tint = if (currentSubtitleIndex > 0 && !isRecordTestMode) Color(0xFF89E219)
+                                    else if(isRecordTestMode) Color(0xFFFFFFFF) else Color.LightGray
                                 )
                             }
 
                             // Placeholder để giữ khoảng trống cho mic
                             Spacer(modifier = Modifier.width(40.dp))
 
-                            // Next
-                            // Nút Tới câu tiếp theo
+                            // Right Action Button
                             IconButton(
                                 onClick = {
-                                    if (currentSubtitleIndex < subtitles.size - 1) {
-                                        val nextIndex = currentSubtitleIndex + 1
-                                        viewModel.nextSubtitle(subtitles.size)
-                                        subtitles.getOrNull(nextIndex)?.startTime?.let { onSeek(it) }
+                                    if (isRecordTestMode) {
+                                        viewModel.playBackLastRecord()
+                                    } else {
+                                        if (currentSubtitleIndex < subtitles.size - 1) {
+                                            val nextIndex = currentSubtitleIndex + 1
+                                            viewModel.nextSubtitle(subtitles.size)
+                                            subtitles.getOrNull(nextIndex)?.startTime?.let { onSeek(it) }
+                                        }
                                     }
                                 },
-                                enabled = currentSubtitleIndex < subtitles.size - 1
+                                enabled = isRecordTestMode || currentSubtitleIndex < subtitles.size - 1
                             ) {
                                 Icon(
-                                    painter = painterResource(id = R.drawable.ic_back),
-                                    contentDescription = "Next",
+                                    painter = painterResource(id = if (isRecordTestMode) R.drawable.ic_earphone else R.drawable.ic_back),
+                                    contentDescription = "Right Action",
                                     modifier = Modifier
                                         .size(32.dp)
-                                        .graphicsLayer { rotationY = 180f },
-                                    tint = if (currentSubtitleIndex < subtitles.size - 1) Color(0xFF89E219) else Color.LightGray
+                                        .graphicsLayer { if (!isRecordTestMode) rotationY = 180f },
+                                    tint = if (currentSubtitleIndex < subtitles.size - 1&& !isRecordTestMode) Color(0xFF89E219)
+                                    else if(isRecordTestMode) Color(0xFFFFFFFF) else Color.LightGray
                                 )
                             }
                         }
                     }
 
                     // Mic nhô lên hoặc nút Check
+                    val micIcon = when {
+                        isQuestionMode -> R.drawable.ic_check_detailed_video_screen
+                        !isRecordTestMode -> R.drawable.ic_micro_green
+                        recordState == RecordState.RECORDING -> R.drawable.ic_micro_red
+                        else -> R.drawable.ic_micro_blue
+                    }
+                    
                     Image(
-                        painter = painterResource(id = if (isQuestionMode) R.drawable.ic_check_detailed_video_screen else R.drawable.ic_micro_green),
+                        painter = painterResource(id = micIcon),
                         contentDescription = "Action",
                         modifier = Modifier
                             .size(75.dp)
                             .offset(y = -25.dp)
                             .align(Alignment.BottomCenter)
                             .clickable {
-                                if (isQuestionMode) {
-                                    viewModel.checkAnswer()
-                                } else {
-                                    /* TODO Mic logic */
+                                when {
+                                    isQuestionMode -> viewModel.checkAnswer()
+                                    isRecordTestMode -> viewModel.toggleRecord()
+                                    else -> {
+                                        val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                                        if (hasPermission) {
+                                            viewModel.enterRecordTestMode()
+                                        } else {
+                                            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                        }
+                                    }
                                 }
                             }
                     )
@@ -326,6 +425,156 @@ fun DetailedVideoScreen(
 }
 
 @Composable
+fun RecordContentBox(
+    modifier: Modifier,
+    subtitle: String,
+    score: Int,
+    spokenIndices: Set<Int>
+) {
+    Box(
+        modifier = modifier
+            .padding(horizontal = 20.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color.White)
+            .padding(24.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Highlightable subtitle text
+            val words = subtitle.split(Regex("\\s+")).filter { it.isNotBlank() }
+            val annotatedString = buildAnnotatedString {
+                words.forEachIndexed { index, word ->
+                    val color = if (spokenIndices.contains(index)) Color(0xFF3B82F6) else Color.Gray
+                    withStyle(style = SpanStyle(color = color)) {
+                        append(word)
+                    }
+                    if (index < words.size - 1) append(" ")
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(3f), // 👈 phần chiếm space
+                contentAlignment = Alignment.Center // 👈 căn giữa
+            ) {
+                Text(
+                    text = annotatedString,
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(vertical = 16.dp)
+                )
+            }
+            
+            HorizontalDivider(color = Color(0xFFE5E7EB), thickness = 1.dp)
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth().weight(1f).padding(end = 20.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Text(
+                    text = "Độ chính xác: ",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Black
+                )
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ){
+                    Text(
+                        text = "$score",
+                        style = MaterialTheme.typography.displayMedium,
+                        color = if (score >= 80) Color(0xFF89E219) else Color(0xFFF44336)
+                    )
+                    Text(
+                        text = " /80%",
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = Color.Black
+                    )
+
+                }
+
+            }
+        }
+    }
+}
+
+@Composable
+fun MascotAndBubbleRecord(modifier: Modifier = Modifier) {
+    var start by remember { mutableStateOf(false) }
+    var showBubble by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(100)
+        start = true
+        delay(500)
+        showBubble = true
+    }
+
+    val mascotTransition = updateTransition(targetState = start, label = "mascot")
+    val mascotScale by mascotTransition.animateFloat(
+        transitionSpec = { spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow) },
+        label = "scale"
+    ) { if (it) 1f else 0.5f }
+    val mascotAlpha by mascotTransition.animateFloat(label = "alpha") { if (it) 1f else 0f }
+
+    val bubbleTransition = updateTransition(targetState = showBubble, label = "bubble")
+    val bubbleScale by bubbleTransition.animateFloat(
+        transitionSpec = { spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow) },
+        label = "scale"
+    ) { if (it) 1f else 0.4f }
+    val bubbleAlpha by bubbleTransition.animateFloat(label = "alpha") { if (it) 1f else 0f }
+    val bubbleOffsetY by bubbleTransition.animateFloat(label = "offset") { if (it) 0f else 50f }
+
+    Box(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = modifier.fillMaxWidth()
+        ) {
+            // Mascot
+            Image(
+                painter = painterResource(id = R.drawable.ic_looking_mascot),
+                contentDescription = "Mascot",
+                modifier = Modifier
+                    .graphicsLayer {
+                        scaleX = mascotScale
+                        scaleY = mascotScale
+                        alpha = mascotAlpha
+                    },
+            )
+            
+            // Bubble
+            Box(
+                modifier = Modifier
+                    .padding(top= 20.dp,start = 5.dp,end =20.dp)
+                    .graphicsLayer {
+                        scaleX = bubbleScale
+                        scaleY = bubbleScale
+                        alpha = bubbleAlpha
+                        translationY = bubbleOffsetY
+                    }
+                    .background(Color.White, RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp, bottomStart = 12.dp))
+                    .border(1.2.dp, Color(0xFFE5E7EB), RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp, bottomStart = 12.dp))
+                    .padding(horizontal = 15.dp, vertical = 20.dp)
+                    .widthIn(max = 250.dp)
+            ) {
+                Text(
+                    text = "Nhắm làm được không đó?!\nĐúng trên 80% sẽ có thưởng đó",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color(0xFF4B5563)
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun SingleSubtitleView(
     subtitles: List<Subtitle>,
     currentIndex: Int,
@@ -335,7 +584,8 @@ fun SingleSubtitleView(
     onToggleQuestion: () -> Unit,
     userInput: String,
     onUserInputChange: (String) -> Unit,
-    writingProgress: Int
+    writingProgress: Int,
+    speakingProgress: Int
 ) {
     Column(
         modifier = Modifier
@@ -356,7 +606,8 @@ fun SingleSubtitleView(
             )
             EarnPointsButton(
                 modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
-                writingProgress = writingProgress
+                writingProgress = writingProgress,
+                speakingProgress = speakingProgress
             ){ /* TODO */ }
             UploadButtonLike(
                 iconRes = R.drawable.ic_random,
@@ -608,9 +859,10 @@ fun UploadButtonLike(
 private fun EarnPointsButton(
     modifier: Modifier,
     writingProgress: Int,
+    speakingProgress: Int,
     onClick: () -> Unit
 ) {
-    var isClicked by remember { mutableStateOf(false) }
+    val isAllDone = writingProgress >= 3 && speakingProgress >= 3
     var isPressed by remember { mutableStateOf(false) }
     val animatedScale by animateFloatAsState(targetValue = if (isPressed) 0.96f else 1f, label = "")
     val animatedHeight by animateDpAsState(targetValue = if (isPressed) 52.dp else 48.dp, label = "")
@@ -620,9 +872,9 @@ private fun EarnPointsButton(
             .fillMaxWidth()
             .height(52.dp)
             .graphicsLayer { scaleX = animatedScale; scaleY = animatedScale }
-            .border(1.2.dp, if (isClicked) Color(0xFF46A302)else Color(0xFFE5E5E5), RoundedCornerShape(16.dp))
+            .border(1.2.dp, if (isAllDone) Color(0xFF46A302)else Color(0xFFE5E5E5), RoundedCornerShape(16.dp))
             .clip(RoundedCornerShape(16.dp))
-            .background(color =if (isClicked) Color(0xFF46A302)else Color(0xFFE5E5E5))
+            .background(color =if (isAllDone) Color(0xFF46A302)else Color(0xFFE5E5E5))
     ) {
         Box(
             modifier = Modifier
@@ -631,22 +883,22 @@ private fun EarnPointsButton(
                 .clip(RoundedCornerShape(16.dp))
                 .background(color = Color(0xFFFFFFFF))
                 .padding(horizontal = 12.dp, vertical = 8.dp)
-                .pointerInput(Unit) {
+                .pointerInput(isAllDone) {
                     detectTapGestures(
-                        onPress = { isPressed = true; tryAwaitRelease(); isPressed = false },
-                        onTap = { isClicked = !isClicked ;onClick() }
+                        onPress = { if(isAllDone) { isPressed = true; tryAwaitRelease(); isPressed = false } },
+                        onTap = { if(isAllDone) onClick() }
                     )
                 },
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = "Số câu đã luyện nói đúng : 0/3",
-                    style = MaterialTheme.typography.labelSmall.copy(color = if (isClicked) Color(0xFF58CC02) else Color.LightGray, fontSize = 12.sp)
+                    text = "Số câu đã luyện nói đúng : $speakingProgress/3",
+                    style = MaterialTheme.typography.labelSmall.copy(color = if (isAllDone) Color(0xFF58CC02) else Color.LightGray, fontSize = 12.sp)
                 )
                 Text(
                     text = "Số câu đã luyện viết đúng : $writingProgress/3",
-                    style = MaterialTheme.typography.labelSmall.copy(color = if (isClicked) Color(0xFF58CC02) else Color.LightGray, fontSize = 12.sp)
+                    style = MaterialTheme.typography.labelSmall.copy(color = if (isAllDone) Color(0xFF58CC02) else Color.LightGray, fontSize = 12.sp)
                 )
             }
         }

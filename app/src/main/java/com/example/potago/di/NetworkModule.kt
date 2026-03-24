@@ -20,7 +20,8 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    private const val BASE_URL = "https://potagp-be.onrender.com"
+   private const val BASE_URL = "https://sonex.foo"
+
 
     @Provides
     @Singleton
