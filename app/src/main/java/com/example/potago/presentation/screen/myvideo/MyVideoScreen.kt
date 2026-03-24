@@ -8,7 +8,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -37,7 +36,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.potago.R
 import com.example.potago.domain.model.Video
-import com.example.potago.presentation.navigation.Screen
+import com.example.potago.presentation.screen.UiEvent
 import com.example.potago.presentation.screen.UiState
 import com.example.potago.presentation.ui.component.ShimmerItem
 
@@ -46,17 +45,14 @@ fun MyVideoScreen(
     navController: NavController,
     viewModel: MyVideoViewModel = hiltViewModel()
 ) {
-    val videos by viewModel.videos.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
-    val selectedTab by viewModel.selectedTab.collectAsState()
-    val processingJob by viewModel.processingJob.collectAsState()
-    
+    val snackbarHostState = remember { SnackbarHostState() }
     val lifecycleOwner = LocalLifecycleOwner.current
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.refresh()
+                viewModel.onEvent(MyVideoEvent.Refresh)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -65,57 +61,46 @@ fun MyVideoScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                onBackClick = { navController.popBackStack() },
-                onAddClick = { navController.navigate(Screen.AddVideo.route) }
-            )
-        },
-        floatingActionButton = {
-            Box(contentAlignment = Alignment.Center) {
-                if (processingJob != null) {
-                    CircularProgressIndicator(
-                        progress = { (processingJob?.progress?.toFloat() ?: 0f) / 100f },
-                        modifier = Modifier.size(64.dp),
-                        color = Color(0xFF58CC02),
-                        strokeWidth = 3.dp,
-                        trackColor = Color(0xFFEEEEEE)
-                    )
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is UiEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(event.message)
                 }
-                
-                Surface(
-                    shape = CircleShape,
-                    border = if (processingJob == null) BorderStroke(1.dp, Color(0x4D3B82F6)) else null,
-                    color = Color.Transparent
-                ) {
-                    FloatingActionButton(
-                        onClick = { navController.navigate(Screen.ManageVideo.route) },
-                        containerColor = Color.White,
-                        contentColor = Color(0xFF4285F4),
-                        shape = CircleShape,
-                        elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_folder),
-                            contentDescription = "Folder",
-                            modifier = Modifier.size(24.dp)
-                        )
+                is UiEvent.Navigate -> {
+                    navController.navigate(event.route) {
+                        event.popUpTo?.let {
+                            popUpTo(it) {
+                                inclusive = event.inclusive
+                            }
+                        }
                     }
                 }
             }
         }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                onBackClick = { navController.popBackStack() },
+                onAddClick = { viewModel.onEvent(MyVideoEvent.NavigateToAddVideo) }
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        floatingActionButton = {
+            ProcessingFab(
+                processingJob = uiState.processingJob,
+                onClick = { viewModel.onEvent(MyVideoEvent.NavigateToManageVideo) }
+            )
+        }
     ) { innerPadding ->
+        // Giữ nguyên theo yêu cầu của user: Box này có vẻ thừa nhưng user muốn giữ để làm đẹp
         Box(modifier = Modifier.padding(innerPadding))
+        
         MyVideoContent(
-            videos = videos,
             uiState = uiState,
-            selectedTab = selectedTab,
-            onTabSelected = { viewModel.onTabSelected(it) },
-            onLoadMore = { viewModel.loadMoreVideos() },
-            onVideoClick = { videoId ->
-                navController.navigate(Screen.DetailedVideo(videoId))
-            }
+            onEvent = viewModel::onEvent
         )
     }
 }
@@ -123,72 +108,68 @@ fun MyVideoScreen(
 @Composable
 private fun MyVideoContent(
     modifier: Modifier = Modifier,
-    videos: List<Video>,
-    uiState: UiState<Unit>,
-    selectedTab: String,
-    onTabSelected: (String) -> Unit,
-    onLoadMore: () -> Unit,
-    onVideoClick: (Int) -> Unit
+    uiState: MyVideoUiState,
+    onEvent: (MyVideoEvent) -> Unit
 ) {
     val tabs = listOf("All", "Youtube", "File")
     val listState = rememberLazyListState()
 
-    // Detect when reaching the end of the list
     val shouldLoadMore = remember {
         derivedStateOf {
             val lastVisibleItemIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisibleItemIndex >= videos.size - 2 && videos.isNotEmpty()
+            lastVisibleItemIndex >= uiState.videos.size - 2 && uiState.videos.isNotEmpty()
         }
     }
 
     LaunchedEffect(shouldLoadMore.value) {
         if (shouldLoadMore.value) {
-            onLoadMore()
+            onEvent(MyVideoEvent.LoadMore)
         }
     }
 
     LazyColumn(
         state = listState,
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 80.dp) // Space for FAB
+        modifier = modifier.fillMaxSize()
+            .background(color = Color.White),
+        contentPadding = PaddingValues(bottom = 80.dp)
     ) {
-        item{
+        // Giữ nguyên theo yêu cầu của user: Spacer này để tạo khoảng trống phía trên
+        item {
             Spacer(modifier = Modifier.height(80.dp))
         }
+
         item {
             LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 contentPadding = PaddingValues(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(tabs) { tab ->
                     FilterTab(
                         text = tab,
-                        isSelected = selectedTab == tab,
-                        onClick = { onTabSelected(tab) }
+                        isSelected = uiState.selectedTab == tab,
+                        onClick = { onEvent(MyVideoEvent.TabSelected(tab)) }
                     )
                 }
             }
         }
 
-        if (uiState is UiState.Success && videos.isEmpty()) {
+        if (uiState.videosUiState is UiState.Success && uiState.videos.isEmpty()) {
             item {
                 EmptyVideosView()
             }
         } else {
-            items(videos) { video ->
+            items(uiState.videos) { video ->
                 VideoItem(
                     video = video,
-                    onClick = { onVideoClick(video.id) }
+                    onClick = { onEvent(MyVideoEvent.VideoClicked(video.id)) }
                 )
             }
         }
 
-        // Loading/Error states
-        when (uiState) {
+        when (val state = uiState.videosUiState) {
             is UiState.Loading -> {
-                if (videos.isEmpty()) {
+                if (uiState.videos.isEmpty()) {
                     items(5) {
                         VideoItemShimmer()
                     }
@@ -208,13 +189,51 @@ private fun MyVideoContent(
             is UiState.Error -> {
                 item {
                     Text(
-                        text = uiState.message,
+                        text = state.message,
                         color = Color.Red,
                         modifier = Modifier.padding(16.dp)
                     )
                 }
             }
             else -> {}
+        }
+    }
+}
+
+@Composable
+fun ProcessingFab(
+    processingJob: com.example.potago.data.local.ProcessingJob?,
+    onClick: () -> Unit
+) {
+    Box(contentAlignment = Alignment.Center) {
+        if (processingJob != null) {
+            CircularProgressIndicator(
+                progress = { (processingJob.progress.toFloat()) / 100f },
+                modifier = Modifier.size(64.dp),
+                color = Color(0xFF58CC02),
+                strokeWidth = 3.dp,
+                trackColor = Color(0xFFEEEEEE)
+            )
+        }
+        
+        Surface(
+            shape = CircleShape,
+            border = if (processingJob == null) BorderStroke(1.dp, Color(0x4D3B82F6)) else null,
+            color = Color.Transparent
+        ) {
+            FloatingActionButton(
+                onClick = onClick,
+                containerColor = Color.White,
+                contentColor = Color(0xFF4285F4),
+                shape = CircleShape,
+                elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp)
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_folder),
+                    contentDescription = "Folder",
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         }
     }
 }
@@ -321,7 +340,6 @@ fun VideoItemShimmer() {
     }
 }
 
-
 @Composable
 private fun TopAppBar(
     onBackClick: () -> Unit = {},
@@ -337,7 +355,8 @@ private fun TopAppBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically) {
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             BackButton(onBackClick)
             Spacer(modifier = Modifier.width(16.dp))
             Text(
@@ -345,16 +364,15 @@ private fun TopAppBar(
                 style = MaterialTheme.typography.displayMedium,
                 modifier = Modifier.weight(1f)
             )
-            AddButon(onAddClick)
+            AddButton(onAddClick)
         }
     }
 }
 
 @Composable
-fun AddButon(
+fun AddButton(
     onClick: () -> Unit
 ) {
-
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -397,4 +415,10 @@ private fun BackButton(
             modifier = Modifier.scale(scale)
         )
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun MyVideoScreenPreview() {
+    MyVideoScreen(navController = NavController(LocalContext.current))
 }

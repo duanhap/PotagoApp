@@ -20,6 +20,8 @@ interface VideoRepository {
         termLangCode: String
     ): Result<Pair<Video, String?>>
 
+    suspend fun openPublicVideo(publicVideoId: Int): Result<Video>
+
     suspend fun syncJobStatus(videoId: Int, jobId: String): Result<JobStatus>
     suspend fun cancelJob(videoId: Int, jobId: String): Result<Unit>
 

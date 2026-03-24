@@ -12,25 +12,15 @@ import com.example.potago.presentation.screen.UiState
 import com.example.potago.util.NotificationHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-data class ManageVideoUiState(
-    val processedVideos: List<Video> = emptyList(),
-    val processingJob: ProcessingJob? = null,
-    val uiState: UiState<Unit> = UiState.Idle,
-    val isLastPage: Boolean = false,
-    val currentPage: Int = 1,
-    val isDeleting: Boolean = false,
-    val isCanceling: Boolean = false,
-    val deleteResult: UiState<Unit> = UiState.Idle
-)
 
 @HiltViewModel
 class ManageVideoViewModel @Inject constructor(
@@ -40,17 +30,36 @@ class ManageVideoViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ManageVideoUiState())
-    val uiState = _uiState.asStateFlow()
+    val uiState: StateFlow<ManageVideoUiState> = _uiState.asStateFlow()
 
-    private val _uiEvent = MutableSharedFlow<UiEvent>()
-    val uiEvent = _uiEvent.asSharedFlow()
+    private val _uiEvent = Channel<UiEvent>()
+    val uiEvent = _uiEvent.receiveAsFlow()
 
     private val pageSize = 10
     private var pollingJob: Job? = null
 
     init {
-        loadProcessedVideos()
+        loadProcessedVideos(isRefresh = true)
         observeProcessingJob()
+    }
+
+    fun onEvent(event: ManageVideoEvent) {
+        when (event) {
+            ManageVideoEvent.LoadMore -> {
+                if (!_uiState.value.isLastPage && _uiState.value.uiState !is UiState.Loading) {
+                    loadProcessedVideos(isRefresh = false)
+                }
+            }
+            is ManageVideoEvent.DeleteVideo -> {
+                deleteVideo(event.videoId)
+            }
+            ManageVideoEvent.CancelJob -> {
+                cancelJob()
+            }
+            ManageVideoEvent.Refresh -> {
+                loadProcessedVideos(isRefresh = true)
+            }
+        }
     }
 
     private fun observeProcessingJob() {
@@ -90,7 +99,6 @@ class ManageVideoViewModel @Inject constructor(
                             ))
                         }
                     }
-                    is Result.Error -> {}
                     else -> {}
                 }
                 delay(3000)
@@ -98,13 +106,14 @@ class ManageVideoViewModel @Inject constructor(
         }
     }
 
-    fun loadProcessedVideos(isRefresh: Boolean = false) {
-        if (_uiState.value.uiState is UiState.Loading && !isRefresh) return
-        if (!isRefresh && _uiState.value.isLastPage) return
-
+    private fun loadProcessedVideos(isRefresh: Boolean) {
         val pageToLoad = if (isRefresh) 1 else _uiState.value.currentPage
 
-        _uiState.update { it.copy(uiState = if (isRefresh) UiState.Idle else UiState.Loading) }
+        if (isRefresh) {
+            _uiState.update { it.copy(uiState = UiState.Loading, isLastPage = false) }
+        } else {
+            _uiState.update { it.copy(uiState = UiState.Loading) }
+        }
 
         viewModelScope.launch {
             val result = videoRepository.getMyVideos(typeVideo = null, page = pageToLoad, size = pageSize)
@@ -121,15 +130,15 @@ class ManageVideoViewModel @Inject constructor(
                     }
                 }
                 is Result.Error -> {
-                    _uiState.update { it.copy(uiState = UiState.Error(result.message)) }
+                    _uiState.update { it.copy(uiState = UiState.Error(result.message ?: "Unknown error")) }
                 }
                 else -> {}
             }
         }
     }
 
-    fun deleteVideo(videoId: Int) {
-        _uiState.update { it.copy(isDeleting = true, deleteResult = UiState.Loading) }
+    private fun deleteVideo(videoId: Int) {
+        _uiState.update { it.copy(isDeleting = true) }
         viewModelScope.launch {
             val result = videoRepository.deleteVideo(videoId)
             when (result) {
@@ -137,20 +146,23 @@ class ManageVideoViewModel @Inject constructor(
                     _uiState.update { state ->
                         state.copy(
                             processedVideos = state.processedVideos.filter { it.id != videoId },
-                            isDeleting = false,
-                            deleteResult = UiState.Success(Unit)
+                            isDeleting = false
                         )
                     }
+                    _uiEvent.send(UiEvent.ShowSnackbar("Xóa video thành công"))
                 }
                 is Result.Error -> {
-                    _uiState.update { it.copy(isDeleting = false, deleteResult = UiState.Error(result.message)) }
+                    _uiState.update { it.copy(isDeleting = false) }
+                    _uiEvent.send(UiEvent.ShowSnackbar(result.message ?: "Lỗi khi xóa video"))
                 }
-                else -> {}
+                else -> {
+                    _uiState.update { it.copy(isDeleting = false) }
+                }
             }
         }
     }
 
-    fun cancelJob() {
+    private fun cancelJob() {
         val currentJob = _uiState.value.processingJob ?: return
         
         viewModelScope.launch {
@@ -159,20 +171,35 @@ class ManageVideoViewModel @Inject constructor(
             when (result) {
                 is Result.Success -> {
                     jobDataStore.clearJob()
-                    _uiEvent.emit(UiEvent.ShowSnackbar("Đã hủy xử lý video thành công"))
+                    _uiEvent.send(UiEvent.ShowSnackbar("Đã hủy xử lý video thành công"))
                     _uiState.update { it.copy(isCanceling = false) }
                     loadProcessedVideos(isRefresh = true)
                 }
                 is Result.Error -> {
                     _uiState.update { it.copy(isCanceling = false) }
-                    _uiEvent.emit(UiEvent.ShowSnackbar("Lỗi: ${result.message}"))
+                    _uiEvent.send(UiEvent.ShowSnackbar("Lỗi: ${result.message}"))
                 }
-                else -> {}
+                else -> {
+                    _uiState.update { it.copy(isCanceling = false) }
+                }
             }
         }
     }
+}
 
-    fun resetDeleteResult() {
-        _uiState.update { it.copy(deleteResult = UiState.Idle) }
-    }
+data class ManageVideoUiState(
+    val processedVideos: List<Video> = emptyList(),
+    val processingJob: ProcessingJob? = null,
+    val uiState: UiState<Unit> = UiState.Idle,
+    val isLastPage: Boolean = false,
+    val currentPage: Int = 1,
+    val isDeleting: Boolean = false,
+    val isCanceling: Boolean = false
+)
+
+sealed class ManageVideoEvent {
+    object LoadMore : ManageVideoEvent()
+    data class DeleteVideo(val videoId: Int) : ManageVideoEvent()
+    object CancelJob : ManageVideoEvent()
+    object Refresh : ManageVideoEvent()
 }

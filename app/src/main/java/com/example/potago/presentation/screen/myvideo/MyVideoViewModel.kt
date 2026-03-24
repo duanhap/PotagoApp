@@ -7,11 +7,16 @@ import com.example.potago.data.local.ProcessingJob
 import com.example.potago.domain.model.Result
 import com.example.potago.domain.model.Video
 import com.example.potago.domain.usecase.GetMyVideosUseCase
+import com.example.potago.presentation.navigation.Screen
+import com.example.potago.presentation.screen.UiEvent
 import com.example.potago.presentation.screen.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -21,22 +26,14 @@ class MyVideoViewModel @Inject constructor(
     private val jobDataStore: JobDataStore
 ) : ViewModel() {
 
-    private val _videos = MutableStateFlow<List<Video>>(emptyList())
-    val videos: StateFlow<List<Video>> = _videos
+    private val _uiState = MutableStateFlow(MyVideoUiState())
+    val uiState: StateFlow<MyVideoUiState> = _uiState.asStateFlow()
 
-    private val _uiState = MutableStateFlow<UiState<Unit>>(UiState.Loading)
-    val uiState: StateFlow<UiState<Unit>> = _uiState
-
-    private val _selectedTab = MutableStateFlow("All")
-    val selectedTab: StateFlow<String> = _selectedTab
-
-    private val _processingJob = MutableStateFlow<ProcessingJob?>(null)
-    val processingJob = _processingJob.asStateFlow()
+    private val _uiEvent = Channel<UiEvent>()
+    val uiEvent = _uiEvent.receiveAsFlow()
 
     private var currentPage = 1
     private val pageSize = 10
-    private var isLastPage = false
-    private var isFetching = false
 
     init {
         loadVideos(reset = true)
@@ -46,42 +43,63 @@ class MyVideoViewModel @Inject constructor(
     private fun observeProcessingJob() {
         viewModelScope.launch {
             jobDataStore.getJob().collect { job ->
-                _processingJob.value = job
+                _uiState.update { it.copy(processingJob = job) }
             }
         }
     }
 
-    fun onTabSelected(tab: String) {
-        if (_selectedTab.value != tab) {
-            _selectedTab.value = tab
-            loadVideos(reset = true)
+    fun onEvent(event: MyVideoEvent) {
+        when (event) {
+            is MyVideoEvent.TabSelected -> {
+                if (_uiState.value.selectedTab != event.tab) {
+                    _uiState.update { it.copy(selectedTab = event.tab) }
+                    loadVideos(reset = true)
+                }
+            }
+            is MyVideoEvent.VideoClicked -> {
+                viewModelScope.launch {
+                    _uiEvent.send(UiEvent.Navigate(Screen.DetailedVideo(event.videoId)))
+                }
+            }
+            MyVideoEvent.LoadMore -> {
+                if (!_uiState.value.isLastPage && !_uiState.value.isFetching) {
+                    loadVideos(reset = false)
+                }
+            }
+            MyVideoEvent.Refresh -> {
+                loadVideos(reset = true)
+            }
+            MyVideoEvent.NavigateToAddVideo -> {
+                viewModelScope.launch {
+                    _uiEvent.send(UiEvent.Navigate(Screen.AddVideo.route))
+                }
+            }
+            MyVideoEvent.NavigateToManageVideo -> {
+                viewModelScope.launch {
+                    _uiEvent.send(UiEvent.Navigate(Screen.ManageVideo.route))
+                }
+            }
         }
-    }
-
-    fun loadMoreVideos() {
-        if (!isLastPage && !isFetching) {
-            loadVideos(reset = false)
-        }
-    }
-    
-    fun refresh() {
-        loadVideos(reset = true)
     }
 
     private fun loadVideos(reset: Boolean) {
-        if (isFetching && !reset) return
-        isFetching = true
+        if (_uiState.value.isFetching && !reset) return
 
         if (reset) {
             currentPage = 1
-            isLastPage = false
-            // Không nên xóa list ngay lập tức để tránh bị nháy màn hình khi refresh
-            // _videos.value = emptyList() 
-            if (_videos.value.isEmpty()) _uiState.value = UiState.Loading
+            _uiState.update { 
+                it.copy(
+                    isFetching = true, 
+                    isLastPage = false,
+                    videosUiState = if (it.videos.isEmpty()) UiState.Loading else it.videosUiState
+                ) 
+            }
+        } else {
+            _uiState.update { it.copy(isFetching = true) }
         }
 
         viewModelScope.launch {
-            val typeVideo = when (_selectedTab.value) {
+            val typeVideo = when (_uiState.value.selectedTab) {
                 "Youtube" -> "youtube"
                 "File" -> "file"
                 else -> null
@@ -90,29 +108,51 @@ class MyVideoViewModel @Inject constructor(
             when (val result = getMyVideosUseCase(typeVideo, currentPage, pageSize)) {
                 is Result.Success -> {
                     val newVideos = result.data
-                    if (reset) {
-                        _videos.value = newVideos
-                        currentPage = 2
-                        isLastPage = newVideos.size < pageSize
-                    } else {
-                        if (newVideos.isEmpty()) {
-                            isLastPage = true
-                        } else {
-                            _videos.value = _videos.value + newVideos
-                            currentPage++
-                            if (newVideos.size < pageSize) {
-                                isLastPage = true
-                            }
-                        }
+                    _uiState.update { state ->
+                        val updatedVideos = if (reset) newVideos else state.videos + newVideos
+                        state.copy(
+                            videos = updatedVideos,
+                            videosUiState = UiState.Success(Unit),
+                            isLastPage = newVideos.size < pageSize,
+                            isFetching = false
+                        )
                     }
-                    _uiState.value = UiState.Success(Unit)
+                    if (reset) {
+                        currentPage = 2
+                    } else if (newVideos.isNotEmpty()) {
+                        currentPage++
+                    }
                 }
                 is Result.Error -> {
-                    _uiState.value = UiState.Error(result.message ?: "Unknown error")
+                    _uiState.update { 
+                        it.copy(
+                            videosUiState = UiState.Error(result.message ?: "Unknown error"),
+                            isFetching = false
+                        ) 
+                    }
                 }
-                else -> {}
+                else -> {
+                    _uiState.update { it.copy(isFetching = false) }
+                }
             }
-            isFetching = false
         }
     }
+}
+
+data class MyVideoUiState(
+    val videos: List<Video> = emptyList(),
+    val videosUiState: UiState<Unit> = UiState.Loading,
+    val selectedTab: String = "All",
+    val processingJob: ProcessingJob? = null,
+    val isFetching: Boolean = false,
+    val isLastPage: Boolean = false
+)
+
+sealed class MyVideoEvent {
+    data class TabSelected(val tab: String) : MyVideoEvent()
+    data class VideoClicked(val videoId: Int) : MyVideoEvent()
+    object LoadMore : MyVideoEvent()
+    object Refresh : MyVideoEvent()
+    object NavigateToAddVideo : MyVideoEvent()
+    object NavigateToManageVideo : MyVideoEvent()
 }

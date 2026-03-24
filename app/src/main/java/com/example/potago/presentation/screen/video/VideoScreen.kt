@@ -4,29 +4,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,7 +17,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,6 +26,7 @@ import coil.compose.AsyncImage
 import com.example.potago.R
 import com.example.potago.domain.model.Video
 import com.example.potago.presentation.navigation.Screen
+import com.example.potago.presentation.screen.UiEvent
 import com.example.potago.presentation.screen.UiState
 import com.example.potago.presentation.ui.component.ShimmerItem
 
@@ -52,77 +35,113 @@ fun VideoScreen(
     navController: NavController,
     viewModel: VideoViewModel = hiltViewModel()
 ) {
-    val recommendedVideosState by viewModel.recommendedVideos.collectAsState()
-    val myVideosState by viewModel.myVideos.collectAsState()
-    val recentVideosState by viewModel.recentVideos.collectAsState()
-    val selectedLangIndex by viewModel.selectedLangIndex.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is UiEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+                is UiEvent.Navigate -> {
+                    navController.navigate(event.route) {
+                        event.popUpTo?.let {
+                            popUpTo(it) {
+                                inclusive = event.inclusive
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     Scaffold(
-        topBar = {
-            TopAppBar()
-        },
+        topBar = { TopAppBar() },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp)
-        ) {
-            item {
-                Spacer(modifier = Modifier.height(20.dp))
-                Image(
-                    painter = painterResource(id = R.drawable.video_screen_mascot),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxWidth(),
-                    contentScale = ContentScale.FillWidth
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-            }
+        Box(modifier = Modifier.padding(innerPadding))
+        VideoContent(
+            modifier = Modifier,
+            uiState = uiState,
+            onEvent = viewModel::onEvent,
+            onSeeMoreRecommended = { navController.navigate(Screen.RecommendVideo.route) },
+            onSeeMoreMyVideos = { navController.navigate(Screen.MyVideo.route) }
+        )
+    }
+}
 
-            item {
-                SectionHeader(
-                    title = "Đề xuất",
-                    onSeeMoreClick = { navController.navigate(Screen.RecommendVideo.route) },
-                    showSeeMore = true
-                )
-                FilterChips(
-                    selectedIndex = selectedLangIndex,
-                    onTabSelected = { index ->
-                        viewModel.onLanguageTabSelected(index)
-                    }
-                )
-                VideoListHorizontal(
-                    uiState = recommendedVideosState,
-                    onVideoClick = { videoId ->
-                        // Đề xuất thì chưa cần vào detailed video vội hoặc tùy logic
-                        // Theo yêu cầu chỉ nhấn vào Gần đây xem và Video của bạn
-                    }
-                )
-            }
+@Composable
+private fun VideoContent(
+    modifier: Modifier = Modifier,
+    uiState: VideoUiState,
+    onEvent: (VideoEvent) -> Unit,
+    onSeeMoreRecommended: () -> Unit,
+    onSeeMoreMyVideos: () -> Unit
+) {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .background(color = Color.White),
+        contentPadding = PaddingValues(horizontal = 20.dp)
+    ) {
+        item {
+            Spacer(modifier = Modifier.height(90.dp))
+            Image(
+                painter = painterResource(id = R.drawable.video_screen_mascot),
+                contentDescription = null,
+                modifier = Modifier.fillMaxWidth(),
+                contentScale = ContentScale.FillWidth
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+        }
 
-            item {
-                SectionHeader(title = "Gần đây xem", onSeeMoreClick = {}, showSeeMore = false)
-                VideoListHorizontal(
-                    uiState = recentVideosState,
-                    onVideoClick = { videoId ->
-                        navController.navigate(Screen.DetailedVideo(videoId))
-                    }
-                )
-            }
+        item {
+            SectionHeader(
+                title = "Đề xuất",
+                onSeeMoreClick = onSeeMoreRecommended,
+                showSeeMore = true
+            )
+            FilterChips(
+                selectedIndex = uiState.selectedLangIndex,
+                onTabSelected = { index ->
+                    onEvent(VideoEvent.LanguageTabSelected(index))
+                }
+            )
+            VideoListHorizontal(
+                uiState = uiState.recommendedVideos,
+                onVideoClick = { videoId ->
+                    onEvent(VideoEvent.RecommendedVideoClicked(videoId))
+                }
+            )
+        }
 
-            item {
-                SectionHeader(
-                    title = "Video của bạn",
-                    onSeeMoreClick = { navController.navigate(Screen.MyVideo.route) },
-                    showSeeMore = true
-                )
-                VideoListHorizontal(
-                    uiState = myVideosState,
-                    onVideoClick = { videoId ->
-                        navController.navigate(Screen.DetailedVideo(videoId))
-                    }
-                )
-            }
+        item {
+            SectionHeader(title = "Gần đây xem", onSeeMoreClick = {}, showSeeMore = false)
+            VideoListHorizontal(
+                uiState = uiState.recentVideos,
+                onVideoClick = { videoId ->
+                    onEvent(VideoEvent.VideoClicked(videoId))
+                }
+            )
+        }
+
+        item {
+            SectionHeader(
+                title = "Video của bạn",
+                onSeeMoreClick = onSeeMoreMyVideos,
+                showSeeMore = true
+            )
+            VideoListHorizontal(
+                uiState = uiState.myVideos,
+                onVideoClick = { videoId ->
+                    onEvent(VideoEvent.VideoClicked(videoId))
+                }
+            )
+        }
+        item {
+            Spacer(modifier = Modifier.height(20.dp))
         }
     }
 }
@@ -133,7 +152,7 @@ private fun TopAppBar() {
         modifier = Modifier.fillMaxWidth(),
         tonalElevation = 3.dp,
         shadowElevation = 4.dp,
-        color = Color(0xFFFFFFFF)
+        color = Color.White
     ) {
         Row(
             modifier = Modifier
@@ -197,7 +216,7 @@ fun FilterChips(
                 modifier = Modifier
                     .border(
                         width = 1.dp,
-                        color = if (isSelected) Color.Black else Color.LightGray,
+                        color = if (isSelected) Color.Black else Color.LightGray.copy(alpha = 0.5f),
                         shape = RoundedCornerShape(20.dp)
                     )
                     .clip(RoundedCornerShape(20.dp))
@@ -209,7 +228,7 @@ fun FilterChips(
                 Text(
                     text = filters[index],
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.Black
+                    color = if (isSelected) Color.Black else Color.Gray
                 )
             }
         }
@@ -251,7 +270,11 @@ fun VideoListHorizontal(
             }
         }
         is UiState.Error -> {
-            Text(text = uiState.message, color = Color.Red, modifier = Modifier.padding(vertical = 8.dp))
+            Text(
+                text = uiState.message,
+                color = Color.Red,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
         }
         else -> {}
     }
@@ -259,6 +282,14 @@ fun VideoListHorizontal(
 
 @Composable
 fun EmptyBoxView() {
+    val images = listOf(
+        R.drawable.empty_box,
+        R.drawable.empty_box_1,
+        R.drawable.empty_box_2,
+        R.drawable.empty_box_3
+    )
+    val randomImage = remember { images.random() }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -266,7 +297,7 @@ fun EmptyBoxView() {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Image(
-            painter = painterResource(id = R.drawable.empty_box),
+            painter = painterResource(id = randomImage),
             contentDescription = null,
             modifier = Modifier.size(100.dp)
         )
@@ -296,7 +327,7 @@ fun VideoItem(video: Video, onClick: () -> Unit) {
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color.LightGray),
             contentScale = ContentScale.Crop,
-            error = painterResource(id = R.drawable.video_screen_mascot) // Placeholder error
+            error = painterResource(id = R.drawable.video_screen_mascot)
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
