@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.Image
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -60,23 +61,13 @@ private fun FlashCardScreenContent(
         Spacer(modifier = Modifier.weight(1f))
         FlashCardBottomActions()
         Spacer(modifier = Modifier.height(76.dp))
-        Box(
+        Image(
+            painter = painterResource(id = R.drawable.ic_flashcard_slideup_button),
+            contentDescription = "Slide up",
             modifier = Modifier
                 .fillMaxWidth()
                 .height(59.dp)
-                .background(
-                    color = Color(0xFF3B82F6),
-                    shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "^",
-                color = Color.White,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
-        }
+        )
     }
 }
 
@@ -198,12 +189,12 @@ private fun FlashCardPanel() {
                 color = Color(0xFF1F2937)
             )
             Spacer(modifier = Modifier.height(120.dp))
-            Text(
-                text = "Tap to flip",
-                fontSize = 12.sp,
-                lineHeight = 20.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color(0xFF9CA3AF)
+            Image(
+                painter = painterResource(id = R.drawable.ic_flashcard_flip_button),
+                contentDescription = "Tap to flip",
+                modifier = Modifier
+                    .width(87.dp)
+                    .height(20.dp)
             )
         }
     }
