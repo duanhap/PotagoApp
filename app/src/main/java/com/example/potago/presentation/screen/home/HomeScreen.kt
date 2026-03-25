@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.potago.R
+import com.example.potago.presentation.navigation.Screen
 import kotlinx.coroutines.delay
 
 @Composable
@@ -94,7 +95,7 @@ fun HomeScreen(
                         iconTint = Color(0xFF9333EA), // Purple
                         modifier = Modifier.weight(1f),
                         onItemClick = {
-    //                        navController.navigate(Screen.ShopScreen.route)
+                            navController.navigate(Screen.Shop.route)
                         }
                     )
                     Spacer(modifier = Modifier.width(12.dp))
@@ -357,7 +358,7 @@ fun FeatureBox(
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White)
             .border(1.dp, Color(0xFFF3F4F6), RoundedCornerShape(16.dp))
-            .clickable { onItemClick }
+            .clickable { onItemClick() }
     ) {
         Column(
             modifier = Modifier
