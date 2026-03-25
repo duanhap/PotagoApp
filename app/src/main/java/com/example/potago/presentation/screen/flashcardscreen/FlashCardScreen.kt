@@ -30,22 +30,28 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.potago.R
+import com.example.potago.presentation.navigation.Screen
 
 @Composable
 fun FlashCardScreen(
     navController: NavController,
+    wordSetId: Long,
     wordSetName: String
 ) {
     FlashCardScreenContent(
         title = if (wordSetName.isBlank()) "Học phần" else wordSetName,
-        onBackClick = { navController.popBackStack() }
+        onBackClick = { navController.popBackStack() },
+        onSlideUpClick = {
+            navController.navigate(Screen.DetailCourse(wordSetId, wordSetName))
+        }
     )
 }
 
 @Composable
 private fun FlashCardScreenContent(
     title: String,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onSlideUpClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -67,6 +73,7 @@ private fun FlashCardScreenContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(59.dp)
+                .clickable(onClick = onSlideUpClick)
         )
     }
 }
@@ -240,6 +247,7 @@ private fun FlashCardBottomActions() {
 private fun FlashCardScreenPreview() {
     FlashCardScreenContent(
         title = "Học phần",
-        onBackClick = {}
+        onBackClick = {},
+        onSlideUpClick = {}
     )
 }
