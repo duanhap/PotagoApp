@@ -18,6 +18,7 @@ import androidx.navigation.navigation
 import com.example.potago.presentation.screen.addvideo.AddVideoScreen
 import com.example.potago.presentation.screen.auth.LoginScreen
 import com.example.potago.presentation.screen.auth.SignUpScreen
+import com.example.potago.presentation.screen.detailcoursescreen.DetailCourseScreen
 import com.example.potago.presentation.screen.goal.GoalScreen
 import com.example.potago.presentation.screen.detailedvideoscreen.DetailedVideoScreen
 import com.example.potago.presentation.screen.flashcardscreen.FlashCardScreen
@@ -59,6 +60,12 @@ sealed class Screen(val route: String) {
         operator fun invoke(wordSetId: Long, wordSetName: String): String {
             val encodedName = Uri.encode(wordSetName)
             return "flash_card/$wordSetId/$encodedName"
+        }
+    }
+    object DetailCourse : Screen("detail_course/{wordSetId}/{wordSetName}") {
+        operator fun invoke(wordSetId: Long, wordSetName: String): String {
+            val encodedName = Uri.encode(wordSetName)
+            return "detail_course/$wordSetId/$encodedName"
         }
     }
 }
@@ -169,14 +176,81 @@ fun MainFlowContainer(rootNavController: NavController) {
                 arguments = listOf(
                     navArgument("wordSetId") { type = NavType.LongType },
                     navArgument("wordSetName") { type = NavType.StringType }
-                )
+                ),
+                enterTransition = {
+                    if (initialState.destination.route == Screen.DetailCourse.route) {
+                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Down)
+                    } else {
+                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left)
+                    }
+                },
+                exitTransition = {
+                    if (targetState.destination.route == Screen.DetailCourse.route) {
+                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Up)
+                    } else {
+                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left)
+                    }
+                },
+                popEnterTransition = {
+                    if (initialState.destination.route == Screen.DetailCourse.route) {
+                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Down)
+                    } else {
+                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left)
+                    }
+                },
+                popExitTransition = {
+                    slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left)
+                }
             ) { backStackEntry ->
                 val wordSetName = backStackEntry.arguments
                     ?.getString("wordSetName")
                     ?.let(Uri::decode)
                     ?.takeIf { it.isNotBlank() }
                     ?: "Học phần"
+                val wordSetId = backStackEntry.arguments?.getLong("wordSetId") ?: 0L
                 FlashCardScreen(
+                    navController = mainNavController,
+                    wordSetId = wordSetId,
+                    wordSetName = wordSetName
+                )
+            }
+            composable(
+                route = Screen.DetailCourse.route,
+                arguments = listOf(
+                    navArgument("wordSetId") { type = NavType.LongType },
+                    navArgument("wordSetName") { type = NavType.StringType }
+                ),
+                enterTransition = {
+                    if (initialState.destination.route == Screen.FlashCard.route) {
+                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up)
+                    } else {
+                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left)
+                    }
+                },
+                exitTransition = {
+                    if (targetState.destination.route == Screen.FlashCard.route) {
+                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down)
+                    } else {
+                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left)
+                    }
+                },
+                popEnterTransition = {
+                    slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left)
+                },
+                popExitTransition = {
+                    if (targetState.destination.route == Screen.FlashCard.route) {
+                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down)
+                    } else {
+                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left)
+                    }
+                }
+            ) { backStackEntry ->
+                val wordSetName = backStackEntry.arguments
+                    ?.getString("wordSetName")
+                    ?.let(Uri::decode)
+                    ?.takeIf { it.isNotBlank() }
+                    ?: "Học phần"
+                DetailCourseScreen(
                     navController = mainNavController,
                     wordSetName = wordSetName
                 )
