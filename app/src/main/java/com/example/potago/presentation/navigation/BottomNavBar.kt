@@ -16,12 +16,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.example.potago.R
 
 sealed class BottomNavItem(val route: String, val icon: Int, val label: String) {
@@ -46,7 +48,8 @@ fun BottomNavBar(
 ) {
     NavigationBar(
         containerColor = Color.White,
-        tonalElevation = 0.dp // Loại bỏ bóng đổ mặc định nếu muốn phẳng hoàn toàn
+        tonalElevation = 0.dp, // Loại bỏ bóng đổ mặc định nếu muốn phẳng hoàn toàn
+        modifier = Modifier.shadow(10.dp)
     ) {
         bottomNavItems.forEach { item ->
             val selected = currentRoute == item.route
@@ -58,7 +61,9 @@ fun BottomNavBar(
                     onClick = {
                         if (!selected) {
                             navController.navigate(item.route) {
-                                popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
                                 launchSingleTop = true
                                 restoreState = true
                             }
