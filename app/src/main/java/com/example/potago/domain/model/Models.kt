@@ -136,7 +136,8 @@ data class Video(
     val userId: Int? = null,
     val publicVideoId: Int? = null,
     val definitionLanguageCode: String = "",
-    val termLanguageCode: String = ""
+    val termLanguageCode: String = "",
+    val serverSourceUrl: String? = null
 )
 
 data class Subtitle(

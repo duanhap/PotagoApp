@@ -1,5 +1,6 @@
 package com.example.potago.data.remote.api
 
+import com.example.potago.data.remote.dto.SubtitleDto
 import com.example.potago.data.remote.dto.VideoDto
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -29,6 +30,11 @@ interface VideoApiService {
         @Query("size") size: Int?
     ): ApiResponse<List<VideoDto>>
 
+    @GET("/api/videos/{video_id}")
+    suspend fun getVideoById(
+        @Path("video_id") videoId: Int
+    ): ApiResponse<VideoDto>
+
     @DELETE("/api/videos/{video_id}")
     suspend fun deleteVideo(
         @Path("video_id") videoId: Int
@@ -37,6 +43,11 @@ interface VideoApiService {
     @POST("/api/videos/my")
     suspend fun createMyVideo(
         @Body request: CreateVideoRequest
+    ): ApiResponse<VideoDto>
+
+    @POST("/api/videos/public/{public_video_id}/open")
+    suspend fun openPublicVideo(
+        @Path("public_video_id") publicVideoId: Int
     ): ApiResponse<VideoDto>
 
     @POST("/api/subtitles/{video_id}/sync-job")
@@ -50,6 +61,11 @@ interface VideoApiService {
         @Path("video_id") videoId: Int,
         @Body request: CancelJobRequest
     ): ApiResponse<Unit>
+
+    @GET("/api/subtitles/{video_id}")
+    suspend fun getSubtitles(
+        @Path("video_id") videoId: Int
+    ): ApiResponse<List<SubtitleDto>>
 }
 
 data class CreateVideoRequest(
