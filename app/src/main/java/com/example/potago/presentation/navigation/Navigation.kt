@@ -19,6 +19,7 @@ import com.example.potago.presentation.screen.addvideo.AddVideoScreen
 import com.example.potago.presentation.screen.auth.LoginScreen
 import com.example.potago.presentation.screen.auth.SignUpScreen
 import com.example.potago.presentation.screen.detailcoursescreen.DetailCourseScreen
+import com.example.potago.presentation.screen.editcoursescreen.EditCourseScreen
 import com.example.potago.presentation.screen.goal.GoalScreen
 import com.example.potago.presentation.screen.detailedvideoscreen.DetailedVideoScreen
 import com.example.potago.presentation.screen.flashcardscreen.FlashCardScreen
@@ -66,6 +67,12 @@ sealed class Screen(val route: String) {
         operator fun invoke(wordSetId: Long, wordSetName: String): String {
             val encodedName = Uri.encode(wordSetName)
             return "detail_course/$wordSetId/$encodedName"
+        }
+    }
+    object EditCourse : Screen("edit_course/{wordSetId}/{wordSetName}") {
+        operator fun invoke(wordSetId: Long, wordSetName: String): String {
+            val encodedName = Uri.encode(wordSetName)
+            return "edit_course/$wordSetId/$encodedName"
         }
     }
 }
@@ -250,9 +257,30 @@ fun MainFlowContainer(rootNavController: NavController) {
                     ?.let(Uri::decode)
                     ?.takeIf { it.isNotBlank() }
                     ?: "Học phần"
+                val wordSetId = backStackEntry.arguments?.getLong("wordSetId") ?: 0L
                 DetailCourseScreen(
                     navController = mainNavController,
+                    wordSetId = wordSetId,
                     wordSetName = wordSetName
+                )
+            }
+            composable(
+                route = Screen.EditCourse.route,
+                arguments = listOf(
+                    navArgument("wordSetId") { type = NavType.LongType },
+                    navArgument("wordSetName") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val wordSetName = backStackEntry.arguments
+                    ?.getString("wordSetName")
+                    ?.let(Uri::decode)
+                    ?.takeIf { it.isNotBlank() }
+                    ?: ""
+                val wordSetId = backStackEntry.arguments?.getLong("wordSetId") ?: 0L
+                EditCourseScreen(
+                    navController = mainNavController,
+                    wordSetId = wordSetId,
+                    initialTitle = wordSetName
                 )
             }
         }
