@@ -45,6 +45,7 @@ import androidx.navigation.NavController
 import com.example.potago.R
 import com.example.potago.domain.model.SetencePattern
 import com.example.potago.domain.model.WordSet
+import com.example.potago.presentation.navigation.Screen
 import com.example.potago.presentation.screen.UiState
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -67,6 +68,9 @@ fun LibraryScreen(
         allWordSetsState = allWordSetsState,
         recentSentencePatternsState = recentSentencePatternsState,
         allSentencePatternsState = allSentencePatternsState,
+        onWordSetClick = { wordSet ->
+            navController.navigate(Screen.FlashCard(wordSet.id, wordSet.name))
+        },
         onRetry = { viewModel.refreshLibrary() }
     )
 }
@@ -77,6 +81,7 @@ private fun LibraryScreenContent(
     allWordSetsState: UiState<List<WordSet>>,
     recentSentencePatternsState: UiState<List<SetencePattern>>,
     allSentencePatternsState: UiState<List<SetencePattern>>,
+    onWordSetClick: (WordSet) -> Unit,
     onRetry: () -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(LibraryTab.COURSE) }
@@ -100,6 +105,7 @@ private fun LibraryScreenContent(
                 CourseTabContent(
                     recentState = recentWordSetsState,
                     allState = allWordSetsState,
+                    onWordSetClick = onWordSetClick,
                     onRetry = onRetry
                 )
             } else {
@@ -344,6 +350,7 @@ private fun LibraryTabChip(
 private fun CourseTabContent(
     recentState: UiState<List<WordSet>>,
     allState: UiState<List<WordSet>>,
+    onWordSetClick: (WordSet) -> Unit,
     onRetry: () -> Unit
 ) {
     val isLoading = allState is UiState.Loading && recentState is UiState.Loading
@@ -395,7 +402,10 @@ private fun CourseTabContent(
                         SectionTitle(text = "Gần đây")
                     }
                     items(fallbackRecent, key = { "recent_${it.id}" }) { wordSet ->
-                        WordSetCard(wordSet = wordSet)
+                        WordSetCard(
+                            wordSet = wordSet,
+                            onClick = { onWordSetClick(wordSet) }
+                        )
                     }
                     item {
                         Spacer(modifier = Modifier.height(8.dp))
@@ -407,7 +417,10 @@ private fun CourseTabContent(
                         SectionTitle(text = "Tất cả")
                     }
                     items(allWordSets, key = { "all_${it.id}" }) { wordSet ->
-                        WordSetCard(wordSet = wordSet)
+                        WordSetCard(
+                            wordSet = wordSet,
+                            onClick = { onWordSetClick(wordSet) }
+                        )
                     }
                 }
             }
@@ -554,9 +567,14 @@ private fun SectionTitle(text: String) {
 }
 
 @Composable
-private fun WordSetCard(wordSet: WordSet) {
+private fun WordSetCard(
+    wordSet: WordSet,
+    onClick: () -> Unit
+) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -672,6 +690,7 @@ private fun LibraryScreenPreview() {
         allWordSetsState = UiState.Success(emptyList()),
         recentSentencePatternsState = UiState.Success(emptyList()),
         allSentencePatternsState = UiState.Success(emptyList()),
+        onWordSetClick = {},
         onRetry = {}
     )
 }
