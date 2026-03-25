@@ -6,6 +6,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import android.net.Uri
 import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -19,6 +20,7 @@ import com.example.potago.presentation.screen.auth.LoginScreen
 import com.example.potago.presentation.screen.auth.SignUpScreen
 import com.example.potago.presentation.screen.goal.GoalScreen
 import com.example.potago.presentation.screen.detailedvideoscreen.DetailedVideoScreen
+import com.example.potago.presentation.screen.flashcardscreen.FlashCardScreen
 import com.example.potago.presentation.screen.home.HomeScreen
 import com.example.potago.presentation.screen.library.LibraryScreen
 import com.example.potago.presentation.screen.managevideo.ManageVideoScreen
@@ -52,6 +54,12 @@ sealed class Screen(val route: String) {
     object AddVideo : Screen("add_video")
     object DetailedVideo : Screen("detailed_video/{videoId}") {
         operator fun invoke(videoId: Int) = "detailed_video/$videoId"
+    }
+    object FlashCard : Screen("flash_card/{wordSetId}/{wordSetName}") {
+        operator fun invoke(wordSetId: Long, wordSetName: String): String {
+            val encodedName = Uri.encode(wordSetName)
+            return "flash_card/$wordSetId/$encodedName"
+        }
     }
 }
 
@@ -155,6 +163,23 @@ fun MainFlowContainer(rootNavController: NavController) {
                 arguments = listOf(navArgument("videoId") { type = NavType.IntType })
             ) {
                 DetailedVideoScreen(mainNavController)
+            }
+            composable(
+                route = Screen.FlashCard.route,
+                arguments = listOf(
+                    navArgument("wordSetId") { type = NavType.LongType },
+                    navArgument("wordSetName") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val wordSetName = backStackEntry.arguments
+                    ?.getString("wordSetName")
+                    ?.let(Uri::decode)
+                    ?.takeIf { it.isNotBlank() }
+                    ?: "Học phần"
+                FlashCardScreen(
+                    navController = mainNavController,
+                    wordSetName = wordSetName
+                )
             }
         }
     }
