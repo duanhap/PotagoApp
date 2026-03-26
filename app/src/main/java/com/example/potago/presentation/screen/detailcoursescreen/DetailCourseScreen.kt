@@ -92,14 +92,14 @@ private fun DetailCourseScreenContent(
                         .padding(horizontal = 20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_back),
-                        contentDescription = "Back",
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clickable(onClick = onBackClick),
-                        tint = Color.Black
-                    )
+//                    Icon(
+//                        painter = painterResource(id = R.drawable.ic_back),
+//                        contentDescription = "Back",
+//                        modifier = Modifier
+//                            .size(36.dp)
+//                            .clickable(onClick = onBackClick),
+//                        tint = Color.Black
+//                    )
                     Text(
                         text = "Học phần",
                         fontSize = 32.sp,
