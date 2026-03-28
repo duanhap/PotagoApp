@@ -43,6 +43,19 @@ class WordSetRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun deleteWordSet(wordSetId: Long): Result<Unit> {
+        return try {
+            val response = wordSetApiService.deleteWordSet(wordSetId)
+            if (response.success) {
+                Result.Success(Unit)
+            } else {
+                Result.Error(response.message)
+            }
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
     private fun <T> handleError(e: Exception): Result<T> {
         return if (e is HttpException) {
             try {

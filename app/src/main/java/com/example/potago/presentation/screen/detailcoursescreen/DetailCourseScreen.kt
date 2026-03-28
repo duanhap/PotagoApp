@@ -25,7 +25,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,21 +45,46 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.potago.R
+import com.example.potago.presentation.screen.UiEvent
 
 @Composable
 fun DetailCourseScreen(
     navController: NavController,
     wordSetName: String,
-    onConfirmDeleteWordSet: () -> Unit = {}
+    viewModel: DetailCourseViewModel = hiltViewModel()
 ) {
-    DetailCourseScreenContent(
-        wordSetName = wordSetName,
-        onBackClick = { navController.popBackStack() },
-        onSlideDownClick = { navController.popBackStack() },
-        onConfirmDeleteWordSet = onConfirmDeleteWordSet
-    )
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is UiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
+                is UiEvent.Navigate -> {
+                    navController.navigate(event.route) {
+                        event.popUpTo?.let {
+                            popUpTo(it) { inclusive = event.inclusive }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        DetailCourseScreenContent(
+            wordSetName = wordSetName,
+            onBackClick = { navController.popBackStack() },
+            onSlideDownClick = { navController.popBackStack() },
+            onConfirmDeleteWordSet = { viewModel.deleteWordSet() }
+        )
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
+    }
 }
 
 @Composable
