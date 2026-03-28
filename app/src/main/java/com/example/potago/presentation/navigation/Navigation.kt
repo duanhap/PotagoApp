@@ -7,6 +7,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import android.net.Uri
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -19,6 +22,7 @@ import com.example.potago.presentation.screen.addvideo.AddVideoScreen
 import com.example.potago.presentation.screen.auth.LoginScreen
 import com.example.potago.presentation.screen.auth.SignUpScreen
 import com.example.potago.presentation.screen.detailcoursescreen.DetailCourseScreen
+import com.example.potago.presentation.screen.editcoursescreen.EditCourseScreen
 import com.example.potago.presentation.screen.goal.GoalScreen
 import com.example.potago.presentation.screen.detailedvideoscreen.DetailedVideoScreen
 import com.example.potago.presentation.screen.flashcardscreen.FlashCardScreen
@@ -66,6 +70,12 @@ sealed class Screen(val route: String) {
         operator fun invoke(wordSetId: Long, wordSetName: String): String {
             val encodedName = Uri.encode(wordSetName)
             return "detail_course/$wordSetId/$encodedName"
+        }
+    }
+    object EditCourse : Screen("edit_course/{wordSetId}/{wordSetName}") {
+        operator fun invoke(wordSetId: Long, wordSetName: String): String {
+            val encodedName = Uri.encode(wordSetName)
+            return "edit_course/$wordSetId/$encodedName"
         }
     }
 }
@@ -138,7 +148,7 @@ fun MainFlowContainer(rootNavController: NavController) {
             composable(Screen.Home.route) {
                 HomeScreen(mainNavController)
             }
-            composable(Screen.Library.route) {
+            composable(route = Screen.Library.route, popEnterTransition = { fadeIn(tween(250))}) {
                 LibraryScreen(mainNavController)
             }
             composable(Screen.Video.route) {
@@ -178,28 +188,16 @@ fun MainFlowContainer(rootNavController: NavController) {
                     navArgument("wordSetName") { type = NavType.StringType }
                 ),
                 enterTransition = {
-                    if (initialState.destination.route == Screen.DetailCourse.route) {
-                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Down)
-                    } else {
-                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left)
-                    }
+                    fadeIn(tween(250))
                 },
                 exitTransition = {
-                    if (targetState.destination.route == Screen.DetailCourse.route) {
-                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Up)
-                    } else {
-                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left)
-                    }
+                    fadeOut(tween(250))
                 },
                 popEnterTransition = {
-                    if (initialState.destination.route == Screen.DetailCourse.route) {
-                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Down)
-                    } else {
-                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left)
-                    }
+                    slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Down)
                 },
                 popExitTransition = {
-                    slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left)
+                    slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right)
                 }
             ) { backStackEntry ->
                 val wordSetName = backStackEntry.arguments
@@ -222,27 +220,24 @@ fun MainFlowContainer(rootNavController: NavController) {
                 ),
                 enterTransition = {
                     if (initialState.destination.route == Screen.FlashCard.route) {
-                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up)
+                        fadeIn(tween(250))
                     } else {
-                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left)
+                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right)
                     }
                 },
                 exitTransition = {
                     if (targetState.destination.route == Screen.FlashCard.route) {
-                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down)
+                        //slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down)
+                        fadeOut(tween(250))
                     } else {
                         slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left)
                     }
                 },
                 popEnterTransition = {
-                    slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left)
+                    fadeIn(tween(250))
                 },
                 popExitTransition = {
-                    if (targetState.destination.route == Screen.FlashCard.route) {
-                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down)
-                    } else {
-                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left)
-                    }
+                    slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down)
                 }
             ) { backStackEntry ->
                 val wordSetName = backStackEntry.arguments
@@ -250,9 +245,33 @@ fun MainFlowContainer(rootNavController: NavController) {
                     ?.let(Uri::decode)
                     ?.takeIf { it.isNotBlank() }
                     ?: "Học phần"
+                val wordSetId = backStackEntry.arguments?.getLong("wordSetId") ?: 0L
                 DetailCourseScreen(
                     navController = mainNavController,
+                    wordSetId = wordSetId,
                     wordSetName = wordSetName
+                )
+            }
+            composable(
+                route = Screen.EditCourse.route,
+                arguments = listOf(
+                    navArgument("wordSetId") { type = NavType.LongType },
+                    navArgument("wordSetName") { type = NavType.StringType }
+                ),
+                popExitTransition = {
+                    slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right)
+                }
+            ) { backStackEntry ->
+                val wordSetName = backStackEntry.arguments
+                    ?.getString("wordSetName")
+                    ?.let(Uri::decode)
+                    ?.takeIf { it.isNotBlank() }
+                    ?: ""
+                val wordSetId = backStackEntry.arguments?.getLong("wordSetId") ?: 0L
+                EditCourseScreen(
+                    navController = mainNavController,
+                    wordSetId = wordSetId,
+                    initialTitle = wordSetName
                 )
             }
         }

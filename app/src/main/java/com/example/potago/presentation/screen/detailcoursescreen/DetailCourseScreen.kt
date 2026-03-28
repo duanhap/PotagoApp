@@ -48,11 +48,13 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.potago.R
+import com.example.potago.presentation.navigation.Screen
 import com.example.potago.presentation.screen.UiEvent
 
 @Composable
 fun DetailCourseScreen(
     navController: NavController,
+    wordSetId: Long,
     wordSetName: String,
     viewModel: DetailCourseViewModel = hiltViewModel()
 ) {
@@ -78,6 +80,9 @@ fun DetailCourseScreen(
             wordSetName = wordSetName,
             onBackClick = { navController.popBackStack() },
             onSlideDownClick = { navController.popBackStack() },
+            onEditCourseClick = {
+                navController.navigate(Screen.EditCourse(wordSetId, wordSetName))
+            },
             onConfirmDeleteWordSet = { viewModel.deleteWordSet() }
         )
         SnackbarHost(
@@ -92,6 +97,7 @@ private fun DetailCourseScreenContent(
     wordSetName: String,
     onBackClick: () -> Unit,
     onSlideDownClick: () -> Unit,
+    onEditCourseClick: () -> Unit,
     onConfirmDeleteWordSet: () -> Unit = {}
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -114,14 +120,14 @@ private fun DetailCourseScreenContent(
                         .padding(horizontal = 20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_back),
-                        contentDescription = "Back",
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clickable(onClick = onBackClick),
-                        tint = Color.Black
-                    )
+//                    Icon(
+//                        painter = painterResource(id = R.drawable.ic_back),
+//                        contentDescription = "Back",
+//                        modifier = Modifier
+//                            .size(36.dp)
+//                            .clickable(onClick = onBackClick),
+//                        tint = Color.Black
+//                    )
                     Text(
                         text = "Học phần",
                         fontSize = 32.sp,
@@ -202,7 +208,8 @@ private fun DetailCourseScreenContent(
                 Spacer(modifier = Modifier.height(12.dp))
                 DetailActionCard(
                     iconRes = R.drawable.ic_detail_course_screen_edit,
-                    title = "Chỉnh sửa học phần"
+                    title = "Chỉnh sửa học phần",
+                    onClick = onEditCourseClick
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 DetailActionCard(
@@ -438,6 +445,7 @@ private fun DetailCourseScreenPreview() {
         wordSetName = "Ordering Food",
         onBackClick = {},
         onSlideDownClick = {},
+        onEditCourseClick = {},
         onConfirmDeleteWordSet = {}
     )
 }
