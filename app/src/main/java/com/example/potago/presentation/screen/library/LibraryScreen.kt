@@ -90,7 +90,7 @@ private fun LibraryScreenContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF3F4F6))
+            .background(Color(0xFFFFFFFF))
     ) {
         Column {
             LibraryHeader(

@@ -13,7 +13,8 @@ data class WordSetDto(
     @SerializedName("term_lang_code") val termLangCode: String?,
     @SerializedName("updated_at") val updatedAt: String?,
     @SerializedName("last_opened") val lastOpened: String?,
-    @SerializedName("user_id") val userId: Int?
+    @SerializedName("user_id") val userId: Int?,
+    @SerializedName("amount_of_words") val amountOfWords: Int? = null
 )
 
 fun WordSetDto.toDomain(): WordSet {
@@ -27,6 +28,7 @@ fun WordSetDto.toDomain(): WordSet {
         termLanguageCode = termLangCode.orEmpty(),
         updatedAt = updatedAt,
         lastOpened = lastOpened,
-        userId = userId ?: 0
+        userId = userId ?: 0,
+        amountOfWords =  amountOfWords
     )
 }
