@@ -85,15 +85,16 @@ private fun PotatoScreenContent(
             )
         }
     ) { innerPadding ->
+        Box( modifier = Modifier.padding(innerPadding))
 
         Column(
             modifier = Modifier
-                .padding(innerPadding)
                 .background(color = Color.White)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 18.dp)
         ) {
+            Spacer(modifier = Modifier.height(80.dp))
             SectionTitle(text = "Thông tin")
             Spacer(modifier = Modifier.height(12.dp))
             InfoSection(createdAtText = createdAtText)
@@ -215,7 +216,7 @@ private fun OverviewSection(
     ) {
         SummaryCard(
             modifier = Modifier.weight(1f),
-            iconRes = R.drawable.ic_tabler_hexagon,
+            iconRes = R.drawable.ic_experience_points,
             iconBackground = Color(0xFFFEF3C7),
             title = "XP",
             value = xpText
@@ -377,26 +378,15 @@ private fun SettingButton(
         label = "icon_scale"
     )
 
-    Box(
-        modifier = Modifier
-            .size(40.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color.White)
-            .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(14.dp)),
-        contentAlignment = Alignment.Center
+    IconButton(
+        onClick = onClick,
+        interactionSource = interactionSource
     ) {
-        IconButton(
-            onClick = onClick,
-            interactionSource = interactionSource,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_setting),
-                contentDescription = "Setting",
-                tint = Color(0xFF111827),
-                modifier = Modifier.scale(scale)
-            )
-        }
+        Icon(
+            painter = painterResource(id = R.drawable.ic_setting),
+            contentDescription = "Setting",
+            modifier = Modifier.scale(scale)
+        )
     }
 }
 
