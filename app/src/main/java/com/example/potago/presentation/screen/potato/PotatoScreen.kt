@@ -111,7 +111,7 @@ private fun PotatoScreenContent(
             SectionTitle(text = "Tính năng khác")
             Spacer(modifier = Modifier.height(12.dp))
             OtherFeatureSection(
-                onProfileClick = { navController.navigate(Screen.Setting.route) },
+                onProfileClick = { navController.navigate(Screen.Profile.route) },
                 onGoalClick = { navController.navigate(Screen.Goal.route) }
 
             )

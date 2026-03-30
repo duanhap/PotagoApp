@@ -1,5 +1,7 @@
 package com.example.potago.domain.model
 
+import com.google.gson.annotations.SerializedName
+
 data class User(
     val id: Int = 0,
     val uid: String = "",
@@ -44,8 +46,9 @@ data class Word(
     val createdAt: String = "",
     val status: String = "",
     val wordSetId: Long? = null,
-    val flashcardGameId: Long = 0,
-    val matchGameId: Int = 0
+    val flashcardGameId: Long? = null,
+    val matchGameId: Int? = null,
+    val flashcardOrder : Int = 0
 )
 
 data class FlashcardGame(
