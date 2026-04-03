@@ -29,13 +29,14 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.example.potago.R
 import com.example.potago.presentation.screen.auth.BigPotagoButton
 import com.example.potago.presentation.screen.auth.PasswordField
 
 @Composable
 fun ProfileScreen(
-    onBackClick: () -> Unit = {}
+    navController: NavController? = null,
 ) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -44,7 +45,7 @@ fun ProfileScreen(
 
     Scaffold(
         topBar = {
-            ProfileTopBar(onBackClick = onBackClick)
+            ProfileTopBar(onBackClick =  { navController?.popBackStack() })
         },
         containerColor = Color.White
     ) { innerPadding ->
