@@ -32,7 +32,8 @@ data class WordSet(
     val termLanguageCode: String = "",
     val updatedAt: String? = null,
     val lastOpened: String? = null,
-    val userId: Int = 0
+    val userId: Int = 0,
+    val amountOfWords : Int? = null
 )
 
 data class Word(
@@ -99,7 +100,9 @@ data class Setence(
     val createdAt: String = "",
     val status: String = "",
     val numberOfMistakes: Int? = null,
-    val setencePatternId: Int = 0
+    val setencePatternId: Int = 0,
+    val termLanguageCode: String = "",
+    val definitionLanguageCode: String = "",
 )
 
 data class WritingGame(
