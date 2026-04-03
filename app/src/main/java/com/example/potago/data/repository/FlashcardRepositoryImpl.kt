@@ -1,26 +1,34 @@
 package com.example.potago.data.repository
 
 import com.example.potago.data.remote.api.ApiResponse
-import com.example.potago.data.remote.api.WordSetApiService
+import com.example.potago.data.remote.api.FlashcardApiService
 import com.example.potago.data.remote.dto.toDomain
 import com.example.potago.domain.model.Result
-import com.example.potago.domain.model.WordSet
-import com.example.potago.domain.repository.WordSetRepository
+import com.example.potago.domain.model.Word
+import com.example.potago.domain.model.reponse.FlashcardsResponse
+import com.example.potago.domain.repository.FlashcardRepository
 import com.google.gson.Gson
 import retrofit2.HttpException
 import javax.inject.Inject
 
-class WordSetRepositoryImpl @Inject constructor(
-    private val wordSetApiService: WordSetApiService
-) : WordSetRepository {
+class FlashcardRepositoryImpl @Inject constructor(
+    private val apiService: FlashcardApiService
+) : FlashcardRepository {
     private val gson = Gson()
 
-    override suspend fun getWordSets(): Result<List<WordSet>> {
+    override suspend fun getFlashcards(
+        wordSetId: Long,
+        mode: String,
+        currentWordId: Long?,
+        size: Int,
+        filter: String
+    ): Result<FlashcardsResponse> {
         return try {
-            val response = wordSetApiService.getWordSets()
+            val response = apiService.getFlashcards(wordSetId, mode, currentWordId, size, filter)
             if (response.success) {
-                val wordSets = response.data?.map { it.toDomain() } ?: emptyList()
-                Result.Success(wordSets)
+                val words = response.data?.map { it.toDomain() } ?: emptyList()
+                val total = response.pagination?.total ?: words.size
+                Result.Success(FlashcardsResponse(words, total))
             } else {
                 Result.Error(response.message)
             }
@@ -29,23 +37,9 @@ class WordSetRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getRecentWordSets(limit: Int): Result<List<WordSet>> {
+    override suspend fun updateWordStatus(wordId: Long, status: String): Result<Word> {
         return try {
-            val response = wordSetApiService.getRecentWordSets(limit)
-            if (response.success) {
-                val wordSets = response.data?.map { it.toDomain() } ?: emptyList()
-                Result.Success(wordSets)
-            } else {
-                Result.Error(response.message)
-            }
-        } catch (e: Exception) {
-            handleError(e)
-        }
-    }
-
-    override suspend fun getWordSetById(wordSetId: Long): Result<WordSet> {
-        return try {
-            val response = wordSetApiService.getWordSetById(wordSetId)
+            val response = apiService.updateWord(wordId, mapOf("status" to status))
             if (response.success && response.data != null) {
                 Result.Success(response.data.toDomain())
             } else {

@@ -82,10 +82,18 @@ fun HomeScreen(
             item {
                 SectionHeader(
                     title = "Học tiếp",
-                    onSeeMoreClick = {},
+                    onSeeMoreClick = {
+                        navController.navigate(Screen.Library.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
                     modifier = Modifier.padding(horizontal = 20.dp)
                 )
-                RecentWordSetsSection(uiState = homeUiState.recentWordSets, onContinueClick = {})
+                RecentWordSetsSection(uiState = homeUiState.recentWordSets, onContinueClick = {navController.navigate(Screen.FlashCard(it.id, it.name))})
                 Spacer(modifier = Modifier.height(8.dp))
             }
 

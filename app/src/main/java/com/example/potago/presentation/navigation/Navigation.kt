@@ -31,6 +31,7 @@ import com.example.potago.presentation.screen.library.LibraryScreen
 import com.example.potago.presentation.screen.managevideo.ManageVideoScreen
 import com.example.potago.presentation.screen.myvideo.MyVideoScreen
 import com.example.potago.presentation.screen.potato.PotatoScreen
+import com.example.potago.presentation.screen.profile.ProfileScreen
 import com.example.potago.presentation.screen.recommendvideo.RecommendVideoScreen
 import com.example.potago.presentation.screen.setting.SettingScreen
 import com.example.potago.presentation.screen.splash.SplashScreen
@@ -57,6 +58,7 @@ sealed class Screen(val route: String) {
     object MyVideo : Screen("my_video")
     object ManageVideo : Screen("manage_video")
     object AddVideo : Screen("add_video")
+    object Profile : Screen("profile")
     object DetailedVideo : Screen("detailed_video/{videoId}") {
         operator fun invoke(videoId: Int) = "detailed_video/$videoId"
     }
@@ -163,6 +165,9 @@ fun MainFlowContainer(rootNavController: NavController) {
             composable(Screen.Goal.route) {
                 GoalScreen(mainNavController)
             }
+            composable(Screen.Profile.route) {
+                ProfileScreen(mainNavController)
+            }
             composable(Screen.RecommendVideo.route) {
                 RecommendVideoScreen(mainNavController)
             }
@@ -237,7 +242,7 @@ fun MainFlowContainer(rootNavController: NavController) {
                     fadeIn(tween(250))
                 },
                 popExitTransition = {
-                    slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down)
+                    slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down)+fadeOut(tween(250))
                 }
             ) { backStackEntry ->
                 val wordSetName = backStackEntry.arguments
