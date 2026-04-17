@@ -1,5 +1,6 @@
 package com.example.potago.presentation.screen.profile
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.potago.domain.model.Result
@@ -7,6 +8,7 @@ import com.example.potago.domain.model.User
 import com.example.potago.domain.repository.UserRepository
 import com.example.potago.domain.usecase.GetUserProfileUseCase
 import com.example.potago.domain.usecase.UpdateUserProfileUseCase
+import com.example.potago.domain.usecase.UploadAvatarUseCase
 import com.example.potago.presentation.screen.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -23,7 +25,8 @@ data class ProfileUiState(
     val name: String = "",
     val email: String = "",
     val password: String = "",
-    val isSaving: Boolean = false
+    val isSaving: Boolean = false,
+    val isUploadingAvatar: Boolean = false
 )
 
 sealed class ProfileEvent {
@@ -34,6 +37,7 @@ sealed class ProfileEvent {
 class ProfileViewModel @Inject constructor(
     private val getUserProfileUseCase: GetUserProfileUseCase,
     private val updateUserProfileUseCase: UpdateUserProfileUseCase,
+    private val uploadAvatarUseCase: UploadAvatarUseCase,
     private val userRepository: UserRepository
 ) : ViewModel() {
 
@@ -88,6 +92,28 @@ class ProfileViewModel @Inject constructor(
     fun onNameChange(value: String) = _uiState.update { it.copy(name = value) }
     fun onEmailChange(value: String) = _uiState.update { it.copy(email = value) }
     fun onPasswordChange(value: String) = _uiState.update { it.copy(password = value) }
+
+    fun onAvatarSelected(uri: Uri) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isUploadingAvatar = true) }
+            when (val result = uploadAvatarUseCase(uri)) {
+                is Result.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            isUploadingAvatar = false,
+                            user = UiState.Success(result.data!!)
+                        )
+                    }
+                    _events.send(ProfileEvent.ShowSnackbar("Cập nhật ảnh thành công!"))
+                }
+                is Result.Error -> {
+                    _uiState.update { it.copy(isUploadingAvatar = false) }
+                    _events.send(ProfileEvent.ShowSnackbar(result.message ?: "Upload thất bại"))
+                }
+                else -> _uiState.update { it.copy(isUploadingAvatar = false) }
+            }
+        }
+    }
 
     fun saveProfile() {
         viewModelScope.launch {
