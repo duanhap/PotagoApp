@@ -1,5 +1,6 @@
 package com.example.potago.presentation.screen.auth
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.potago.presentation.navigation.Screen
@@ -7,6 +8,9 @@ import com.example.potago.domain.model.User
 import com.example.potago.domain.model.Result
 import com.example.potago.domain.repository.UserRepository
 import com.example.potago.domain.usecase.GetUserProfileUseCase
+import com.example.potago.domain.usecase.GetUserSettingsUseCase
+import com.example.potago.domain.usecase.GetCurrentStreakUseCase
+import com.example.potago.domain.usecase.GetTodayStreakDateUseCase
 import com.example.potago.domain.usecase.LoginWithFireBaseUseCase
 import com.example.potago.presentation.screen.UiEvent
 import com.example.potago.presentation.screen.UiState
@@ -20,12 +24,17 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.example.potago.data.local.UserDataStore
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val loginUseCase: LoginWithFireBaseUseCase,
     private val getUserProfileUseCase: GetUserProfileUseCase,
-    private val userRepository: UserRepository
+    private val getUserSettingsUseCase: GetUserSettingsUseCase,
+    private val getCurrentStreakUseCase: GetCurrentStreakUseCase,
+    private val getTodayStreakDateUseCase: GetTodayStreakDateUseCase,
+    private val userRepository: UserRepository,
+    private val userDataStore: UserDataStore
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState = _uiState.asStateFlow()
@@ -70,23 +79,42 @@ class LoginViewModel @Inject constructor(
             try {
                 // 1. Đăng nhập Firebase
                 loginUseCase(state.email.trim(), state.password)
-                delay(1500)
+                delay(1000)
 
-                // 2. Lấy profile từ backend (Hàm này trong Repository đã bao gồm việc saveUser vào DataStore)
-                when (val result = getUserProfileUseCase()) {
-                    is Result.Success -> {
-                        _uiState.update { it.copy(authState = UiState.Success(result.data)) }
-                        _uiEvent.send(UiEvent.Navigate(
-                            route = Screen.MainGraph.route,
-                            popUpTo = Screen.Login.route,
-                            inclusive = true
-                        ))
+                // 2. Lấy profile từ backend (Đã bao gồm saveUser trong Repository)
+                val profileResult = getUserProfileUseCase()
+                if (profileResult is Result.Success) {
+                    
+                    // 3. Lấy Settings và lưu vào DataStore
+                    val settingsResult = getUserSettingsUseCase()
+                    if (settingsResult is Result.Success && settingsResult.data != null) {
+                        userDataStore.saveSetting(settingsResult.data)
+                        Log.d("LoginViewModel", "Settings saved to DataStore: ${settingsResult.data}")
                     }
-                    is Result.Error -> {
-                        _uiState.update { it.copy(authState = UiState.Error(result.message), errorMessage = result.message) }
-                        _uiEvent.send(UiEvent.ShowSnackbar(result.message))
+
+                    // 4. Lấy Streak và lưu vào DataStore
+                    val streakResult = getCurrentStreakUseCase()
+                    if (streakResult is Result.Success && streakResult.data != null) {
+                        userDataStore.saveStreak(streakResult.data)
+                        Log.d("LoginViewModel", "Streak saved to DataStore: ${streakResult.data}")
                     }
-                    else -> {}
+
+                    // 5. Lấy StreakDate hôm nay và lưu vào DataStore
+                    val todayStreakResult = getTodayStreakDateUseCase()
+                    if (todayStreakResult is Result.Success && todayStreakResult.data != null) {
+                        userDataStore.saveTodayStreakDate(todayStreakResult.data)
+                        Log.d("LoginViewModel", "TodayStreakDate saved to DataStore: ${todayStreakResult.data}")
+                    }
+
+                    _uiState.update { it.copy(authState = UiState.Success(profileResult.data)) }
+                    _uiEvent.send(UiEvent.Navigate(
+                        route = Screen.MainGraph.route,
+                        popUpTo = Screen.Login.route,
+                        inclusive = true
+                    ))
+                } else if (profileResult is Result.Error) {
+                    _uiState.update { it.copy(authState = UiState.Error(profileResult.message), errorMessage = profileResult.message) }
+                    _uiEvent.send(UiEvent.ShowSnackbar(profileResult.message))
                 }
             } catch (e: Exception) {
                 val errorMsg = e.message ?: "Đăng nhập thất bại"
@@ -96,6 +124,7 @@ class LoginViewModel @Inject constructor(
         }
     }
 }
+
 data class LoginUiState(
     val email: String = "",
     val password: String = "",

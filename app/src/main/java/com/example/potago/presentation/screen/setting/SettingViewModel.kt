@@ -2,6 +2,7 @@ package com.example.potago.presentation.screen.setting
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.potago.domain.repository.UserRepository
 import com.example.potago.domain.usecase.LogoutWithFireBaseUseCase
 import com.example.potago.presentation.navigation.Screen
 import com.example.potago.presentation.screen.UiEvent
@@ -17,7 +18,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingViewModel @Inject constructor(
-    private val logoutUseCase: LogoutWithFireBaseUseCase
+    private val logoutUseCase: LogoutWithFireBaseUseCase,
+    private val userRepository: UserRepository
 ): ViewModel(){
     private val _uiState = MutableStateFlow(LogoutUiState())
     val uiState = _uiState.asStateFlow()
@@ -34,12 +36,16 @@ class SettingViewModel @Inject constructor(
     private fun logout() {
         viewModelScope.launch {
             _uiState.update { it.copy(authState = UiState.Loading) }
-            // 1. Phải thực thi usecase (giả định usecase có operator fun invoke)
+            
+            // 1. Đăng xuất Firebase
             logoutUseCase()
+            
+            // 2. Xóa sạch dữ liệu DataStore
+            userRepository.clearUser()
 
             _uiState.update { it.copy(authState = UiState.Success()) }
 
-            // 2. Gửi event điều hướng
+            // 3. Gửi event điều hướng thoát ra khỏi MainGraph
             _uiEvent.send(
                 UiEvent.Navigate(
                     route = Screen.AuthGraph.route,
@@ -55,8 +61,7 @@ class SettingViewModel @Inject constructor(
     }
 }
 data class LogoutUiState(
-
-    val authState: UiState<Nothing> = UiState.Idle,
+    val authState: UiState<Unit> = UiState.Idle,
     val errorMessage: String? = null
 )
 

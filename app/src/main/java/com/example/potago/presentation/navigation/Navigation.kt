@@ -162,7 +162,10 @@ fun MainFlowContainer(rootNavController: NavController) {
                 PotatoScreen(mainNavController)
             }
             composable(Screen.Setting.route) {
-                SettingScreen(mainNavController)
+                SettingScreen(
+                    navController = mainNavController,
+                    rootNavController = rootNavController // Truyền rootNavController vào đây
+                )
             }
             composable(Screen.Goal.route) {
                 GoalScreen(mainNavController)

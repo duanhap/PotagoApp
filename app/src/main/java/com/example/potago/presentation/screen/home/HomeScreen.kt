@@ -63,7 +63,7 @@ fun HomeScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar()
+            TopAppBar(uiState = homeUiState)
         }
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding))
@@ -74,7 +74,10 @@ fun HomeScreen(
         ) {
             item {
                 Spacer(modifier = Modifier.height(80.dp))
-                MascotAndBubbleHome(modifier = Modifier.padding(horizontal = 20.dp))
+                MascotAndBubbleHome(
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                    isSick = homeUiState.streak == null || homeUiState.streakDate?.protectedDate != true
+                )
                 Spacer(modifier = Modifier.height(5.dp))
             }
 
@@ -632,7 +635,12 @@ private fun WordSetCardShimmer() {
 // ─── Shared UI components ─────────────────────────────────────────────────────
 
 @Composable
-private fun TopAppBar() {
+private fun TopAppBar(uiState: HomeUiState) {
+    val streakActive = uiState.streak != null && uiState.streakDate?.protectedDate == true
+    val streakColor = if (streakActive) Color(0xFF0099FF) else Color(0xFFCCCCCC)
+    val streakCount = uiState.streak?.lengthStreak ?: 0
+    val experiencePoints = uiState.user?.experiencePoints ?: 0
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         tonalElevation = 3.dp,
@@ -666,15 +674,16 @@ private fun TopAppBar() {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.End
             ) {
-                Image(
+                Icon(
                     painter = painterResource(id = R.drawable.ic_water_on),
                     contentDescription = "Streak",
-                    modifier = Modifier.size(24.dp).padding(end = 5.dp)
+                    modifier = Modifier.size(24.dp).padding(end = 5.dp),
+                    tint = streakColor
                 )
                 Text(
-                    text = "12",
+                    text = streakCount.toString(),
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFF0099FF),
+                    color = streakColor,
                     modifier = Modifier.padding(end = 15.dp)
                 )
                 Surface(
@@ -693,7 +702,7 @@ private fun TopAppBar() {
                             modifier = Modifier.size(32.dp).padding(end = 8.dp)
                         )
                         Text(
-                            text = "2450",
+                            text = experiencePoints.toString(),
                             style = MaterialTheme.typography.labelLarge.copy(
                                 fontSize = 15.sp
                             ),
@@ -716,7 +725,10 @@ private fun TopAppBar() {
 }
 
 @Composable
-private fun MascotAndBubbleHome(modifier: Modifier = Modifier) {
+private fun MascotAndBubbleHome(
+    modifier: Modifier = Modifier,
+    isSick: Boolean = false
+) {
     var start by remember { mutableStateOf(false) }
     var showBubble by remember { mutableStateOf(false) }
 
@@ -749,7 +761,10 @@ private fun MascotAndBubbleHome(modifier: Modifier = Modifier) {
             .offset(x = (-20).dp),
     ) {
         Image(
-            painter = painterResource(id = R.drawable.ic_thinking_mascot_home_screen),
+            painter = painterResource(
+                id = if (isSick) R.drawable.ic_sick_mascot_home_screen 
+                     else R.drawable.ic_thinking_mascot_home_screen
+            ),
             contentDescription = "Mascot",
             modifier = Modifier
                 .size(130.dp)
@@ -774,7 +789,8 @@ private fun MascotAndBubbleHome(modifier: Modifier = Modifier) {
                 .weight(1f)
         ) {
             Text(
-                text = "Xin chào, chủ nhân! Tôi rất ưa tắm, hãy nhớ tắm rửa cho tôi mỗi ngày!",
+                text = if (isSick) "Xin chào, chủ nhân ! Tôi rất ưa tắm, hãy làm gì đó để cứu tui!"
+                       else "Xin chào, chủ nhân! Tôi rất ưa tắm, hãy nhớ tắm rửa cho tôi mỗi ngày!",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color(0xFF4B5563)
             )

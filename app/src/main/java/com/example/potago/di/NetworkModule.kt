@@ -114,4 +114,10 @@ object NetworkModule {
     fun provideItemApiService(retrofit: Retrofit): ItemApiService {
         return retrofit.create(ItemApiService::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideStreakApiService(retrofit: Retrofit): StreakApiService {
+        return retrofit.create(StreakApiService::class.java)
+    }
 }
