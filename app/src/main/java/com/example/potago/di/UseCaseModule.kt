@@ -5,6 +5,8 @@ import com.example.potago.domain.repository.FlashcardRepository
 import com.example.potago.domain.repository.UserRepository
 import com.example.potago.domain.usecase.*
 import com.example.potago.domain.repository.ItemRepository
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -92,5 +94,12 @@ object UseCaseModule {
     fun provideUseItemUseCase(
         repository: ItemRepository
     ): UseItemUseCase = UseItemUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideUploadAvatarUseCase(
+        userRepository: UserRepository,
+        @ApplicationContext context: Context
+    ): UploadAvatarUseCase = UploadAvatarUseCase(userRepository, context)
 
 }

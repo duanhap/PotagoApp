@@ -34,6 +34,8 @@ import com.example.potago.presentation.screen.potato.PotatoScreen
 import com.example.potago.presentation.screen.profile.ProfileScreen
 import com.example.potago.presentation.screen.recommendvideo.RecommendVideoScreen
 import com.example.potago.presentation.screen.setting.SettingScreen
+import com.example.potago.presentation.screen.matchgame.MatchGameScreen
+import com.example.potago.presentation.screen.matchgame.MatchResultScreen
 import com.example.potago.presentation.screen.shop.ShopScreen
 import com.example.potago.presentation.screen.splash.SplashScreen
 import com.example.potago.presentation.screen.video.VideoScreen
@@ -61,6 +63,19 @@ sealed class Screen(val route: String) {
     object AddVideo : Screen("add_video")
     object Profile : Screen("profile")
     object Shop : Screen("shop")
+    object MatchGame : Screen("match_game/{wordSetId}/{wordSetName}") {
+        operator fun invoke(wordSetId: Long, wordSetName: String): String {
+            val encodedName = android.net.Uri.encode(wordSetName)
+            return "match_game/$wordSetId/$encodedName"
+        }
+    }
+    object MatchResult : Screen("match_result/{completedTime}/{bestTime}/{bestDate}/{wordSetId}/{wordSetName}") {
+        operator fun invoke(completedTime: Double, bestTime: Double, bestDate: String, wordSetId: Long, wordSetName: String): String {
+            val encodedDate = android.net.Uri.encode(bestDate.ifBlank { "-" })
+            val encodedName = android.net.Uri.encode(wordSetName)
+            return "match_result/$completedTime/$bestTime/$encodedDate/$wordSetId/$encodedName"
+        }
+    }
     object DetailedVideo : Screen("detailed_video/{videoId}") {
         operator fun invoke(videoId: Int) = "detailed_video/$videoId"
     }
@@ -172,6 +187,51 @@ fun MainFlowContainer(rootNavController: NavController) {
             }
             composable(Screen.Shop.route) {
                 ShopScreen(mainNavController)
+            }
+            composable(
+                route = Screen.MatchGame.route,
+                arguments = listOf(
+                    navArgument("wordSetId") { type = NavType.LongType },
+                    navArgument("wordSetName") { type = NavType.StringType }
+                ),
+                enterTransition = { fadeIn(tween(250)) },
+                exitTransition = { fadeOut(tween(250)) }
+            ) { backStackEntry ->
+                val wordSetId = backStackEntry.arguments?.getLong("wordSetId") ?: 0L
+                val wordSetName = backStackEntry.arguments?.getString("wordSetName")
+                    ?.let(Uri::decode) ?: ""
+                MatchGameScreen(
+                    navController = mainNavController,
+                    wordSetId = wordSetId,
+                    wordSetName = wordSetName
+                )
+            }
+            composable(
+                route = Screen.MatchResult.route,
+                arguments = listOf(
+                    navArgument("completedTime") { type = NavType.FloatType },
+                    navArgument("bestTime") { type = NavType.FloatType },
+                    navArgument("bestDate") { type = NavType.StringType },
+                    navArgument("wordSetId") { type = NavType.LongType },
+                    navArgument("wordSetName") { type = NavType.StringType }
+                ),
+                enterTransition = { fadeIn(tween(300)) }
+            ) { backStackEntry ->
+                val completedTime = backStackEntry.arguments?.getFloat("completedTime")?.toDouble() ?: 0.0
+                val bestTime = backStackEntry.arguments?.getFloat("bestTime")?.toDouble() ?: 0.0
+                val bestDate = backStackEntry.arguments?.getString("bestDate")
+                    ?.let(Uri::decode)?.takeIf { it != "-" } ?: ""
+                val wordSetId = backStackEntry.arguments?.getLong("wordSetId") ?: 0L
+                val wordSetName = backStackEntry.arguments?.getString("wordSetName")
+                    ?.let(Uri::decode) ?: ""
+                MatchResultScreen(
+                    navController = mainNavController,
+                    completedTime = completedTime,
+                    bestTime = bestTime,
+                    bestDate = bestDate,
+                    wordSetId = wordSetId,
+                    wordSetName = wordSetName
+                )
             }
             composable(Screen.RecommendVideo.route) {
                 RecommendVideoScreen(mainNavController)
