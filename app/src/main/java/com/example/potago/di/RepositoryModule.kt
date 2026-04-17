@@ -12,10 +12,12 @@ import com.example.potago.data.repository.AuthRepositoryImpl
 import com.example.potago.data.repository.FlashcardRepositoryImpl
 import com.example.potago.data.repository.ItemRepositoryImpl
 import com.example.potago.data.remote.api.ItemApiService
+import com.example.potago.data.remote.api.StreakApiService
 import com.example.potago.domain.repository.ItemRepository
 import com.example.potago.data.repository.UserRepositoryImpl
 import com.example.potago.data.repository.SentencePatternRepositoryImpl
 import com.example.potago.data.repository.SentenceRepositoryImpl
+import com.example.potago.data.repository.StreakRepositoryImpl
 import com.example.potago.data.repository.VideoRepositoryImpl
 import com.example.potago.data.repository.WordSetRepositoryImpl
 import com.example.potago.domain.repository.AuthRepository
@@ -23,6 +25,7 @@ import com.example.potago.domain.repository.FlashcardRepository
 import com.example.potago.domain.repository.UserRepository
 import com.example.potago.domain.repository.SentencePatternRepository
 import com.example.potago.domain.repository.SentenceRepository
+import com.example.potago.domain.repository.StreakRepository
 import com.example.potago.domain.repository.VideoRepository
 import com.example.potago.domain.repository.WordSetRepository
 import dagger.Module
@@ -83,4 +86,11 @@ object RepositoryModule {
     fun provideItemRepository(
         itemApiService: ItemApiService
     ): ItemRepository = ItemRepositoryImpl(itemApiService)
+
+    @Provides
+    @Singleton
+    fun provideStreakRepository(
+        streakApiService: StreakApiService,
+        userDataStore: UserDataStore
+    ): StreakRepository = StreakRepositoryImpl(streakApiService, userDataStore)
 }

@@ -1,10 +1,7 @@
 package com.example.potago.di
 
-import com.example.potago.domain.repository.AuthRepository
-import com.example.potago.domain.repository.FlashcardRepository
-import com.example.potago.domain.repository.UserRepository
+import com.example.potago.domain.repository.*
 import com.example.potago.domain.usecase.*
-import com.example.potago.domain.repository.ItemRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -93,4 +90,45 @@ object UseCaseModule {
         repository: ItemRepository
     ): UseItemUseCase = UseItemUseCase(repository)
 
+    @Provides
+    @Singleton
+    fun provideGetCurrentStreakUseCase(
+        repository: StreakRepository
+    ): GetCurrentStreakUseCase = GetCurrentStreakUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideGetTodayStreakDateUseCase(
+        repository: StreakRepository
+    ): GetTodayStreakDateUseCase = GetTodayStreakDateUseCase(repository)
+    
+    @Provides
+    @Singleton
+    fun provideGetWordSetByIdUseCase(
+        repository: WordSetRepository
+    ): GetWordSetByIdUseCase = GetWordSetByIdUseCase(repository)
+    
+    @Provides
+    @Singleton
+    fun provideUpdateWordStatusUseCase(
+        repository: FlashcardRepository
+    ): UpdateWordStatusUseCase = UpdateWordStatusUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideObserveUserUseCase(
+        repository: UserRepository
+    ): ObserveUserUseCase = ObserveUserUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideObserveStreakUseCase(
+        repository: StreakRepository
+    ): ObserveStreakUseCase = ObserveStreakUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideObserveTodayStreakDateUseCase(
+        repository: StreakRepository
+    ): ObserveTodayStreakDateUseCase = ObserveTodayStreakDateUseCase(repository)
 }

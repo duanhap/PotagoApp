@@ -2,8 +2,12 @@ package com.example.potago.presentation.screen.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.potago.data.local.UserDataStore
 import com.example.potago.domain.model.Result
 import com.example.potago.domain.model.Setence
+import com.example.potago.domain.model.Streak
+import com.example.potago.domain.model.StreakDate
+import com.example.potago.domain.model.User
 import com.example.potago.domain.model.WordSet
 import com.example.potago.domain.usecase.GetRecentSentencesUseCase
 import com.example.potago.domain.usecase.GetRecentWordSetsUseCase
@@ -12,6 +16,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -19,7 +26,8 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val getRecentWordSetsUseCase: GetRecentWordSetsUseCase,
-    private val getRecentSentencesUseCase: GetRecentSentencesUseCase
+    private val getRecentSentencesUseCase: GetRecentSentencesUseCase,
+    private val userDataStore: UserDataStore
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -27,6 +35,21 @@ class HomeViewModel @Inject constructor(
 
     init {
         refresh()
+        observeUserData()
+    }
+
+    private fun observeUserData() {
+        combine(
+            userDataStore.getUser(),
+            userDataStore.getStreak(),
+            userDataStore.getTodayStreakDate()
+        ) { user, streak, streakDate ->
+            _uiState.update { it.copy(
+                user = user,
+                streak = streak,
+                streakDate = streakDate
+            ) }
+        }.launchIn(viewModelScope)
     }
 
     fun refresh() {
@@ -71,5 +94,8 @@ class HomeViewModel @Inject constructor(
 
 data class HomeUiState(
     val recentWordSets: UiState<List<WordSet>> = UiState.Loading,
-    val recentSentences: UiState<List<Setence>> = UiState.Loading
+    val recentSentences: UiState<List<Setence>> = UiState.Loading,
+    val user: User? = null,
+    val streak: Streak? = null,
+    val streakDate: StreakDate? = null
 )
