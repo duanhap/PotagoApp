@@ -34,6 +34,7 @@ import com.example.potago.presentation.screen.potato.PotatoScreen
 import com.example.potago.presentation.screen.profile.ProfileScreen
 import com.example.potago.presentation.screen.recommendvideo.RecommendVideoScreen
 import com.example.potago.presentation.screen.setting.SettingScreen
+import com.example.potago.presentation.screen.shop.ShopScreen
 import com.example.potago.presentation.screen.splash.SplashScreen
 import com.example.potago.presentation.screen.video.VideoScreen
 
@@ -59,6 +60,7 @@ sealed class Screen(val route: String) {
     object ManageVideo : Screen("manage_video")
     object AddVideo : Screen("add_video")
     object Profile : Screen("profile")
+    object Shop : Screen("shop")
     object DetailedVideo : Screen("detailed_video/{videoId}") {
         operator fun invoke(videoId: Int) = "detailed_video/$videoId"
     }
@@ -167,6 +169,9 @@ fun MainFlowContainer(rootNavController: NavController) {
             }
             composable(Screen.Profile.route) {
                 ProfileScreen(mainNavController)
+            }
+            composable(Screen.Shop.route) {
+                ShopScreen(mainNavController)
             }
             composable(Screen.RecommendVideo.route) {
                 RecommendVideoScreen(mainNavController)
