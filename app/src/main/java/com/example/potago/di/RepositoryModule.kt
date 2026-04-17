@@ -10,6 +10,9 @@ import com.example.potago.data.remote.api.WordSetApiService
 import com.example.potago.data.remote.api.SentencePatternApiService
 import com.example.potago.data.repository.AuthRepositoryImpl
 import com.example.potago.data.repository.FlashcardRepositoryImpl
+import com.example.potago.data.repository.ItemRepositoryImpl
+import com.example.potago.data.remote.api.ItemApiService
+import com.example.potago.domain.repository.ItemRepository
 import com.example.potago.data.repository.UserRepositoryImpl
 import com.example.potago.data.repository.SentencePatternRepositoryImpl
 import com.example.potago.data.repository.SentenceRepositoryImpl
@@ -74,4 +77,10 @@ object RepositoryModule {
     fun provideFlashcardRepository(
         flashcardApiService: FlashcardApiService
     ): FlashcardRepository = FlashcardRepositoryImpl(flashcardApiService)
+
+    @Provides
+    @Singleton
+    fun provideItemRepository(
+        itemApiService: ItemApiService
+    ): ItemRepository = ItemRepositoryImpl(itemApiService)
 }
