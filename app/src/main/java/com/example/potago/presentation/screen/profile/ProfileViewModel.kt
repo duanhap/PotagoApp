@@ -4,8 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.potago.domain.model.Result
 import com.example.potago.domain.model.User
-import com.example.potago.domain.usecase.GetUserProfileUseCase
 import com.example.potago.domain.repository.UserRepository
+import com.example.potago.domain.usecase.GetUserProfileUseCase
+import com.example.potago.domain.usecase.UpdateUserProfileUseCase
 import com.example.potago.presentation.screen.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -32,6 +33,7 @@ sealed class ProfileEvent {
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val getUserProfileUseCase: GetUserProfileUseCase,
+    private val updateUserProfileUseCase: UpdateUserProfileUseCase,
     private val userRepository: UserRepository
 ) : ViewModel() {
 
@@ -46,10 +48,10 @@ class ProfileViewModel @Inject constructor(
     }
 
     private fun loadProfile() {
+        // Load from local cache first for instant display
         viewModelScope.launch {
-            // Load from local cache first
             userRepository.getSavedUser().collect { cachedUser ->
-                if (cachedUser != null) {
+                if (cachedUser != null && _uiState.value.user is UiState.Loading) {
                     _uiState.update {
                         it.copy(
                             user = UiState.Success(cachedUser),
@@ -60,6 +62,7 @@ class ProfileViewModel @Inject constructor(
                 }
             }
         }
+        // Fetch fresh from API
         viewModelScope.launch {
             when (val result = getUserProfileUseCase()) {
                 is Result.Success -> {
@@ -89,10 +92,26 @@ class ProfileViewModel @Inject constructor(
     fun saveProfile() {
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
-            // TODO: call update profile API when endpoint is available
-            kotlinx.coroutines.delay(800)
-            _uiState.update { it.copy(isSaving = false) }
-            _events.send(ProfileEvent.ShowSnackbar("Lưu thành công!"))
+            val currentAvatar = (_uiState.value.user as? UiState.Success)?.data?.avatar
+            when (val result = updateUserProfileUseCase(
+                name = _uiState.value.name.takeIf { it.isNotBlank() },
+                avatar = currentAvatar
+            )) {
+                is Result.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            isSaving = false,
+                            user = UiState.Success(result.data!!)
+                        )
+                    }
+                    _events.send(ProfileEvent.ShowSnackbar("Lưu thành công!"))
+                }
+                is Result.Error -> {
+                    _uiState.update { it.copy(isSaving = false) }
+                    _events.send(ProfileEvent.ShowSnackbar(result.message ?: "Lưu thất bại"))
+                }
+                else -> _uiState.update { it.copy(isSaving = false) }
+            }
         }
     }
 }
