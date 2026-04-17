@@ -1,5 +1,7 @@
 package com.example.potago.presentation.screen.profile
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -44,6 +46,10 @@ fun ProfileScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var isPasswordVisible by remember { mutableStateOf(false) }
 
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri -> uri?.let { viewModel.onAvatarSelected(it) } }
+
     LaunchedEffect(Unit) {
         viewModel.events.collectLatest { event ->
             when (event) {
@@ -72,7 +78,8 @@ fun ProfileScreen(
             val avatarUrl = (uiState.user as? UiState.Success)?.data?.avatar
             AvatarSection(
                 avatarUrl = avatarUrl,
-                onChangeAvatarClick = { /* TODO: open image picker */ }
+                isUploading = uiState.isUploadingAvatar,
+                onChangeAvatarClick = { imagePickerLauncher.launch("image/*") }
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -195,6 +202,7 @@ private fun ProfileBackButton(onClick: () -> Unit) {
 @Composable
 private fun AvatarSection(
     avatarUrl: String?,
+    isUploading: Boolean = false,
     onChangeAvatarClick: () -> Unit
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -222,16 +230,31 @@ private fun AvatarSection(
                     modifier = Modifier.fillMaxSize()
                 )
             }
+            if (isUploading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(32.dp),
+                    color = Color(0xFF46A302),
+                    strokeWidth = 3.dp
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Text(
-            text = "CHANGE AVATAR",
-            style = MaterialTheme.typography.labelLarge,
-            color = Color(0xFF46A302),
-            modifier = Modifier.clickable { onChangeAvatarClick() }
-        )
+        if (isUploading) {
+            Text(
+                text = "Đang tải lên...",
+                style = MaterialTheme.typography.labelLarge,
+                color = Color(0xFF46A302)
+            )
+        } else {
+            Text(
+                text = "CHANGE AVATAR",
+                style = MaterialTheme.typography.labelLarge,
+                color = Color(0xFF46A302),
+                modifier = Modifier.clickable { onChangeAvatarClick() }
+            )
+        }
     }
 }
 
