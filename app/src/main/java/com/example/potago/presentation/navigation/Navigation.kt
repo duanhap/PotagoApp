@@ -36,6 +36,7 @@ import com.example.potago.presentation.screen.recommendvideo.RecommendVideoScree
 import com.example.potago.presentation.screen.setting.SettingScreen
 import com.example.potago.presentation.screen.shop.ShopScreen
 import com.example.potago.presentation.screen.splash.SplashScreen
+import com.example.potago.presentation.screen.streak.StreakScreen
 import com.example.potago.presentation.screen.video.VideoScreen
 
 sealed class Screen(val route: String) {
@@ -82,6 +83,7 @@ sealed class Screen(val route: String) {
             return "edit_course/$wordSetId/$encodedName"
         }
     }
+    object Streak : Screen("streak_screen")
 }
 
 @Composable
@@ -285,6 +287,11 @@ fun MainFlowContainer(rootNavController: NavController) {
                     navController = mainNavController,
                     wordSetId = wordSetId,
                     initialTitle = wordSetName
+                )
+            }
+            composable(Screen.Streak.route) {
+                StreakScreen(
+                    navController = mainNavController
                 )
             }
         }
