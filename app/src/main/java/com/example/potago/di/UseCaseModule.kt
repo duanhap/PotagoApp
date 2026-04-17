@@ -1,9 +1,9 @@
 package com.example.potago.di
 
 import com.example.potago.domain.repository.AuthRepository
+import com.example.potago.domain.repository.FlashcardRepository
 import com.example.potago.domain.repository.UserRepository
-import com.example.potago.domain.usecase.*
-import dagger.Module
+import com.example.potago.domain.usecase.*import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
@@ -45,6 +45,12 @@ object UseCaseModule {
 
     @Provides
     @Singleton
+    fun provideUpdateUserProfileUseCase(
+        repository: UserRepository
+    ): UpdateUserProfileUseCase = UpdateUserProfileUseCase(repository)
+
+    @Provides
+    @Singleton
     fun provideRegisterUserUseCase(
         repository: UserRepository
     ): RegisterBackendUseCase = RegisterBackendUseCase(repository)
@@ -60,4 +66,11 @@ object UseCaseModule {
     fun provideUpdateUserSettingsUseCase(
         repository: UserRepository
     ): UpdateUserSettingsUseCase = UpdateUserSettingsUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideGetFlashcardsUseCase(
+        repository: FlashcardRepository
+    ): GetFlashcardsUseCase = GetFlashcardsUseCase(repository)
+
 }
