@@ -1,8 +1,12 @@
 package com.example.potago.di
 
 import com.example.potago.domain.repository.AuthRepository
+import com.example.potago.domain.repository.FlashcardRepository
 import com.example.potago.domain.repository.UserRepository
 import com.example.potago.domain.usecase.*
+import com.example.potago.domain.repository.ItemRepository
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -45,6 +49,12 @@ object UseCaseModule {
 
     @Provides
     @Singleton
+    fun provideUpdateUserProfileUseCase(
+        repository: UserRepository
+    ): UpdateUserProfileUseCase = UpdateUserProfileUseCase(repository)
+
+    @Provides
+    @Singleton
     fun provideRegisterUserUseCase(
         repository: UserRepository
     ): RegisterBackendUseCase = RegisterBackendUseCase(repository)
@@ -60,4 +70,36 @@ object UseCaseModule {
     fun provideUpdateUserSettingsUseCase(
         repository: UserRepository
     ): UpdateUserSettingsUseCase = UpdateUserSettingsUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideGetFlashcardsUseCase(
+        repository: FlashcardRepository
+    ): GetFlashcardsUseCase = GetFlashcardsUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideGetItemsUseCase(
+        repository: ItemRepository
+    ): GetItemsUseCase = GetItemsUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun providePurchaseItemUseCase(
+        repository: ItemRepository
+    ): PurchaseItemUseCase = PurchaseItemUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideUseItemUseCase(
+        repository: ItemRepository
+    ): UseItemUseCase = UseItemUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideUploadAvatarUseCase(
+        userRepository: UserRepository,
+        @ApplicationContext context: Context
+    ): UploadAvatarUseCase = UploadAvatarUseCase(userRepository, context)
+
 }

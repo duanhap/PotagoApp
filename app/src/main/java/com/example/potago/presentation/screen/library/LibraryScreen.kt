@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -594,16 +595,14 @@ private fun WordSetCard(
         Column {
             Text(
                 text = wordSet.name.ifBlank { "Không có tên" },
-                fontSize = 16.sp,
                 lineHeight = 24.sp,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.bodyLarge,
                 color = Color.Black
             )
             Text(
                 text = buildWordSetMeta(wordSet),
-                fontSize = 14.sp,
                 lineHeight = 24.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.bodyMedium,
                 color = Color(0x80000000)
             )
         }

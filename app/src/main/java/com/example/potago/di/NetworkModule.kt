@@ -1,11 +1,8 @@
 package com.example.potago.di
 
 import com.example.potago.data.remote.FirebaseAuthDataSource
-import com.example.potago.data.remote.api.UserApiService
-import com.example.potago.data.remote.api.VideoApiService
-import com.example.potago.data.remote.api.SentencePatternApiService
-import com.example.potago.data.remote.api.SentenceApiService
-import com.example.potago.data.remote.api.WordSetApiService
+import com.example.potago.data.remote.api.*
+import com.example.potago.data.remote.api.ItemApiService
 import com.example.potago.data.remote.interceptor.AuthInterceptor
 import com.example.potago.data.remote.interceptor.TokenAuthenticator
 import com.google.firebase.auth.FirebaseAuth
@@ -104,5 +101,17 @@ object NetworkModule {
     @Singleton
     fun provideSentenceApiService(retrofit: Retrofit): SentenceApiService {
         return retrofit.create(SentenceApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideFlashcardApiService(retrofit: Retrofit): FlashcardApiService {
+        return retrofit.create(FlashcardApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideItemApiService(retrofit: Retrofit): ItemApiService {
+        return retrofit.create(ItemApiService::class.java)
     }
 }

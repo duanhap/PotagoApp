@@ -3,6 +3,7 @@ package com.example.potago.di
 import android.content.Context
 import com.example.potago.data.local.JobDataStore
 import com.example.potago.data.local.UserDataStore
+import com.example.potago.data.local.WordSetDataStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -24,5 +25,11 @@ object StorageModule {
     @Singleton
     fun provideJobDataStore(@ApplicationContext context: Context): JobDataStore {
         return JobDataStore(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideWordSetDataStore(@ApplicationContext context: Context): WordSetDataStore {
+        return WordSetDataStore(context)
     }
 }
