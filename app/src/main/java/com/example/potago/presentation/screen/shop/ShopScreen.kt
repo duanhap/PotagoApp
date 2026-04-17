@@ -35,10 +35,17 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.potago.domain.model.Item
+import com.example.potago.presentation.screen.UiState
+import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -81,7 +88,9 @@ private data class ShopItem(
     val name: String,
     val imageRes: Int,
     val price: Int,
-    val oldPrice: Int? = null
+    val oldPrice: Int? = null,
+    val itemType: String = "",
+    val quantity: Int = 1
 )
 
 private sealed class ShopActiveSheet {
@@ -92,23 +101,36 @@ private sealed class ShopActiveSheet {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ShopScreen(navController: NavController) {
+fun ShopScreen(
+    navController: NavController,
+    viewModel: ShopViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var activeSheet by remember { mutableStateOf<ShopActiveSheet?>(null) }
-    var diamondBalance by remember { mutableIntStateOf(1200) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
+    LaunchedEffect(Unit) {
+        viewModel.events.collectLatest { event ->
+            when (event) {
+                is ShopEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
+            }
+        }
+    }
+
+    val item = (uiState.items as? UiState.Success)?.data
     val ownedItems = listOf(
-        OwnedItem("Water Freeze", 5, R.drawable.noto_ice, OwnedItemKind.WaterFreeze),
-        OwnedItem("Siêu KN", 1, R.drawable.bag_kn, OwnedItemKind.SieuKn),
-        OwnedItem("Hack KN", 0, R.drawable.bag_hack, OwnedItemKind.HackKn)
+        OwnedItem("Water Freeze", item?.waterStreak ?: 0, R.drawable.noto_ice, OwnedItemKind.WaterFreeze),
+        OwnedItem("Siêu KN", item?.superExperience ?: 0, R.drawable.bag_kn, OwnedItemKind.SieuKn),
+        OwnedItem("Hack KN", item?.hackExperience ?: 0, R.drawable.bag_hack, OwnedItemKind.HackKn)
     )
     val streakItems = listOf(
-        ShopItem("Water Freeze", R.drawable.noto_ice, 200)
+        ShopItem("Water Freeze", R.drawable.noto_ice, 200, itemType = ItemType.WATER_STREAK, quantity = 1)
     )
     val superXpItems = listOf(
-        ShopItem("Single", R.drawable.bag_kn, 500),
-        ShopItem("3 pack", R.drawable.bag_3pack, 1200, 1500),
-        ShopItem("5 pack", R.drawable.bag_5pack, 2000, 2500)
+        ShopItem("Single", R.drawable.bag_kn, 500, itemType = ItemType.SUPER_XP, quantity = 1),
+        ShopItem("3 pack", R.drawable.bag_3pack, 1200, 1500, itemType = ItemType.SUPER_XP, quantity = 3),
+        ShopItem("5 pack", R.drawable.bag_5pack, 2000, 2500, itemType = ItemType.SUPER_XP, quantity = 5)
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -119,7 +141,7 @@ fun ShopScreen(navController: NavController) {
                 .verticalScroll(rememberScrollState())
         ) {
         ShopTopBar(
-            diamondCount = diamondBalance,
+            diamondCount = uiState.diamond,
             onClose = { navController.popBackStack() }
         )
 
@@ -163,51 +185,27 @@ fun ShopScreen(navController: NavController) {
             }
         }
 
-        Spacer(modifier = Modifier.height(22.dp))
-        SectionTitle("Bảo vệ chuỗi")
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            streakItems.forEach { item ->
-                ShopItemRow(
-                    item = item,
-                    onClick = {
-                        activeSheet = if (diamondBalance >= item.price) {
-                            ShopActiveSheet.PurchaseConfirm(item)
-                        } else {
-                            ShopActiveSheet.PurchaseInsufficient(item)
-                        }
-                    }
-                )
+        val hackKnItems = listOf(
+            ShopItem("Hack KN", R.drawable.bag_hack, 300, itemType = ItemType.HACK_XP, quantity = 1)
+        )
+        val onShopItemClick: (ShopItem) -> Unit = { shopItem ->
+            activeSheet = if (uiState.diamond >= shopItem.price) {
+                ShopActiveSheet.PurchaseConfirm(shopItem)
+            } else {
+                ShopActiveSheet.PurchaseInsufficient(shopItem)
             }
         }
 
-        Spacer(modifier = Modifier.height(22.dp))
-        SectionTitle("Thời gian siêu cấp")
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            superXpItems.forEach { item ->
-                ShopItemRow(
-                    item = item,
-                    onClick = {
-                        activeSheet = if (diamondBalance >= item.price) {
-                            ShopActiveSheet.PurchaseConfirm(item)
-                        } else {
-                            ShopActiveSheet.PurchaseInsufficient(item)
-                        }
-                    }
-                )
-            }
-        }
+        ShopSection("Bảo vệ chuỗi", streakItems, uiState.diamond, onShopItemClick)
+        ShopSection("Thời gian siêu cấp", superXpItems, uiState.diamond, onShopItemClick)
+        ShopSection("Hack KN", hackKnItems, uiState.diamond, onShopItemClick)
         Spacer(modifier = Modifier.height(24.dp))
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
 
         activeSheet?.let { sheet ->
             ModalBottomSheet(
@@ -221,14 +219,20 @@ fun ShopScreen(navController: NavController) {
                         item = sheet.item,
                         onDismiss = { activeSheet = null },
                         onConfirm = { activeSheet = null },
-                        onUse = { activeSheet = null }
+                        onUse = {
+                            val itemType = when (sheet.item.kind) {
+                                OwnedItemKind.WaterFreeze -> ItemType.WATER_STREAK
+                                OwnedItemKind.SieuKn -> ItemType.SUPER_XP
+                                OwnedItemKind.HackKn -> ItemType.HACK_XP
+                            }
+                            viewModel.useItem(itemType)
+                            activeSheet = null
+                        }
                     )
                     is ShopActiveSheet.PurchaseConfirm -> PurchaseConfirmBottomSheetContent(
                         item = sheet.item,
                         onConfirm = {
-                            if (diamondBalance >= sheet.item.price) {
-                                diamondBalance -= sheet.item.price
-                            }
+                            viewModel.purchase(sheet.item.itemType, sheet.item.quantity)
                             activeSheet = null
                         }
                     )
@@ -237,6 +241,30 @@ fun ShopScreen(navController: NavController) {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ShopSection(
+    title: String,
+    items: List<ShopItem>,
+    diamond: Int,
+    onItemClick: (ShopItem) -> Unit
+) {
+    Spacer(modifier = Modifier.height(22.dp))
+    SectionTitle(title)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items.forEach { item ->
+            ShopItemRow(
+                item = item,
+                onClick = { onItemClick(item) }
+            )
         }
     }
 }
@@ -567,112 +595,45 @@ private fun ShopPurchaseItemPreviewCard(item: ShopItem) {
 }
 
 private fun buildWaterFreezeDescription(quantity: Int) = buildAnnotatedString {
-    val body = SpanStyle(
-        color = Color(0xB3000000),
-        fontSize = 20.sp,
-        fontWeight = FontWeight.Black,
-        fontFamily = Nunito
-    )
-    val green = SpanStyle(
-        color = Color(0xFF89E219),
-        fontSize = 20.sp,
-        fontWeight = FontWeight.Black,
-        fontFamily = Nunito
-    )
-    pushStyle(body)
-    append("Một Water Freeze giúp bảo vệ chuỗi tưới nước của bạn cho 1 ngày. Bạn đang có ")
-    pop()
-    pushStyle(green)
-    append("$quantity chưa sử dụng")
-    pop()
-    pushStyle(body)
-    append(".")
-    pop()
+    val body = descBodyStyle()
+    val green = descGreenStyle()
+    pushStyle(body); append("Một Water Freeze giúp bảo vệ chuỗi tưới nước của bạn cho 1 ngày. Bạn đang có "); pop()
+    pushStyle(green); append("$quantity chưa sử dụng"); pop()
+    pushStyle(body); append("."); pop()
 }
 
 private fun buildHackKnDescription(quantity: Int) = buildAnnotatedString {
-    val body = SpanStyle(
-        color = Color(0xB3000000),
-        fontSize = 20.sp,
-        fontWeight = FontWeight.Black,
-        fontFamily = Nunito
-    )
-    val green = SpanStyle(
-        color = Color(0xFF89E219),
-        fontSize = 20.sp,
-        fontWeight = FontWeight.Black,
-        fontFamily = Nunito
-    )
-    val redUnused = SpanStyle(
-        color = Color(0xFFFF383C),
-        fontSize = 20.sp,
-        fontWeight = FontWeight.Black,
-        fontFamily = Nunito
-    )
-    val greenUnused = SpanStyle(
-        color = Color(0xFF58CC02),
-        fontSize = 20.sp,
-        fontWeight = FontWeight.Black,
-        fontFamily = Nunito
-    )
-    pushStyle(body)
-    append("Một Hack KN sẽ giúp bạn ")
-    pop()
-    pushStyle(green)
-    append("x3 kinh nghiệm trong 30 phút")
-    pop()
-    pushStyle(body)
-    append(". Học thêm để nhận được 1 Hack KN. Bạn đang có")
-    pop()
-    pushStyle(if (quantity > 0) greenUnused else redUnused)
-    append(" $quantity chưa sử dụng")
-    pop()
-    pushStyle(body)
-    append(".")
-    pop()
+    val body = descBodyStyle()
+    val green = descGreenStyle()
+    val unused = descQuantityStyle(quantity)
+    pushStyle(body); append("Một Hack KN sẽ giúp bạn "); pop()
+    pushStyle(green); append("x3 kinh nghiệm trong 30 phút"); pop()
+    pushStyle(body); append(". Học thêm để nhận được 1 Hack KN. Bạn đang có"); pop()
+    pushStyle(unused); append(" $quantity chưa sử dụng"); pop()
+    pushStyle(body); append("."); pop()
 }
 
 private fun buildSieuKnDescription(quantity: Int) = buildAnnotatedString {
-    val body = SpanStyle(
-        color = Color(0xB3000000),
-        fontSize = 20.sp,
-        fontWeight = FontWeight.Black,
-        fontFamily = Nunito
-    )
-    val green = SpanStyle(
-        color = Color(0xFF89E219),
-        fontSize = 20.sp,
-        fontWeight = FontWeight.Black,
-        fontFamily = Nunito
-    )
-    val greenUnused = SpanStyle(
-        color = Color(0xFF58CC02),
-        fontSize = 20.sp,
-        fontWeight = FontWeight.Black,
-        fontFamily = Nunito
-    )
-    val redUnused = SpanStyle(
-        color = Color(0xFFFF383C),
-        fontSize = 20.sp,
-        fontWeight = FontWeight.Black,
-        fontFamily = Nunito
-    )
-    pushStyle(body)
-    append("Một Siêu KN sẽ giúp bạn ")
-    pop()
-    pushStyle(green)
-    append("x2 kinh nghiệm trong 15 phút")
-    pop()
-    pushStyle(body)
-    append(". Học thêm để nhận được 1 Siêu KN. Bạn đang có")
-    pop()
-    pushStyle(if (quantity > 0) greenUnused else redUnused)
-    append(" $quantity chưa sử dụng")
-    pop()
-    pushStyle(body)
-    append(".")
-    pop()
+    val body = descBodyStyle()
+    val green = descGreenStyle()
+    val unused = descQuantityStyle(quantity)
+    pushStyle(body); append("Một Siêu KN sẽ giúp bạn "); pop()
+    pushStyle(green); append("x2 kinh nghiệm trong 15 phút"); pop()
+    pushStyle(body); append(". Học thêm để nhận được 1 Siêu KN. Bạn đang có"); pop()
+    pushStyle(unused); append(" $quantity chưa sử dụng"); pop()
+    pushStyle(body); append("."); pop()
 }
+
+private fun descBodyStyle() = SpanStyle(
+    color = Color(0xB3000000), fontSize = 20.sp, fontWeight = FontWeight.Black, fontFamily = Nunito
+)
+private fun descGreenStyle() = SpanStyle(
+    color = Color(0xFF89E219), fontSize = 20.sp, fontWeight = FontWeight.Black, fontFamily = Nunito
+)
+private fun descQuantityStyle(quantity: Int) = SpanStyle(
+    color = if (quantity > 0) Color(0xFF58CC02) else Color(0xFFFF383C),
+    fontSize = 20.sp, fontWeight = FontWeight.Black, fontFamily = Nunito
+)
 
 @Composable
 private fun ShopSheetPrimaryButton(
