@@ -333,7 +333,7 @@ private fun UploadButton(
 }
 
 @Composable
-fun CustomLanguageSpinner(
+private fun CustomLanguageSpinner(
     label: String,
     selectedLanguage: Language,
     onLanguageSelected: (Language) -> Unit,
@@ -361,7 +361,7 @@ fun CustomLanguageSpinner(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
-                    .border(1.5.dp, borderColor, RoundedCornerShape(16.dp))
+                    .border(if( expanded) 2.dp else 1.5.dp,  borderColor, RoundedCornerShape(16.dp))
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null,

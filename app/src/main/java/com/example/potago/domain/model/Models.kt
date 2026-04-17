@@ -1,5 +1,7 @@
 package com.example.potago.domain.model
 
+import com.google.gson.annotations.SerializedName
+
 data class User(
     val id: Int = 0,
     val uid: String = "",
@@ -32,7 +34,8 @@ data class WordSet(
     val termLanguageCode: String = "",
     val updatedAt: String? = null,
     val lastOpened: String? = null,
-    val userId: Int = 0
+    val userId: Int = 0,
+    val amountOfWords : Int? = null
 )
 
 data class Word(
@@ -43,8 +46,9 @@ data class Word(
     val createdAt: String = "",
     val status: String = "",
     val wordSetId: Long? = null,
-    val flashcardGameId: Long = 0,
-    val matchGameId: Int = 0
+    val flashcardGameId: Long? = null,
+    val matchGameId: Int? = null,
+    val flashcardOrder : Int = 0
 )
 
 data class FlashcardGame(
@@ -99,7 +103,9 @@ data class Setence(
     val createdAt: String = "",
     val status: String = "",
     val numberOfMistakes: Int? = null,
-    val setencePatternId: Int = 0
+    val setencePatternId: Int = 0,
+    val termLanguageCode: String = "",
+    val definitionLanguageCode: String = "",
 )
 
 data class WritingGame(

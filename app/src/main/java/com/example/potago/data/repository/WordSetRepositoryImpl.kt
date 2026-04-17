@@ -43,6 +43,19 @@ class WordSetRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getWordSetById(wordSetId: Long): Result<WordSet> {
+        return try {
+            val response = wordSetApiService.getWordSetById(wordSetId)
+            if (response.success && response.data != null) {
+                Result.Success(response.data.toDomain())
+            } else {
+                Result.Error(response.message)
+            }
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
     private fun <T> handleError(e: Exception): Result<T> {
         return if (e is HttpException) {
             try {
