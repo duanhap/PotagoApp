@@ -57,6 +57,9 @@ fun DetailCourseScreen(
         wordSetName = wordSetName,
         onBackClick = { navController.popBackStack() },
         onSlideDownClick = { navController.popBackStack() },
+        onMatchGameClick = {
+            navController.navigate(Screen.MatchGame(wordSetId, wordSetName))
+        },
         onEditCourseClick = {
             navController.navigate(Screen.EditCourse(wordSetId, wordSetName))
         },
@@ -69,6 +72,7 @@ private fun DetailCourseScreenContent(
     wordSetName: String,
     onBackClick: () -> Unit,
     onSlideDownClick: () -> Unit,
+    onMatchGameClick: () -> Unit,
     onEditCourseClick: () -> Unit,
     onConfirmDeleteWordSet: () -> Unit = {}
 ) {
@@ -161,7 +165,8 @@ private fun DetailCourseScreenContent(
                 Spacer(modifier = Modifier.height(10.dp))
                 DetailActionCard(
                     iconRes = R.drawable.ic_detail_course_screen_matching_cards,
-                    title = "Ghép thẻ"
+                    title = "Ghép thẻ",
+                    onClick = onMatchGameClick
                 )
 
                 Spacer(modifier = Modifier.height(22.dp))
@@ -417,6 +422,7 @@ private fun DetailCourseScreenPreview() {
         wordSetName = "Ordering Food",
         onBackClick = {},
         onSlideDownClick = {},
+        onMatchGameClick = {},
         onEditCourseClick = {},
         onConfirmDeleteWordSet = {}
     )
