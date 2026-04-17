@@ -12,4 +12,9 @@ interface WordSetApiService {
     suspend fun getRecentWordSets(
         @Query("limit") limit: Int = 3
     ): ApiResponse<List<WordSetDto>>
+
+    @GET("/api/word-sets/by-id")
+    suspend fun getWordSetById(
+        @Query("word_set_id") wordSetId: Long
+    ): ApiResponse<WordSetDto>
 }
