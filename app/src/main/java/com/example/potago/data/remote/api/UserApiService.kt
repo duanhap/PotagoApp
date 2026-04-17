@@ -5,10 +5,13 @@ import com.example.potago.data.remote.dto.SettingDto
 import com.example.potago.data.remote.dto.UpdateProfileRequest
 import com.example.potago.data.remote.dto.UpdateUserSettingsRequest
 import com.example.potago.data.remote.dto.UserDto
+import okhttp3.MultipartBody
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Part
 
 interface UserApiService {
 
@@ -18,6 +21,12 @@ interface UserApiService {
     @PUT("/api/users/profile")
     suspend fun updateUserProfile(
         @Body request: UpdateProfileRequest
+    ): ApiResponse<UserDto>
+
+    @Multipart
+    @POST("/api/users/avatar")
+    suspend fun uploadAvatar(
+        @Part file: MultipartBody.Part
     ): ApiResponse<UserDto>
 
     @POST("/api/users/register")
