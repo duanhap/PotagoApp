@@ -37,3 +37,9 @@ data class RegisterRequest(
     val email: String,
     val name: String
 )
+
+data class UpdateProfileRequest(
+    @SerializedName("name") val name: String?,
+    @SerializedName("avatar") val avatar: String?,
+    @SerializedName("token_fcm") val tokenFcm: String?
+)

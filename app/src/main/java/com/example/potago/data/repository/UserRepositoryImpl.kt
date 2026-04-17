@@ -3,6 +3,7 @@ package com.example.potago.data.repository
 import com.example.potago.data.local.UserDataStore
 import com.example.potago.data.remote.api.UserApiService
 import com.example.potago.data.remote.dto.RegisterRequest
+import com.example.potago.data.remote.dto.UpdateProfileRequest
 import com.example.potago.data.remote.dto.UpdateUserSettingsRequest
 import com.example.potago.data.remote.dto.SettingDto
 import com.example.potago.data.remote.dto.toUser
@@ -25,6 +26,21 @@ class UserRepositoryImpl @Inject constructor(
     override suspend fun getUserProfile(): Result<User> {
         return try {
             val response = apiService.getUserProfile()
+            if (response.success && response.data != null) {
+                val user = response.data.toUser()
+                saveUser(user)
+                Result.Success(user)
+            } else {
+                Result.Error(response.message ?: "Unknown Error")
+            }
+        } catch (e: Exception) {
+            Result.Error("Network error: ${e.message}")
+        }
+    }
+
+    override suspend fun updateUserProfile(name: String?, avatar: String?): Result<User> {
+        return try {
+            val response = apiService.updateUserProfile(UpdateProfileRequest(name = name, avatar = avatar, tokenFcm = null))
             if (response.success && response.data != null) {
                 val user = response.data.toUser()
                 saveUser(user)
