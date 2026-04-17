@@ -1,9 +1,10 @@
 package com.example.potago.presentation.screen.profile
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -20,33 +21,42 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.example.potago.R
+import com.example.potago.presentation.screen.UiState
 import com.example.potago.presentation.screen.auth.BigPotagoButton
 import com.example.potago.presentation.screen.auth.PasswordField
+import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun ProfileScreen(
     navController: NavController? = null,
+    viewModel: ProfileViewModel = hiltViewModel()
 ) {
-    var name by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
     var isPasswordVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        viewModel.events.collectLatest { event ->
+            when (event) {
+                is ProfileEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
-            ProfileTopBar(onBackClick =  { navController?.popBackStack() })
+            ProfileTopBar(onBackClick = { navController?.popBackStack() })
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Color.White
     ) { innerPadding ->
         Column(
@@ -59,7 +69,9 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // ── Avatar ────────────────────────────────────────────────────
+            val avatarUrl = (uiState.user as? UiState.Success)?.data?.avatar
             AvatarSection(
+                avatarUrl = avatarUrl,
                 onChangeAvatarClick = { /* TODO: open image picker */ }
             )
 
@@ -74,8 +86,8 @@ fun ProfileScreen(
             ) {
                 ProfileTextField(
                     label = "Name",
-                    value = name,
-                    onValueChange = { name = it },
+                    value = uiState.name,
+                    onValueChange = viewModel::onNameChange,
                     placeholder = "Dunsensei",
                     leadingIcon = { isFocused ->
                         Icon(
@@ -89,8 +101,8 @@ fun ProfileScreen(
 
                 ProfileTextField(
                     label = "Email",
-                    value = email,
-                    onValueChange = { email = it },
+                    value = uiState.email,
+                    onValueChange = viewModel::onEmailChange,
                     placeholder = "hello@example.com",
                     keyboardType = KeyboardType.Email,
                     leadingIcon = { isFocused ->
@@ -105,9 +117,9 @@ fun ProfileScreen(
 
                 PasswordField(
                     type = "Password",
-                    value = password,
+                    value = uiState.password,
                     isPasswordVisible = isPasswordVisible,
-                    onValueChange = { password = it },
+                    onValueChange = viewModel::onPasswordChange,
                     onTogglePasswordVisibility = { isPasswordVisible = !isPasswordVisible }
                 )
             }
@@ -119,9 +131,9 @@ fun ProfileScreen(
             Box(modifier = Modifier.padding(horizontal = 20.dp)) {
                 BigPotagoButton(
                     text = "LƯU",
-                    enabled = true,
-                    isLoading = false,
-                    onClick = { /* TODO: save profile */ }
+                    enabled = !uiState.isSaving,
+                    isLoading = uiState.isSaving,
+                    onClick = viewModel::saveProfile
                 )
             }
 
@@ -181,7 +193,10 @@ private fun ProfileBackButton(onClick: () -> Unit) {
 // Avatar Section
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
-private fun AvatarSection(onChangeAvatarClick: () -> Unit) {
+private fun AvatarSection(
+    avatarUrl: String?,
+    onChangeAvatarClick: () -> Unit
+) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
@@ -190,12 +205,23 @@ private fun AvatarSection(onChangeAvatarClick: () -> Unit) {
                 .border(2.dp, Color.Black, CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.normal_mascot),
-                contentDescription = "Avatar",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
+            if (!avatarUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = avatarUrl,
+                    contentDescription = "Avatar",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                    error = painterResource(id = R.drawable.normal_mascot),
+                    placeholder = painterResource(id = R.drawable.normal_mascot)
+                )
+            } else {
+                androidx.compose.foundation.Image(
+                    painter = painterResource(id = R.drawable.normal_mascot),
+                    contentDescription = "Avatar",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
