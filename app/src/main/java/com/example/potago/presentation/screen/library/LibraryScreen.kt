@@ -1,6 +1,6 @@
 package com.example.potago.presentation.screen.library
 
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,7 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,11 +33,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -50,7 +47,6 @@ import com.example.potago.presentation.navigation.Screen
 import com.example.potago.presentation.screen.UiState
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeParseException
 
 @Composable
 fun LibraryScreen(
@@ -72,6 +68,9 @@ fun LibraryScreen(
         onWordSetClick = { wordSet ->
             navController.navigate(Screen.FlashCard(wordSet.id, wordSet.name))
         },
+        onSentencePatternClick = { pattern ->
+            navController.navigate(Screen.DetailSentencePattern(pattern.id.toLong(), pattern.name))
+        },
         onRetry = { viewModel.refreshLibrary() }
     )
 }
@@ -83,6 +82,7 @@ private fun LibraryScreenContent(
     recentSentencePatternsState: UiState<List<SetencePattern>>,
     allSentencePatternsState: UiState<List<SetencePattern>>,
     onWordSetClick: (WordSet) -> Unit,
+    onSentencePatternClick: (SetencePattern) -> Unit,
     onRetry: () -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(LibraryTab.COURSE) }
@@ -113,6 +113,7 @@ private fun LibraryScreenContent(
                 SentenceTabContent(
                     recentState = recentSentencePatternsState,
                     allState = allSentencePatternsState,
+                    onSentencePatternClick = onSentencePatternClick,
                     onRetry = onRetry
                 )
             }
@@ -124,11 +125,9 @@ private fun LibraryScreenContent(
                 onDismiss = { isAddOverlayVisible = false },
                 onChooseCourse = {
                     isAddOverlayVisible = false
-                    // TODO: navigate to "create word set" screen if you already have one.
                 },
                 onChooseSentence = {
                     isAddOverlayVisible = false
-                    // TODO: navigate to "create sentence pattern" screen if you already have one.
                 }
             )
         }
@@ -189,7 +188,6 @@ private fun AddOverlay(
     onChooseCourse: () -> Unit,
     onChooseSentence: () -> Unit
 ) {
-    // Full-screen dim layer
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -197,10 +195,8 @@ private fun AddOverlay(
             .clickable(onClick = onDismiss)
     )
 
-    // Bottom sheet
     Box(
-        modifier = Modifier
-            .fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.BottomCenter
     ) {
         Column(
@@ -213,7 +209,6 @@ private fun AddOverlay(
                 )
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
-            // Drag handle
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
@@ -224,18 +219,15 @@ private fun AddOverlay(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            val courseSelected = selectedTab == LibraryTab.COURSE
-            val sentenceSelected = selectedTab == LibraryTab.SENTENCE
-
             AddOverlayButton(
-                selected = courseSelected,
+                selected = selectedTab == LibraryTab.COURSE,
                 iconRes = R.drawable.ic_folder,
                 text = "Học phần",
                 onClick = onChooseCourse
             )
             Spacer(modifier = Modifier.height(12.dp))
             AddOverlayButton(
-                selected = sentenceSelected,
+                selected = selectedTab == LibraryTab.SENTENCE,
                 iconRes = R.drawable.ic_library,
                 text = "Mẫu câu",
                 onClick = onChooseSentence
@@ -251,7 +243,7 @@ private fun AddOverlayButton(
     text: String,
     onClick: () -> Unit
 ) {
-    val selectedBg = Color(0xFFD7FFA4) // light green
+    val selectedBg = Color(0xFFD7FFA4)
     val borderColor = Color(0xFF46A302)
     val unselectedBg = Color.White
 
@@ -355,75 +347,50 @@ private fun CourseTabContent(
     onRetry: () -> Unit
 ) {
     val isLoading = allState is UiState.Loading && recentState is UiState.Loading
-    val recentWordSets = (recentState as? UiState.Success)?.data.orEmpty()
-    val allWordSets = (allState as? UiState.Success)?.data.orEmpty()
-    val fallbackRecent = if (recentWordSets.isEmpty()) allWordSets.take(3) else recentWordSets
-    // Nếu ít nhất một phía (recent/all) có data thì ưu tiên render list, không show error.
-    val errorMessage = when {
-        fallbackRecent.isNotEmpty() -> null
-        allState is UiState.Error -> allState.message
-        recentState is UiState.Error -> recentState.message
-        else -> null
+    val recentWordSets = (recentState as? UiState.Success<List<WordSet>>)?.data ?: emptyList()
+    val allWordSets = (allState as? UiState.Success<List<WordSet>>)?.data ?: emptyList()
+
+    if (isLoading) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = Color(0xFF46A302))
+        }
+        return
     }
 
-    when {
-        isLoading -> {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = Color.Black)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 16.dp)
+    ) {
+        if (recentWordSets.isNotEmpty()) {
+            item {
+                SectionHeader(title = "Gần đây")
+            }
+            items(recentWordSets) { wordSet ->
+                LibraryItemCard(
+                    title = wordSet.name,
+                    subtitle = "${wordSet.amountOfWords ?: 0} thuật ngữ",
+                    timeAgo = formatLastOpened(wordSet.lastOpened),
+                    onClick = { onWordSetClick(wordSet) }
+                )
             }
         }
 
-        errorMessage != null -> {
-            ErrorContentState(
-                message = errorMessage,
-                onRetry = onRetry
-            )
+        item {
+            SectionHeader(title = "Tất cả học phần")
         }
 
-        fallbackRecent.isEmpty() && allWordSets.isEmpty() -> {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                EmptyContentState(message = "Chưa có học phần nào cả")
+        if (allWordSets.isEmpty()) {
+            item {
+                EmptyState(message = "Bạn chưa có học phần nào")
             }
-        }
-
-        else -> {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                if (fallbackRecent.isNotEmpty()) {
-                    item {
-                        SectionTitle(text = "Gần đây")
-                    }
-                    items(fallbackRecent, key = { "recent_${it.id}" }) { wordSet ->
-                        WordSetCard(
-                            wordSet = wordSet,
-                            onClick = { onWordSetClick(wordSet) }
-                        )
-                    }
-                    item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                }
-
-                if (allWordSets.isNotEmpty()) {
-                    item {
-                        SectionTitle(text = "Tất cả")
-                    }
-                    items(allWordSets, key = { "all_${it.id}" }) { wordSet ->
-                        WordSetCard(
-                            wordSet = wordSet,
-                            onClick = { onWordSetClick(wordSet) }
-                        )
-                    }
-                }
+        } else {
+            items(allWordSets) { wordSet ->
+                LibraryItemCard(
+                    title = wordSet.name,
+                    subtitle = "${wordSet.amountOfWords ?: 0} thuật ngữ",
+                    timeAgo = formatLastOpened(wordSet.lastOpened),
+                    onClick = { onWordSetClick(wordSet) }
+                )
             }
         }
     }
@@ -433,263 +400,139 @@ private fun CourseTabContent(
 private fun SentenceTabContent(
     recentState: UiState<List<SetencePattern>>,
     allState: UiState<List<SetencePattern>>,
+    onSentencePatternClick: (SetencePattern) -> Unit,
     onRetry: () -> Unit
 ) {
     val isLoading = allState is UiState.Loading && recentState is UiState.Loading
-    val recentSentencePatterns = (recentState as? UiState.Success)?.data.orEmpty()
-    val allSentencePatterns = (allState as? UiState.Success)?.data.orEmpty()
+    val recentPatterns = (recentState as? UiState.Success<List<SetencePattern>>)?.data ?: emptyList()
+    val allPatterns = (allState as? UiState.Success<List<SetencePattern>>)?.data ?: emptyList()
 
-    val fallbackRecent = if (recentSentencePatterns.isEmpty()) allSentencePatterns.take(3) else recentSentencePatterns
-    // Nếu ít nhất một phía (recent/all) có data thì ưu tiên render list, không show error.
-    val errorMessage = when {
-        fallbackRecent.isNotEmpty() -> null
-        allState is UiState.Error -> allState.message
-        recentState is UiState.Error -> recentState.message
-        else -> null
+    if (isLoading) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = Color(0xFF46A302))
+        }
+        return
     }
 
-    when {
-        isLoading -> {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = Color.Black)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 16.dp)
+    ) {
+        if (recentPatterns.isNotEmpty()) {
+            item {
+                SectionHeader(title = "Gần đây")
+            }
+            items(recentPatterns) { pattern ->
+                LibraryItemCard(
+                    title = pattern.name,
+                    subtitle = pattern.description,
+                    timeAgo = formatLastOpened(pattern.lastOpened),
+                    onClick = { onSentencePatternClick(pattern) }
+                )
             }
         }
 
-        errorMessage != null -> {
-            ErrorContentState(
-                message = errorMessage,
-                onRetry = onRetry
-            )
+        item {
+            SectionHeader(title = "Tất cả mẫu câu")
         }
 
-        fallbackRecent.isEmpty() && allSentencePatterns.isEmpty() -> {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                EmptyContentState(message = "Chưa có mẫu câu nào cả")
+        if (allPatterns.isEmpty()) {
+            item {
+                EmptyState(message = "Bạn chưa có mẫu câu nào")
             }
-        }
-
-        else -> {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                if (fallbackRecent.isNotEmpty()) {
-                    item {
-                        SectionTitle(text = "Gần đây")
-                    }
-                    items(fallbackRecent, key = { "recent_sentence_${it.id}" }) { pattern ->
-                        SentencePatternCard(pattern = pattern)
-                    }
-                    item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                }
-
-                if (allSentencePatterns.isNotEmpty()) {
-                    item {
-                        SectionTitle(text = "Tất cả")
-                    }
-                    items(allSentencePatterns, key = { "all_sentence_${it.id}" }) { pattern ->
-                        SentencePatternCard(pattern = pattern)
-                    }
-                }
+        } else {
+            items(allPatterns) { pattern ->
+                LibraryItemCard(
+                    title = pattern.name,
+                    subtitle = pattern.description,
+                    timeAgo = formatLastOpened(pattern.lastOpened),
+                    onClick = { onSentencePatternClick(pattern) }
+                )
             }
         }
     }
 }
 
 @Composable
-private fun SentencePatternCard(pattern: SetencePattern) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(58.dp)
-                .background(Color(0xFF89E219), RoundedCornerShape(10.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_folder),
-                contentDescription = "Sentence icon",
-                modifier = Modifier.size(24.dp),
-                tint = Color.White
-            )
-        }
-        Spacer(modifier = Modifier.width(20.dp))
+private fun SectionHeader(title: String) {
+    Text(
+        text = title,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Bold,
+        color = Color(0xFF6B7280),
+        modifier = Modifier.padding(start = 20.dp, top = 20.dp, bottom = 8.dp)
+    )
+}
 
-        Column {
+@Composable
+private fun LibraryItemCard(
+    title: String,
+    subtitle: String,
+    timeAgo: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 6.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = Color.White,
+        shadowElevation = 1.dp,
+        border = BorderStroke(1.dp, Color(0xFFE5E7EB))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = pattern.name.ifBlank { "Không có tên" },
-                fontSize = 16.sp,
-                lineHeight = 24.sp,
+                text = title,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Black
             )
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = buildSentencePatternMeta(pattern),
+                text = subtitle,
                 fontSize = 14.sp,
-                lineHeight = 24.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color(0x80000000)
+                color = Color(0xFF4B5563)
             )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_solar_calendar),
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = Color(0xFF9CA3AF)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = timeAgo,
+                    fontSize = 12.sp,
+                    color = Color(0xFF9CA3AF),
+                    fontStyle = FontStyle.Italic
+                )
+            }
         }
     }
 }
 
-private fun buildSentencePatternMeta(pattern: SetencePattern): String {
-    val termLang = pattern.termLanguageCode.uppercase()
-    val defLang = pattern.definitionLanguageCode.uppercase()
-    val monthYearText = formatMonthYear(pattern.createdAt)
-    return if (monthYearText.isEmpty()) {
-        "$termLang - $defLang"
-    } else {
-        "$termLang - $defLang - $monthYearText"
-    }
-}
-
 @Composable
-private fun SectionTitle(text: String) {
-    Text(
-        text = text,
-        fontSize = 18.sp,
-        lineHeight = 24.sp,
-        fontWeight = FontWeight.ExtraBold,
-        color = Color.Black
-    )
-}
-
-@Composable
-private fun WordSetCard(
-    wordSet: WordSet,
-    onClick: () -> Unit
-) {
-    Row(
+private fun EmptyState(message: String) {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(top = 40.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .size(58.dp)
-                .background(Color(0xFF89E219), RoundedCornerShape(10.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_folder),
-                contentDescription = "Word set icon",
-                modifier = Modifier.size(24.dp),
-                tint = Color.White
-            )
-        }
-        Spacer(modifier = Modifier.width(20.dp))
-        Column {
-            Text(
-                text = wordSet.name.ifBlank { "Không có tên" },
-                lineHeight = 24.sp,
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.Black
-            )
-            Text(
-                text = buildWordSetMeta(wordSet),
-                lineHeight = 24.sp,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0x80000000)
-            )
-        }
+        Text(text = message, color = Color.Gray)
     }
 }
 
-private fun buildWordSetMeta(wordSet: WordSet): String {
-    val termLang = wordSet.termLanguageCode.uppercase()
-    val defLang = wordSet.definitionLanguageCode.uppercase()
-    val monthYearText = formatMonthYear(wordSet.createdAt)
-    return if (monthYearText.isEmpty()) {
-        "$termLang - $defLang"
-    } else {
-        "$termLang - $defLang - $monthYearText"
-    }
-}
-
-private fun formatMonthYear(dateText: String): String {
-    if (dateText.isBlank()) return ""
+private fun formatLastOpened(lastOpened: String?): String {
+    if (lastOpened.isNullOrBlank()) return "Chưa mở"
     return try {
-        val parsedDate = when {
-            dateText.contains("T") -> OffsetDateTime.parse(dateText).toLocalDate()
-            else -> DateTimeFormatter.ISO_LOCAL_DATE.parse(dateText).let { java.time.LocalDate.from(it) }
-        }
-        "Tháng ${parsedDate.monthValue} năm ${parsedDate.year}"
-    } catch (_: DateTimeParseException) {
-        ""
+        val odt = OffsetDateTime.parse(lastOpened)
+        val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+        "Mở lần cuối: ${odt.format(formatter)}"
+    } catch (e: Exception) {
+        "Mở lần cuối: $lastOpened"
     }
-}
-
-@Composable
-private fun ErrorContentState(
-    message: String,
-    onRetry: () -> Unit
-) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = message,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color(0x99000000)
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(
-            text = "Thử lại",
-            modifier = Modifier.clickable(onClick = onRetry),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            fontStyle = FontStyle.Italic,
-            color = Color.Black
-        )
-    }
-}
-
-@Composable
-private fun EmptyContentState(message: String) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.ic_library_sleeping_potago),
-            contentDescription = "Sleeping potato",
-            modifier = Modifier
-                .size(120.dp),
-            contentScale = ContentScale.Fit
-        )
-        Spacer(modifier = Modifier.height(18.dp))
-        Text(
-            text = message,
-            fontSize = 18.sp,
-            lineHeight = 24.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = Color(0x80000000)
-        )
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-private fun LibraryScreenPreview() {
-    // Used the stateless LibraryScreenContent for Preview to avoid hiltViewModel() crash
-    LibraryScreenContent(
-        recentWordSetsState = UiState.Success(emptyList()),
-        allWordSetsState = UiState.Success(emptyList()),
-        recentSentencePatternsState = UiState.Success(emptyList()),
-        allSentencePatternsState = UiState.Success(emptyList()),
-        onWordSetClick = {},
-        onRetry = {}
-    )
 }
