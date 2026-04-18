@@ -86,6 +86,7 @@ import com.example.potago.domain.model.Video
 import com.example.potago.presentation.screen.UiEvent
 import com.example.potago.presentation.screen.UiState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.regex.Pattern
 
 @Composable
@@ -148,9 +149,23 @@ fun DetailedVideoScreen(
 
     // Lắng nghe sự kiện từ ViewModel (như yêu cầu pause video khi thu âm)
     LaunchedEffect(Unit) {
-        viewModel.uiEvent.collect { event ->
-            if (event is UiEvent.ShowSnackbar && event.message == "Đang lắng nghe...") {
-                pauseVideo()
+        launch {
+            viewModel.uiEvent.collect { event ->
+                when {
+                    event is UiEvent.ShowSnackbar && event.message == "Đang lắng nghe..." -> {
+                        pauseVideo()
+                    }
+                    event is UiEvent.Navigate -> {
+                        navController.navigate(event.route)
+                    }
+                }
+            }
+        }
+
+        launch {
+            while (true) {
+                delay(500)
+                Log.d("DEBUG", "currentSubtitleIndex: $currentSubtitleIndex, currentTimeMs: $currentTimeMs")
             }
         }
     }
@@ -239,8 +254,11 @@ fun DetailedVideoScreen(
                             )
                         } else {
                             val videoId = video?.let { extractYoutubeVideoId(it.sourceUrl) }
+                            // Capture startPosition 1 lần khi composable được tạo, reset ngay để tránh seek lại
+                            val initialPositionMs = remember { viewModel.savedVideoPositionMs.also { viewModel.savedVideoPositionMs = 0L } }
                             YoutubeWebView(
                                 videoId = videoId ?: "",
+                                startPositionMs = initialPositionMs,
                                 onPlayerReady = { webViewInstance = it },
                                 onTimeUpdate = { viewModel.updateCurrentTime(it) }
                             )
@@ -304,7 +322,7 @@ fun DetailedVideoScreen(
                         modifier = Modifier.fillMaxSize(),
                     ) {
                         Spacer(modifier = Modifier.weight(2.5f))
-                        
+
                         // White Box Content
                         RecordContentBox(
                             modifier = Modifier.weight(3f),
@@ -312,9 +330,9 @@ fun DetailedVideoScreen(
                             score = speakingScore,
                             spokenIndices = spokenWordIndices
                         )
-                        
+
                         Spacer(modifier = Modifier.weight(0.5f))
-                        
+
                         // Mascot and Bubble
                         MascotAndBubbleRecord(
                             modifier = Modifier.weight(2f)
@@ -327,7 +345,7 @@ fun DetailedVideoScreen(
             // Thanh Mic Bar ở dưới cùng
             if (showMicBottomSheet && subtitlesState is UiState.Success) {
                 val subtitles = (subtitlesState as UiState.Success<List<Subtitle>>).data ?: emptyList()
-                
+
                 // ✍️ Hiển thị văn bản đang nói (Transcript)
                 if (isRecordTestMode && spokenTranscript.isNotBlank()) {
                     val scrollState = rememberScrollState()
@@ -439,7 +457,7 @@ fun DetailedVideoScreen(
                         recordState == RecordState.RECORDING -> R.drawable.ic_micro_red
                         else -> R.drawable.ic_micro_blue
                     }
-                    
+
                     Image(
                         painter = painterResource(id = micIcon),
                         contentDescription = "Action",
@@ -477,7 +495,7 @@ fun DetailedVideoScreen(
             // Reward Popup
             if (showRewardPopup) {
                 RewardPopup(
-                    onDismiss = { viewModel.onRewardDismissed() }
+                    onDismiss = { viewModel.onRewardDismissed()}
                 )
             }
         }
@@ -527,11 +545,11 @@ fun RecordContentBox(
                     modifier = Modifier.padding(vertical = 16.dp)
                 )
             }
-            
+
             HorizontalDivider(color = Color(0xFFE5E7EB), thickness = 1.dp)
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth().weight(1f).padding(end = 20.dp),
                 verticalAlignment = Alignment.Top,
@@ -608,7 +626,7 @@ fun MascotAndBubbleRecord(modifier: Modifier = Modifier) {
                         alpha = mascotAlpha
                     },
             )
-            
+
             // Bubble
             Box(
                 modifier = Modifier
@@ -697,6 +715,7 @@ fun SingleSubtitleView(
             ) { (targetIndex, questionMode) ->
                     val scrollState = rememberScrollState()
                     val subtitle = subtitles.getOrNull(targetIndex)
+                    Log.d("DEBUG", "subtitle: $subtitle")
                     if (subtitle != null) {
                         Box(
                             modifier = Modifier
@@ -812,7 +831,7 @@ fun ResultPopup(
                     )
                 )
             }
-            
+
             if (!isCorrect) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
@@ -822,9 +841,9 @@ fun ResultPopup(
                     )
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(20.dp))
-            
+
             // Custom Button like BigPotagoButton
             CustomPopupButton(
                 text = if (isCorrect) "TIẾP TỤC" else "ĐÃ HIỂU",
@@ -971,7 +990,7 @@ fun RewardPopup(
                         }
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(60.dp))
 
                 // Action Button
@@ -1037,7 +1056,7 @@ private fun EarnPointsButton(
     isRewardEarned: Boolean,
     onClick: () -> Unit
 ) {
-    val isAllDone = writingProgress >= 1 && speakingProgress >= 1
+    val isAllDone = writingProgress >= 1 && speakingProgress >= 0
     val isClickable = isAllDone && !isRewardEarned
     var isPressed by remember { mutableStateOf(false) }
     val animatedScale by animateFloatAsState(targetValue = if (isPressed) 0.96f else 1f, label = "")
@@ -1093,11 +1112,13 @@ private fun EarnPointsButton(
 @Composable
 fun YoutubeWebView(
     videoId: String,
+    startPositionMs: Long = 0L,
     onPlayerReady: (WebView) -> Unit,
     onTimeUpdate: (Long) -> Unit
 ) {
     val context = LocalContext.current
     val packageName = context.packageName
+    val startSeconds = startPositionMs / 1000f
     val embedHtml = """
         <!DOCTYPE html>
         <html>
@@ -1115,6 +1136,8 @@ fun YoutubeWebView(
                 firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
                 var player;
+                var timeInterval = null;
+
                 function onYouTubeIframeAPIReady() {
                     player = new YT.Player('player', {
                         height: '100%', width: '100%',
@@ -1125,7 +1148,13 @@ fun YoutubeWebView(
                 }
 
                 function onPlayerReady(event) {
-                    setInterval(function() {
+                    var startPos = $startSeconds;
+                    if (startPos > 0) {
+                        event.target.seekTo(startPos, true);
+                    }
+                    event.target.playVideo();
+                    if (timeInterval) clearInterval(timeInterval);
+                    timeInterval = setInterval(function() {
                         if (player && player.getCurrentTime) {
                             Android.onTimeUpdate(player.getCurrentTime());
                         }
@@ -1136,6 +1165,18 @@ fun YoutubeWebView(
                     if (player) {
                         player.seekTo(seconds, true);
                         player.playVideo();
+                    }
+                }
+
+                function destroyPlayer() {
+                    if (timeInterval) {
+                        clearInterval(timeInterval);
+                        timeInterval = null;
+                    }
+                    if (player) {
+                        player.stopVideo();
+                        player.destroy();
+                        player = null;
                     }
                 }
             </script>
@@ -1163,6 +1204,10 @@ fun YoutubeWebView(
                 loadDataWithBaseURL("https://$packageName", embedHtml, "text/html", "UTF-8", null)
                 onPlayerReady(this)
             }
+        },
+        onRelease = { webView ->
+            webView.evaluateJavascript("destroyPlayer();", null)
+            webView.destroy()
         }
     )
 }

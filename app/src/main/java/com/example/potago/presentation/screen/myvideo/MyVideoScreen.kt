@@ -18,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
@@ -38,6 +39,7 @@ import com.example.potago.R
 import com.example.potago.domain.model.Video
 import com.example.potago.presentation.screen.UiEvent
 import com.example.potago.presentation.screen.UiState
+import com.example.potago.presentation.screen.setting.BackButton
 import com.example.potago.presentation.ui.component.ShimmerItem
 
 @Composable
@@ -345,45 +347,67 @@ private fun TopAppBar(
     onBackClick: () -> Unit = {},
     onAddClick: () -> Unit = {}
 ){
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        tonalElevation = 3.dp,
-        shadowElevation = 4.dp,
-        color = Color(0xFFFFFFFF)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
+
+        // ✅ Row chỉ còn Text → quyết định height
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            BackButton(onBackClick)
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(60.dp)) // chừa chỗ cho back button
             Text(
                 text = "Video của bạn",
                 style = MaterialTheme.typography.displayMedium,
                 modifier = Modifier.weight(1f)
             )
-            AddButton(onAddClick)
+        }
+
+        // 🔥 BackButton overlay
+        Box(
+            modifier = Modifier.matchParentSize()
+        ) {
+            BackButton(
+                onClick = onBackClick,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .wrapContentSize()
+            )
+        }
+        // 🔥 trick ở đây
+        Box(
+            modifier = Modifier.matchParentSize()
+        ) {
+            AddButton(
+                onAddClick,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .wrapContentSize()
+            )
         }
     }
 }
 
 @Composable
 fun AddButton(
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.85f else 1f,
+        targetValue = if (isPressed) 0.70f else 0.80f,
         label = "icon_scale"
     )
 
     IconButton(
         onClick = onClick,
-        interactionSource = interactionSource
+        interactionSource = interactionSource,
+        modifier = modifier
     ) {
         Icon(
             painter = painterResource(id = R.drawable.ic_add),
@@ -393,29 +417,7 @@ fun AddButton(
     }
 }
 
-@Composable
-private fun BackButton(
-    onClick: () -> Unit
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
 
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.85f else 1f,
-        label = "icon_scale"
-    )
-
-    IconButton(
-        onClick = onClick,
-        interactionSource = interactionSource
-    ) {
-        Icon(
-            painter = painterResource(id = R.drawable.ic_back),
-            contentDescription = "Back",
-            modifier = Modifier.scale(scale)
-        )
-    }
-}
 
 @Preview(showBackground = true)
 @Composable

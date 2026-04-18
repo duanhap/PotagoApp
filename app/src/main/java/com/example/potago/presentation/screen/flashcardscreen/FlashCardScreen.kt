@@ -47,6 +47,8 @@ import com.example.potago.presentation.navigation.Screen
 import com.example.potago.presentation.screen.UiState
 import com.example.potago.presentation.screen.addvideo.Language
 import com.example.potago.presentation.screen.myvideo.AddButton
+import com.example.potago.presentation.screen.potato.SettingButton
+import com.example.potago.presentation.screen.setting.BackButton
 import kotlinx.coroutines.delay
 import java.util.Locale
 
@@ -287,49 +289,53 @@ private fun FlashCardTopBar(
         shadowElevation = 4.dp,
         color = Color(0xFFFFFFFF)
     ) {
-        Row(
+
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
-            BackButton(onBackClick)
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.displayMedium,
-                modifier = Modifier.weight(1f),
-            )
-            AddButton(onAddClick)
 
+            // ✅ Row chỉ còn Text → quyết định height
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(modifier = Modifier.width(60.dp)) // chừa chỗ cho back button
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.displayMedium,
+                    modifier = Modifier.weight(1f),
+                )
+            }
 
+            // 🔥 BackButton overlay
+            Box(
+                modifier = Modifier.matchParentSize()
+            ) {
+                BackButton(
+                    onClick = onBackClick,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .wrapContentSize()
+                )
+            }
+            // 🔥 trick ở đây
+            Box(
+                modifier = Modifier.matchParentSize()
+            ) {
+                AddButton(
+                    onAddClick,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .wrapContentSize()
+                )
+            }
         }
     }
 }
 
-@Composable
-private fun BackButton(
-    onClick: () -> Unit
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
 
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.85f else 1f,
-        label = "icon_scale"
-    )
-
-    IconButton(
-        onClick = onClick,
-        interactionSource = interactionSource
-    ) {
-        Icon(
-            painter = painterResource(id = R.drawable.ic_back),
-            contentDescription = "Back",
-            modifier = Modifier.scale(scale)
-        )
-    }
-}
 
 @Composable
 private fun FlashCardProgress(progressText: String, progressFactor: Float) {

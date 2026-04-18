@@ -15,8 +15,14 @@ import androidx.lifecycle.viewModelScope
 import com.example.potago.domain.model.Result
 import com.example.potago.domain.model.Subtitle
 import com.example.potago.domain.model.Video
+import com.example.potago.domain.usecase.ClaimRewardUseCase
+import com.example.potago.domain.usecase.GetCurrentStreakUseCase
 import com.example.potago.domain.usecase.GetSubtitlesUseCase
+import com.example.potago.domain.usecase.GetTodayStreakDateUseCase
+import com.example.potago.domain.usecase.GetUserProfileUseCase
 import com.example.potago.domain.usecase.GetVideoUseCase
+import com.example.potago.data.local.UserDataStore
+import com.example.potago.presentation.navigation.Screen
 import com.example.potago.presentation.screen.UiState
 import com.example.potago.presentation.screen.UiEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -43,6 +49,11 @@ enum class RecordState {
 class DetailedVideoViewModel @Inject constructor(
     private val getSubtitlesUseCase: GetSubtitlesUseCase,
     private val getVideoUseCase: GetVideoUseCase,
+    private val claimRewardUseCase: ClaimRewardUseCase,
+    private val getUserProfileUseCase: GetUserProfileUseCase,
+    private val getCurrentStreakUseCase: GetCurrentStreakUseCase,
+    private val getTodayStreakDateUseCase: GetTodayStreakDateUseCase,
+    private val userDataStore: UserDataStore,
     private val application: Application,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -137,6 +148,10 @@ class DetailedVideoViewModel @Inject constructor(
     private val _isRewardEarned = MutableStateFlow(false)
     val isRewardEarned: StateFlow<Boolean> = _isRewardEarned.asStateFlow()
 
+    private val _isClaimingReward = MutableStateFlow(false)
+
+    // Lưu vị trí video để restore sau khi quay lại từ StreakScreen
+    var savedVideoPositionMs: Long = 0L
     init {
         val videoId = savedStateHandle.get<Int>("videoId") ?: -1
         if (videoId != -1) {
@@ -261,12 +276,59 @@ class DetailedVideoViewModel @Inject constructor(
     }
 
     fun claimReward() {
+        if (_isClaimingReward.value) return
         _showRewardPopup.value = true
     }
 
+    private suspend fun refreshDataStore() {
+        val profileResult = getUserProfileUseCase()
+        if (profileResult is Result.Success && profileResult.data != null) {
+            userDataStore.saveUser(profileResult.data)
+        }
+        val streakResult = getCurrentStreakUseCase()
+        if (streakResult is Result.Success && streakResult.data != null) {
+            userDataStore.saveStreak(streakResult.data)
+        }
+        val todayStreakResult = getTodayStreakDateUseCase()
+        if (todayStreakResult is Result.Success && todayStreakResult.data != null) {
+            userDataStore.saveTodayStreakDate(todayStreakResult.data)
+        }
+    }
+
     fun onRewardDismissed() {
-        _showRewardPopup.value = false
-        _isRewardEarned.value = true
+        viewModelScope.launch {
+            _isClaimingReward.value = true
+            try {
+                when (val result = claimRewardUseCase(
+                    action = "learning-video",
+                    hackExperience = false,
+                    superExperience = false
+                )) {
+                    is Result.Success -> {
+                        val streak = result.data.streak
+                        if (streak.status == "created" || streak.status == "extended") {
+                            _showRewardPopup.value = false
+                            savedVideoPositionMs = _currentTimeMs.value
+                            _currentSubtitleIndex.value = 0
+                            refreshDataStore()
+                            _isRewardEarned.value = true
+                            _uiEvent.send(UiEvent.Navigate(Screen.Streak(streak.currentLength)))
+                        } else {
+                            // not_reached hoặc already_counted
+                            _showRewardPopup.value = false
+                            refreshDataStore()
+                            _isRewardEarned.value = true
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiEvent.send(UiEvent.ShowSnackbar(result.message))
+                    }
+                    else -> {}
+                }
+            } catch ( e: Exception) {
+                _uiEvent.send(UiEvent.ShowSnackbar(e.message ?: "Unknown error"))
+            }
+        }
     }
 
     private fun resetQuestionState() {
@@ -339,9 +401,9 @@ class DetailedVideoViewModel @Inject constructor(
         // 1. Chuẩn bị buffer để hứng âm thanh trực tiếp từ Speech
         recordedAudioBytes.reset()
         mediaRecorder = null // Không dùng MediaRecorder nữa
-        
+
         // 2. Start Speech Recognition
-        
+
         // 2. Start Speech Recognition
         recognitionStartTime = System.currentTimeMillis()
         isRestartingRecognition = false
@@ -373,12 +435,12 @@ class DetailedVideoViewModel @Inject constructor(
         Log.d("Speech", "Starting recognition with timeout: 7000ms")
 
         speechRecognizer?.setRecognitionListener(object : RecognitionListener {
-            override fun onReadyForSpeech(params: Bundle?) { 
-                Log.d("Speech", "onReadyForSpeech") 
+            override fun onReadyForSpeech(params: Bundle?) {
+                Log.d("Speech", "onReadyForSpeech")
                 _spokenTranscript.value = "... (Đang nghe)"
             }
-            override fun onBeginningOfSpeech() { 
-                Log.d("Speech", "onBeginningOfSpeech") 
+            override fun onBeginningOfSpeech() {
+                Log.d("Speech", "onBeginningOfSpeech")
                 _spokenTranscript.value = "... (Đang nhận diện)"
             }
             override fun onRmsChanged(rmsdB: Float) {
@@ -394,9 +456,9 @@ class DetailedVideoViewModel @Inject constructor(
             override fun onEndOfSpeech() { Log.d("Speech", "onEndOfSpeech") }
             override fun onError(error: Int) {
                 if (_recordState.value != RecordState.RECORDING) return
-                
+
                 Log.e("Speech", "Error code: $error")
-                
+
                 val timeElapsed = System.currentTimeMillis() - recognitionStartTime
                 if ((error == 7 || error == 6) && timeElapsed < 5000 && !isRestartingRecognition) {
                     // Nếu lỗi do im lặng sớm (trước 5s), tự động bắt đầu nghe lại
@@ -421,7 +483,7 @@ class DetailedVideoViewModel @Inject constructor(
                     try {
                         speechRecognizer?.cancel()
                     } catch (e: Exception) {}
-                    
+
                     stopMediaRecorderOnly()
                     _recordState.value = RecordState.READY
                 }
@@ -453,13 +515,13 @@ class DetailedVideoViewModel @Inject constructor(
 
     private fun stopListeningAndRecording() {
         if (_recordState.value != RecordState.RECORDING) return
-        
+
         try {
             speechRecognizer?.stopListening()
         } catch (e: Exception) {
             Log.e("Speech", "Stop listening failed: ${e.message}")
         }
-        
+
         stopMediaRecorderOnly()
         _recordState.value = RecordState.READY
     }
@@ -475,7 +537,7 @@ class DetailedVideoViewModel @Inject constructor(
     private fun saveRecordedBytesToWavFile() {
         val pcmData = recordedAudioBytes.toByteArray()
         val wavFile = File(audioFilePath.replace(".m4a", ".wav")) // Đổi đuôi thành .wav
-        
+
         try {
             val out = java.io.FileOutputStream(wavFile)
             // Viết Header cho file WAV (16kHz, 16bit, Mono)
@@ -535,9 +597,9 @@ class DetailedVideoViewModel @Inject constructor(
                 setDataSource(wavPath)
                 prepare()
                 start()
-                setOnCompletionListener { 
+                setOnCompletionListener {
                     it.release()
-                    mediaPlayer = null 
+                    mediaPlayer = null
                 }
             } catch (e: Exception) {
                 Log.e("Playback", "MediaPlayer failed: ${e.message}")
@@ -562,7 +624,7 @@ class DetailedVideoViewModel @Inject constructor(
 
         val currentSub = getCurrentSubtitle() ?: return
         val originalText = currentSub.content ?: ""
-        
+
         // 1. Calculate main score using Similarity % (Levenshtein distance)
         val score = similarityScore(originalText, spokenText)
         _speakingScore.value = score
@@ -570,7 +632,7 @@ class DetailedVideoViewModel @Inject constructor(
         // 2. Highlight words
         val originalWords = originalText.split(Regex("\\s+")).filter { it.isNotBlank() }
         val spokenWords = spokenText.split(Regex("\\s+")).filter { it.isNotBlank() }
-        
+
         val newIndices = mutableSetOf<Int>()
         val normalizedSpokenWords = spokenWords.map { normalizeText(it) }
 
@@ -589,7 +651,7 @@ class DetailedVideoViewModel @Inject constructor(
         val s2 = normalizeText(b)
         if (s1.isEmpty() && s2.isEmpty()) return 100
         if (s1.isEmpty() || s2.isEmpty()) return 0
-        
+
         val distance = levenshtein(s1, s2)
         val maxLen = maxOf(s1.length, s2.length)
         val similarity = 1.0 - (distance.toDouble() / maxLen)
