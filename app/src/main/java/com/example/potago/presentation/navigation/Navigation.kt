@@ -37,6 +37,10 @@ import com.example.potago.presentation.screen.ranking.RankScreen
 import com.example.potago.presentation.screen.setting.SettingScreen
 import com.example.potago.presentation.screen.matchgame.MatchGameScreen
 import com.example.potago.presentation.screen.matchgame.MatchResultScreen
+import com.example.potago.presentation.screen.detailsetencepatternscreen.DetailSentencePatternScreen
+import com.example.potago.presentation.screen.detailsetencepatternscreen.DeleteDetailScreen
+import com.example.potago.presentation.screen.detailsetencepatternscreen.EditDetailScreen
+import com.example.potago.presentation.screen.detailsetencepatternscreen.ListOfDetailScreen
 import com.example.potago.presentation.screen.shop.ShopScreen
 import com.example.potago.presentation.screen.splash.SplashScreen
 import com.example.potago.presentation.screen.video.VideoScreen
@@ -65,6 +69,15 @@ sealed class Screen(val route: String) {
     object Profile : Screen("profile")
     object Shop : Screen("shop")
     object Rank : Screen("rank")
+    object DetailSentencePattern : Screen("detail_sentence_pattern/{sentencePatternId}/{sentencePatternName}") {
+        operator fun invoke(sentencePatternId: Long, sentencePatternName: String): String {
+            val encodedName = android.net.Uri.encode(sentencePatternName)
+            return "detail_sentence_pattern/$sentencePatternId/$encodedName"
+        }
+    }
+    object DeleteDetail : Screen("delete_detail")
+    object EditDetail : Screen("edit_detail")
+    object ListOfDetail : Screen("list_of_detail")
     object MatchGame : Screen("match_game/{wordSetId}/{wordSetName}") {
         operator fun invoke(wordSetId: Long, wordSetName: String): String {
             val encodedName = android.net.Uri.encode(wordSetName)
@@ -192,6 +205,24 @@ fun MainFlowContainer(rootNavController: NavController) {
             }
             composable(Screen.Rank.route) {
                 RankScreen()
+            }
+            composable(
+                route = Screen.DetailSentencePattern.route,
+                arguments = listOf(
+                    navArgument("sentencePatternId") { type = NavType.LongType },
+                    navArgument("sentencePatternName") { type = NavType.StringType }
+                )
+            ) {
+                DetailSentencePatternScreen(mainNavController)
+            }
+            composable(Screen.DeleteDetail.route) {
+                DeleteDetailScreen(mainNavController)
+            }
+            composable(Screen.EditDetail.route) {
+                EditDetailScreen(mainNavController)
+            }
+            composable(Screen.ListOfDetail.route) {
+                ListOfDetailScreen(mainNavController)
             }
             composable(
                 route = Screen.MatchGame.route,
