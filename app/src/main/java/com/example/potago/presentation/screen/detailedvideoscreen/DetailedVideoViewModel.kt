@@ -16,12 +16,9 @@ import com.example.potago.domain.model.Result
 import com.example.potago.domain.model.Subtitle
 import com.example.potago.domain.model.Video
 import com.example.potago.domain.usecase.ClaimRewardUseCase
-import com.example.potago.domain.usecase.GetCurrentStreakUseCase
 import com.example.potago.domain.usecase.GetSubtitlesUseCase
-import com.example.potago.domain.usecase.GetTodayStreakDateUseCase
-import com.example.potago.domain.usecase.GetUserProfileUseCase
 import com.example.potago.domain.usecase.GetVideoUseCase
-import com.example.potago.data.local.UserDataStore
+import com.example.potago.domain.usecase.SyncUserSessionUseCase
 import com.example.potago.presentation.navigation.Screen
 import com.example.potago.presentation.screen.UiState
 import com.example.potago.presentation.screen.UiEvent
@@ -50,10 +47,7 @@ class DetailedVideoViewModel @Inject constructor(
     private val getSubtitlesUseCase: GetSubtitlesUseCase,
     private val getVideoUseCase: GetVideoUseCase,
     private val claimRewardUseCase: ClaimRewardUseCase,
-    private val getUserProfileUseCase: GetUserProfileUseCase,
-    private val getCurrentStreakUseCase: GetCurrentStreakUseCase,
-    private val getTodayStreakDateUseCase: GetTodayStreakDateUseCase,
-    private val userDataStore: UserDataStore,
+    private val syncUserSessionUseCase: SyncUserSessionUseCase,
     private val application: Application,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -281,18 +275,7 @@ class DetailedVideoViewModel @Inject constructor(
     }
 
     private suspend fun refreshDataStore() {
-        val profileResult = getUserProfileUseCase()
-        if (profileResult is Result.Success && profileResult.data != null) {
-            userDataStore.saveUser(profileResult.data)
-        }
-        val streakResult = getCurrentStreakUseCase()
-        if (streakResult is Result.Success && streakResult.data != null) {
-            userDataStore.saveStreak(streakResult.data)
-        }
-        val todayStreakResult = getTodayStreakDateUseCase()
-        if (todayStreakResult is Result.Success && todayStreakResult.data != null) {
-            userDataStore.saveTodayStreakDate(todayStreakResult.data)
-        }
+        syncUserSessionUseCase()
     }
 
     fun onRewardDismissed() {

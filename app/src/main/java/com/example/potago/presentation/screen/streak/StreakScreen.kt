@@ -108,7 +108,7 @@ fun StreakScreen(
     var isVisible by  remember { mutableStateOf(false)}
     LaunchedEffect(streakCount) {
         delay(500)
-        soundPool.play(taonchua, 0.4f, 0.4f, 0, 0, 1f)
+        soundPool.play(taonchua, 0.7f, 0.7f, 0, 0, 1f)
         delay(300)
         isVisible = !isVisible
         soundPool.play(waterdropmp3, 0.7f, 0.7f, 0, 0, 1f)

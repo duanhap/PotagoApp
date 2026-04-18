@@ -76,6 +76,9 @@ object RepositoryModule {
     fun provideRewardRepository(
         rewardApiService: RewardApiService
     ): RewardRepository = RewardRepositoryImpl(rewardApiService)
+
+    @Provides
+    @Singleton
     fun provideMatchGameRepository(
         matchGameApiService: MatchGameApiService
     ): MatchGameRepository = MatchGameRepositoryImpl(matchGameApiService)
