@@ -126,6 +126,10 @@ object NetworkModule {
     @Singleton
     fun provideRewardApiService(retrofit: Retrofit): RewardApiService {
         return retrofit.create(RewardApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
     fun provideMatchGameApiService(retrofit: Retrofit): MatchGameApiService {
         return retrofit.create(MatchGameApiService::class.java)
     }
