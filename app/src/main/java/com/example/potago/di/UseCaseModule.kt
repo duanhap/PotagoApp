@@ -6,6 +6,7 @@ import com.example.potago.domain.repository.RewardRepository
 import com.example.potago.domain.repository.ItemRepository
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
+import com.example.potago.domain.repository.StreakRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -146,4 +147,11 @@ object UseCaseModule {
         @ApplicationContext context: Context
     ): UploadAvatarUseCase = UploadAvatarUseCase(userRepository, context)
 
+
+    @Provides
+    @Singleton
+    fun provideSyncUserSessionUseCase(
+        userRepository: UserRepository,
+        streakRepository: StreakRepository
+    ): SyncUserSessionUseCase = SyncUserSessionUseCase(userRepository, streakRepository)
 }
