@@ -1,7 +1,11 @@
 package com.example.potago.presentation.screen.streak
 
 import android.app.Activity
+import android.media.SoundPool
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -10,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -32,6 +37,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.navigation.NavController
 import com.example.potago.R
 import kotlinx.coroutines.delay
+import kotlin.random.Random
 
 val Nunito = FontFamily(
     Font(R.font.nunito_extrabold, FontWeight.ExtraBold),
@@ -48,36 +54,73 @@ val Nunito = FontFamily(
 @Composable
 fun StreakScreen(
     navController: NavController? = null,
-    streakCount: Int = 13
+    streakCount: Int = 13,
+    isSickTest: Boolean = true
 ) {
     val view = LocalView.current
     val context = LocalContext.current
-    
+
+    val soundPool = remember {
+        SoundPool.Builder()
+            .setMaxStreams(3)
+            .build()
+    }
+
+    val waterdropmp3 = remember {
+        soundPool.load(context, R.raw.waterdrop, 1)
+    }
+    val haoquangmp3 = remember {
+        soundPool.load(context, R.raw.haoquang, 3)
+    }
+    val taonchua = remember {
+        soundPool.load(context, R.raw.taonchua, 4)
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            soundPool.autoPause()
+        }
+    }
+
     // Logic ẩn cả Status Bar và Navigation Bar
     DisposableEffect(Unit) {
         val window = (context as? Activity)?.window ?: return@DisposableEffect onDispose {}
         val insetsController = WindowCompat.getInsetsController(window, view)
-        
+
         insetsController.hide(WindowInsetsCompat.Type.systemBars())
-        insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        
+        insetsController.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+
         onDispose {
             insetsController.show(WindowInsetsCompat.Type.systemBars())
         }
     }
 
+    // Tự động back sau 5 giây
+    LaunchedEffect(Unit) {
+        delay(6800L) // Thay đổi từ 20000L thành 5000L theo yêu cầu
+        navController?.popBackStack()
+    }
+
     // --- Animation Logic ---
     var displayedCount by remember { mutableIntStateOf(streakCount - 1) }
     val numberScale = remember { Animatable(1f) }
-    
+    var isSick  by remember { mutableStateOf(isSickTest)}
+    var isVisible by  remember { mutableStateOf(false)}
     LaunchedEffect(streakCount) {
+        delay(500)
+        soundPool.play(taonchua, 0.4f, 0.4f, 0, 0, 1f)
+        delay(300)
+        isVisible = !isVisible
+        soundPool.play(waterdropmp3, 0.7f, 0.7f, 0, 0, 1f)
         delay(1000) // Chờ hiệu ứng hào quang xoay một chút
         // Hiệu ứng "Pop" tăng số
         numberScale.animateTo(
-            targetValue = 1.3f,
+            targetValue = 1.9f,
             animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing)
         )
+        isSick = !isSick
         displayedCount = streakCount
+        soundPool.play(haoquangmp3, 1f, 1f, 0, 0, 0.5f)
         numberScale.animateTo(
             targetValue = 1f,
             animationSpec = spring(
@@ -85,28 +128,50 @@ fun StreakScreen(
                 stiffness = Spring.StiffnessLow
             )
         )
+
     }
-
-    val infiniteTransition = rememberInfiniteTransition(label = "streak_animation")
-
-
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color(0xFF6784B3),Color(0xFF303D53), Color(0xFF1E2634) ,    Color(0xFF1E2634))
+                    colors =
+                        if (!isSick) listOf(
+                            Color(0xFF6784B3),
+                            Color(0xFF303D53),
+                            Color(0xFF1E2634),
+                            Color(0xFF1E2634)
+                        )
+                        else listOf(Color(0xFF1E2634), Color(0xFF1E2634))
                 )
             )
     ) {
-        // Custom Rotating Lighting Effect
-        RotatingLighting(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(450.dp)
-                .align(Alignment.TopCenter)
-        )
+
+        if (!isSick) {
+            // Custom Rotating Lighting Effect
+            RotatingLighting(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(450.dp)
+                    .align(Alignment.TopCenter)
+            )
+        } else {
+
+            AnimatedVisibility(
+                visible = isVisible,
+                enter = fadeIn() ,
+                exit = fadeOut(),
+                modifier = Modifier.align(Alignment.TopCenter)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_sick_mascot_streak_screen),
+                    contentDescription = null,
+                    modifier = Modifier.size(350.dp)
+                )
+            }
+        }
+
 
         Column(
             modifier = Modifier
@@ -115,23 +180,22 @@ fun StreakScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Mascot Section
+
             Box(
                 modifier = Modifier
                     .height(320.dp)
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    .alpha(if (isSick) 0f else 1f),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_streak_mascot),
                     contentDescription = "Streak Mascot",
-                    modifier = Modifier
-                        .size(250.dp)
-     //                   .offset(y = mascotOffsetY.dp)
+                    modifier = Modifier.size(250.dp)
                 )
             }
-
             Spacer(modifier = Modifier.height(30.dp))
+
 
             // Streak Count Section with "Pop" Animation
             Box(
@@ -173,7 +237,7 @@ fun StreakScreen(
                     ),
                     color = Color(0xFF6FC6FF)
                 )
-                
+
                 // Fill layer
                 Text(
                     text = displayedCount.toString(),
@@ -187,14 +251,16 @@ fun StreakScreen(
                         )
                     )
                 )
-                
+
                 // Small water icon
                 Image(
                     painter = painterResource(id = R.drawable.ic_water_on),
                     contentDescription = null,
                     modifier = Modifier
+                        .align(Alignment.TopEnd) // 👈 luôn nằm góc trên phải
+                        .padding(top = 8.dp, end = 8.dp) // 👈 tinh chỉnh khoảng cách
                         .size(46.dp)
-                        .offset(x = 88.dp, y = (-48).dp)
+                        .offset(x = 50.dp, y = 7.dp)
                 )
             }
 
@@ -211,9 +277,9 @@ fun StreakScreen(
                     contentDescription = null,
                     modifier = Modifier.size(95.dp)
                 )
-                
+
                 Spacer(modifier = Modifier.width(12.dp))
-                
+
                 Box(contentAlignment = Alignment.Center) {
                     // Glow layer
                     Text(
@@ -256,7 +322,11 @@ fun StreakScreen(
                             fontWeight = FontWeight.ExtraBold,
                             textAlign = TextAlign.Center,
                             brush = Brush.verticalGradient(
-                                colors = listOf(Color(0xFF5B99FF), Color(0xFF3B82F6), Color(0xFF234C90))
+                                colors = listOf(
+                                    Color(0xFF5B99FF),
+                                    Color(0xFF3B82F6),
+                                    Color(0xFF234C90)
+                                )
                             )
                         )
                     )
@@ -265,7 +335,6 @@ fun StreakScreen(
         }
     }
 }
-
 @Composable
 fun RotatingLighting(modifier: Modifier = Modifier) {
     val infiniteTransition = rememberInfiniteTransition(label = "lighting")
@@ -292,9 +361,9 @@ fun RotatingLighting(modifier: Modifier = Modifier) {
                         moveTo(center.x, center.y)
                         arcTo(
                             rect = androidx.compose.ui.geometry.Rect(
-                                center.x - radius, 
-                                center.y - radius, 
-                                center.x + radius, 
+                                center.x - radius,
+                                center.y - radius,
+                                center.x + radius,
                                 center.y + radius
                             ),
                             startAngleDegrees = i * anglePerRay,
@@ -323,5 +392,12 @@ fun RotatingLighting(modifier: Modifier = Modifier) {
 @Preview(showBackground = true)
 @Composable
 fun StreakScreenPreview() {
-    StreakScreen()
+    StreakScreen(isSickTest = true)
 }
+
+@Preview(showBackground = true)
+@Composable
+fun StreakScreenPreview2() {
+    StreakScreen(isSickTest = false)
+}
+

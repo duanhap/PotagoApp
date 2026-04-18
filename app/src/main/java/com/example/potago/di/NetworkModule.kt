@@ -120,4 +120,10 @@ object NetworkModule {
     fun provideStreakApiService(retrofit: Retrofit): StreakApiService {
         return retrofit.create(StreakApiService::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideRewardApiService(retrofit: Retrofit): RewardApiService {
+        return retrofit.create(RewardApiService::class.java)
+    }
 }

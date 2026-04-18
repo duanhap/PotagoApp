@@ -167,7 +167,7 @@ fun HomeScreen(
                         iconBgColor = Color(0xFFFFEDD5),
                         iconTint = Color(0xFFF97316),
                         modifier = Modifier.weight(1f),
-                        onItemClick = {}
+                        onItemClick = { navController.navigate(Screen.Streak(100))}
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     FeatureBox(
