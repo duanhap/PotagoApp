@@ -3,6 +3,7 @@ package com.example.potago.di
 import com.example.potago.data.remote.FirebaseAuthDataSource
 import com.example.potago.data.remote.api.*
 import com.example.potago.data.remote.api.ItemApiService
+import com.example.potago.data.remote.api.MatchGameApiService
 import com.example.potago.data.remote.interceptor.AuthInterceptor
 import com.example.potago.data.remote.interceptor.TokenAuthenticator
 import com.google.firebase.auth.FirebaseAuth
@@ -125,5 +126,7 @@ object NetworkModule {
     @Singleton
     fun provideRewardApiService(retrofit: Retrofit): RewardApiService {
         return retrofit.create(RewardApiService::class.java)
+    fun provideMatchGameApiService(retrofit: Retrofit): MatchGameApiService {
+        return retrofit.create(MatchGameApiService::class.java)
     }
 }

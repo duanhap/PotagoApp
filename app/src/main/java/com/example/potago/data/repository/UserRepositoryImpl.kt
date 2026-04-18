@@ -14,6 +14,9 @@ import com.example.potago.domain.model.Result
 import com.google.gson.Gson
 import com.example.potago.domain.repository.UserRepository
 import kotlinx.coroutines.flow.Flow
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 
 class UserRepositoryImpl @Inject constructor(
@@ -32,6 +35,23 @@ class UserRepositoryImpl @Inject constructor(
                 Result.Success(user)
             } else {
                 Result.Error(response.message ?: "Unknown Error")
+            }
+        } catch (e: Exception) {
+            Result.Error("Network error: ${e.message}")
+        }
+    }
+
+    override suspend fun uploadAvatar(imageBytes: ByteArray, mimeType: String): Result<User> {
+        return try {
+            val requestBody = imageBytes.toRequestBody(mimeType.toMediaTypeOrNull())
+            val part = MultipartBody.Part.createFormData("file", "avatar.jpg", requestBody)
+            val response = apiService.uploadAvatar(part)
+            if (response.success && response.data != null) {
+                val user = response.data.toUser()
+                saveUser(user)
+                Result.Success(user)
+            } else {
+                Result.Error(response.message ?: "Upload failed")
             }
         } catch (e: Exception) {
             Result.Error("Network error: ${e.message}")
