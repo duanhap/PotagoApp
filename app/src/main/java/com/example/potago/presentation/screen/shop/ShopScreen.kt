@@ -1,9 +1,15 @@
 package com.example.potago.presentation.screen.shop
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,17 +24,21 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -42,15 +52,19 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.potago.domain.model.Item
 import com.example.potago.presentation.screen.UiState
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
@@ -64,12 +78,16 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.potago.R
+import com.example.potago.presentation.screen.home.HomeUiState
+import com.example.potago.presentation.screen.setting.BackButton
 import com.example.potago.presentation.ui.theme.Nunito
 import com.example.potago.presentation.ui.theme.PotagoTheme
 
 // Chỉnh ảnh thủ công: mỗi chỗ một drawable riêng (không dùng chung trong composable).
 private val shopHeroLeftRes = R.drawable.ic_twemoji_umbrella_on_ground
 private val shopHeroRightRes = R.drawable.ic_icon_park_outline_sun
+
+private val notoBigIce = R.drawable.noto_ice_big
 
 private enum class OwnedItemKind {
     WaterFreeze,
@@ -120,129 +138,162 @@ fun ShopScreen(
 
     val item = (uiState.items as? UiState.Success)?.data
     val ownedItems = listOf(
-        OwnedItem("Water Freeze", item?.waterStreak ?: 0, R.drawable.noto_ice, OwnedItemKind.WaterFreeze),
+        OwnedItem(
+            "Water Freeze",
+            item?.waterStreak ?: 0,
+            R.drawable.noto_ice,
+            OwnedItemKind.WaterFreeze
+        ),
         OwnedItem("Siêu KN", item?.superExperience ?: 0, R.drawable.bag_kn, OwnedItemKind.SieuKn),
         OwnedItem("Hack KN", item?.hackExperience ?: 0, R.drawable.bag_hack, OwnedItemKind.HackKn)
     )
     val streakItems = listOf(
-        ShopItem("Water Freeze", R.drawable.noto_ice, 200, itemType = ItemType.WATER_STREAK, quantity = 1)
+        ShopItem(
+            "Water Freeze",
+            R.drawable.noto_ice,
+            200,
+            itemType = ItemType.WATER_STREAK,
+            quantity = 1
+        )
     )
     val superXpItems = listOf(
         ShopItem("Single", R.drawable.bag_kn, 500, itemType = ItemType.SUPER_XP, quantity = 1),
-        ShopItem("3 pack", R.drawable.bag_3pack, 1200, 1500, itemType = ItemType.SUPER_XP, quantity = 3),
-        ShopItem("5 pack", R.drawable.bag_5pack, 2000, 2500, itemType = ItemType.SUPER_XP, quantity = 5)
+        ShopItem(
+            "3 pack",
+            R.drawable.bag_3pack,
+            1200,
+            1500,
+            itemType = ItemType.SUPER_XP,
+            quantity = 3
+        ),
+        ShopItem(
+            "5 pack",
+            R.drawable.bag_5pack,
+            2000,
+            2500,
+            itemType = ItemType.SUPER_XP,
+            quantity = 5
+        )
     )
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.White)
-                .verticalScroll(rememberScrollState())
-        ) {
-        ShopTopBar(
-            diamondCount = uiState.diamond,
-            onClose = { navController.popBackStack() }
-        )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
-        ) {
-            Image(
-                painter = painterResource(id = shopHeroLeftRes),
-                contentDescription = null,
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                diamondCount = uiState.diamond,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+    ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding))
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
                 modifier = Modifier
-                    .height(170.dp)
-                    .weight(1f),
-                contentScale = ContentScale.Fit
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Image(
-                painter = painterResource(shopHeroRightRes),
-                contentDescription = null,
-                modifier = Modifier.size(108.dp),
-                contentScale = ContentScale.Fit
-            )
-        }
-
-        SectionTitle("Vật phẩm của tôi")
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            ownedItems.forEach { item ->
-                OwnedItemCard(
-                    modifier = Modifier.weight(1f),
-                    item = item,
-                    onClick = { activeSheet = ShopActiveSheet.OwnedDetail(item) }
-                )
-            }
-        }
-
-        val hackKnItems = listOf(
-            ShopItem("Hack KN", R.drawable.bag_hack, 300, itemType = ItemType.HACK_XP, quantity = 1)
-        )
-        val onShopItemClick: (ShopItem) -> Unit = { shopItem ->
-            activeSheet = if (uiState.diamond >= shopItem.price) {
-                ShopActiveSheet.PurchaseConfirm(shopItem)
-            } else {
-                ShopActiveSheet.PurchaseInsufficient(shopItem)
-            }
-        }
-
-        ShopSection("Bảo vệ chuỗi", streakItems, uiState.diamond, onShopItemClick)
-        ShopSection("Thời gian siêu cấp", superXpItems, uiState.diamond, onShopItemClick)
-        ShopSection("Hack KN", hackKnItems, uiState.diamond, onShopItemClick)
-        Spacer(modifier = Modifier.height(24.dp))
-        }
-
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
-
-        activeSheet?.let { sheet ->
-            ModalBottomSheet(
-                onDismissRequest = { activeSheet = null },
-                sheetState = sheetState,
-                containerColor = Color.White,
-                dragHandle = { BottomSheetDefaults.DragHandle() }
+                    .fillMaxSize()
+                    .background(Color.White)
+                    .verticalScroll(rememberScrollState())
             ) {
-                when (sheet) {
-                    is ShopActiveSheet.OwnedDetail -> OwnedItemBottomSheetContent(
-                        item = sheet.item,
-                        onDismiss = { activeSheet = null },
-                        onConfirm = { activeSheet = null },
-                        onUse = {
-                            val itemType = when (sheet.item.kind) {
-                                OwnedItemKind.WaterFreeze -> ItemType.WATER_STREAK
-                                OwnedItemKind.SieuKn -> ItemType.SUPER_XP
-                                OwnedItemKind.HackKn -> ItemType.HACK_XP
+
+                Spacer(modifier = Modifier.height(80.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                ) {
+                    Image(
+                        painter = painterResource(id = shopHeroLeftRes),
+                        contentDescription = null,
+                    )
+                    Spacer(modifier = Modifier.width(40.dp))
+                    Image(
+                        painter = painterResource(shopHeroRightRes),
+                        contentDescription = null,
+                        modifier = Modifier.size(108.dp),
+                    )
+                }
+
+                SectionTitle("Vật phẩm của tôi")
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    ownedItems.forEach { item ->
+                        OwnedItemCard(
+                            modifier = Modifier.weight(1f),
+                            item = item,
+                            onClick = { activeSheet = ShopActiveSheet.OwnedDetail(item) }
+                        )
+                    }
+                }
+
+                val hackKnItems = listOf(
+                    ShopItem(
+                        "Hack KN",
+                        R.drawable.bag_hackson,
+                        300,
+                        itemType = ItemType.HACK_XP,
+                        quantity = 1
+                    )
+                )
+                val onShopItemClick: (ShopItem) -> Unit = { shopItem ->
+                    activeSheet = if (uiState.diamond >= shopItem.price) {
+                        ShopActiveSheet.PurchaseConfirm(shopItem)
+                    } else {
+                        ShopActiveSheet.PurchaseInsufficient(shopItem)
+                    }
+                }
+
+                ShopSection("Bảo vệ chuỗi", streakItems, uiState.diamond, onShopItemClick)
+                ShopSection("Thời gian siêu cấp", superXpItems, uiState.diamond, onShopItemClick)
+                //ShopSection("Hack KN", hackKnItems, uiState.diamond, onShopItemClick)
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+
+            activeSheet?.let { sheet ->
+                ModalBottomSheet(
+                    onDismissRequest = { activeSheet = null },
+                    sheetState = sheetState,
+                    containerColor = Color.White,
+                    dragHandle = { BottomSheetDefaults.DragHandle() }
+                ) {
+                    when (sheet) {
+                        is ShopActiveSheet.OwnedDetail -> OwnedItemBottomSheetContent(
+                            item = sheet.item,
+                            onDismiss = { activeSheet = null },
+                            onConfirm = { activeSheet = null },
+                            onUse = {
+                                val itemType = when (sheet.item.kind) {
+                                    OwnedItemKind.WaterFreeze -> ItemType.WATER_STREAK
+                                    OwnedItemKind.SieuKn -> ItemType.SUPER_XP
+                                    OwnedItemKind.HackKn -> ItemType.HACK_XP
+                                }
+                                viewModel.useItem(itemType)
+                                activeSheet = null
                             }
-                            viewModel.useItem(itemType)
-                            activeSheet = null
-                        }
-                    )
-                    is ShopActiveSheet.PurchaseConfirm -> PurchaseConfirmBottomSheetContent(
-                        item = sheet.item,
-                        onConfirm = {
-                            viewModel.purchase(sheet.item.itemType, sheet.item.quantity)
-                            activeSheet = null
-                        }
-                    )
-                    is ShopActiveSheet.PurchaseInsufficient -> PurchaseInsufficientBottomSheetContent(
-                        onDismiss = { activeSheet = null }
-                    )
+                        )
+
+                        is ShopActiveSheet.PurchaseConfirm -> PurchaseConfirmBottomSheetContent(
+                            item = sheet.item,
+                            onConfirm = {
+                                viewModel.purchase(sheet.item.itemType, sheet.item.quantity)
+                                activeSheet = null
+                            }
+                        )
+
+                        is ShopActiveSheet.PurchaseInsufficient -> PurchaseInsufficientBottomSheetContent(
+                            onDismiss = { activeSheet = null }
+                        )
+                    }
                 }
             }
         }
     }
+
 }
 
 @Composable
@@ -269,39 +320,36 @@ private fun ShopSection(
     }
 }
 
+
 @Composable
-private fun ShopTopBar(
+private fun TopAppBar(
     diamondCount: Int,
-    onClose: () -> Unit
+    onBackClick: () -> Unit = {},
 ) {
     Surface(
-        color = Color.White,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        tonalElevation = 3.dp,
+        shadowElevation = 4.dp,
+        color = Color(0xFFFFFFFF)
     ) {
-        Column {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+        ) {
+
+            // ✅ Row chỉ còn Text → quyết định height
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_add),
-                    contentDescription = "Close",
-                    tint = Color.Black,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .rotate(45f)
-                        .clickable(onClick = onClose)
-                )
 
                 Text(
                     text = "Cửa hàng",
                     style = MaterialTheme.typography.displayMedium,
-                    modifier = Modifier.padding(start = 10.dp)
+                    modifier = Modifier.padding(start = 45.dp)
                 )
-                Spacer(modifier = Modifier.weight(1f))
-
                 Row(
                     modifier = Modifier
                         .height(34.dp)
@@ -310,10 +358,15 @@ private fun ShopTopBar(
                             shape = RoundedCornerShape(12.dp)
                         )
                         .border(1.dp, Color(0x40F44336), RoundedCornerShape(12.dp))
-                        .padding(horizontal = 10.dp),
+                        .padding(horizontal = 20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "♦", color = Color(0xFFF44336))
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_ruby_detailed_video_screen),
+                        contentDescription = "Setting",
+                        modifier = Modifier.scale(1f),
+                        tint = Color(0xFFF44336)
+                    )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = diamondCount.toString(),
@@ -322,8 +375,50 @@ private fun ShopTopBar(
                     )
                 }
             }
-            HorizontalDivider(color = Color(0xFFE5E7EB))
+
+            // 🔥 BackButton overlay
+            Box(
+                modifier = Modifier.matchParentSize()
+            ) {
+                BackButtonShopScreen(
+                    onClick = onBackClick,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .wrapContentSize()
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun BackButtonShopScreen(
+    onClick: () -> Unit,
+    modifier: Modifier
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.9f else 1f,
+        label = "icon_scale"
+    )
+
+    IconButton(
+        onClick = onClick,
+        interactionSource = interactionSource,
+        modifier = modifier.offset(x = -10.dp)
+    ) {
+        Icon(
+            painter = painterResource(id = R.drawable.ic_library_add_button),
+            contentDescription = "Back",
+            modifier = Modifier
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .rotate(45f)
+        )
     }
 }
 
@@ -331,7 +426,7 @@ private fun ShopTopBar(
 private fun SectionTitle(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.titleLarge,
+        style = MaterialTheme.typography.titleMedium,
         color = Color.Black,
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
     )
@@ -350,7 +445,7 @@ private fun OwnedItemBottomSheetContent(
         OwnedItemKind.SieuKn -> buildSieuKnDescription(item.quantity)
     }
     val heroSize = when (item.kind) {
-        OwnedItemKind.WaterFreeze -> 112.dp
+        OwnedItemKind.WaterFreeze -> 200.dp
         OwnedItemKind.HackKn -> 132.dp
         OwnedItemKind.SieuKn -> 124.dp
     }
@@ -368,15 +463,8 @@ private fun OwnedItemBottomSheetContent(
             modifier = Modifier.height(160.dp),
             contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(width = 168.dp, height = 44.dp)
-                    .offset(y = 52.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(Color(0x14000000))
-            )
             Image(
-                painter = painterResource(id = item.imageRes),
+                painter = painterResource(id =if(item.kind == OwnedItemKind.WaterFreeze) notoBigIce else  item.imageRes),
                 contentDescription = item.name,
                 modifier = Modifier.size(heroSize),
                 contentScale = ContentScale.Fit
@@ -394,6 +482,7 @@ private fun OwnedItemBottomSheetContent(
             OwnedItemKind.WaterFreeze -> {
                 ShopSheetPrimaryButton(text = "XÁC NHẬN", enabled = true, onClick = onConfirm)
             }
+
             OwnedItemKind.HackKn, OwnedItemKind.SieuKn -> {
                 ShopSheetPrimaryButton(
                     text = "SỬ DỤNG",
@@ -473,6 +562,7 @@ private fun PurchaseConfirmBottomSheetContent(
                     modifier = Modifier.padding(horizontal = 15.dp, vertical = 11.dp)
                 )
             }
+            Spacer(modifier = Modifier.width(40.dp))
         }
         Spacer(modifier = Modifier.height(18.dp))
         ShopPurchaseItemPreviewCard(item = item)
@@ -493,24 +583,20 @@ private fun PurchaseInsufficientBottomSheetContent(
             .padding(horizontal = 20.dp)
             .padding(bottom = 28.dp)
     ) {
-        Spacer(modifier = Modifier.height(8.dp))
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Top
+            modifier = Modifier.fillMaxWidth()
+                .height(180.dp)
         ) {
             Image(
                 painter = painterResource(R.drawable.ic_looking_mascot),
                 contentDescription = null,
-                modifier = Modifier
-                    .width(118.dp)
-                    .height(138.dp)
-                    .padding(start = 4.dp),
-                contentScale = ContentScale.Fit
+                modifier = Modifier.scale(0.8f)
+                    .offset(x=-40.dp),
             )
             Surface(
                 modifier = Modifier
-                    .weight(1f)
-                    .padding(top = 4.dp, start = 6.dp),
+                    .padding(top = 40.dp)
+                    .offset(x=-20.dp),
                 shape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp, bottomStart = 16.dp),
                 color = Color.White,
                 border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)),
@@ -526,7 +612,6 @@ private fun PurchaseInsufficientBottomSheetContent(
                 )
             }
         }
-        Spacer(modifier = Modifier.height(26.dp))
         Text(
             text = "Số dư không đủ để hoàn thành lượt mua lần này.",
             style = MaterialTheme.typography.titleLarge.copy(
@@ -550,7 +635,7 @@ private fun ShopPurchaseItemPreviewCard(item: ShopItem) {
         modifier = Modifier.fillMaxWidth(),
         color = Color.White,
         shape = RoundedCornerShape(10.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x33000000))
+        border = BorderStroke(1.dp, Color(0x33000000))
     ) {
         Row(
             modifier = Modifier
@@ -582,7 +667,13 @@ private fun ShopPurchaseItemPreviewCard(item: ShopItem) {
                     modifier = Modifier.padding(end = 6.dp)
                 )
             }
-            Text(text = "♦", color = Color(0xFFF44336), style = MaterialTheme.typography.bodyLarge)
+            //Text(text = "♦", color = Color(0xFFF44336), style = MaterialTheme.typography.bodyLarge)
+            Icon(
+                painter = painterResource(id = R.drawable.ic_ruby_detailed_video_screen),
+                contentDescription = "Setting",
+                modifier = Modifier.scale(1f),
+                tint = Color(0xFFF44336)
+            )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = item.price.toString(),
@@ -627,46 +718,89 @@ private fun buildSieuKnDescription(quantity: Int) = buildAnnotatedString {
 private fun descBodyStyle() = SpanStyle(
     color = Color(0xB3000000), fontSize = 20.sp, fontWeight = FontWeight.Black, fontFamily = Nunito
 )
+
 private fun descGreenStyle() = SpanStyle(
     color = Color(0xFF89E219), fontSize = 20.sp, fontWeight = FontWeight.Black, fontFamily = Nunito
 )
+
 private fun descQuantityStyle(quantity: Int) = SpanStyle(
     color = if (quantity > 0) Color(0xFF58CC02) else Color(0xFFFF383C),
     fontSize = 20.sp, fontWeight = FontWeight.Black, fontFamily = Nunito
 )
 
+
 @Composable
-private fun ShopSheetPrimaryButton(
-    text: String,
+fun ShopSheetPrimaryButton(
+    text: String = "XÁC NHẬN",
     enabled: Boolean,
+    isLoading: Boolean = false,
     onClick: () -> Unit
 ) {
-    Button(
-        onClick = onClick,
-        enabled = enabled,
+    var isPressed by remember { mutableStateOf(false) }
+    val animatedScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        label = ""
+    )
+    val animatedHeight by animateDpAsState(
+        targetValue = if (isPressed) 56.dp else 53.dp,
+        label = ""
+    )
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(56.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF58CC02),
-            contentColor = Color.White,
-            disabledContainerColor = Color(0xFF58CC02).copy(alpha = 0.45f),
-            disabledContentColor = Color.White.copy(alpha = 0.85f)
-        ),
-        contentPadding = PaddingValues(vertical = 12.dp),
-        elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = 0.dp,
-            pressedElevation = 0.dp
-        )
+            .graphicsLayer {
+                scaleX = animatedScale
+                scaleY = animatedScale
+            }
+            .height(56.dp)
+            .background(
+                if (enabled) Color(0xFF46A302) else Color(0xFFABCF7E),
+                RoundedCornerShape(16.dp)
+            )
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.ExtraBold
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(animatedHeight)
+                .background(
+                    if (enabled) Color(0xFF58CC02) else Color(0xFFB7E37E),
+                    RoundedCornerShape(16.dp)
+                )
+                .pointerInput(enabled) {
+                    detectTapGestures(
+                        onPress = {
+                            if (!enabled) return@detectTapGestures
+                            isPressed = true
+                            tryAwaitRelease()
+                            isPressed = false
+                        },
+                        onTap = {
+                            if (enabled) {
+                                onClick()
+                            }
+                        }
+                    )
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    color = Color.White,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(24.dp)
+                )
+            } else {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White
+                )
+            }
+        }
     }
 }
+
 
 @Composable
 private fun OwnedItemCard(
@@ -695,12 +829,12 @@ private fun OwnedItemCard(
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = item.name,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.labelSmall,
                 color = Color(0xFF1F2937)
             )
             Text(
                 text = "x${item.quantity}",
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.labelLarge,
                 color = if (item.quantity > 0) Color(0xFF89E219) else Color(0xFFF44336)
             )
         }
@@ -748,11 +882,16 @@ private fun ShopItemRow(
                     modifier = Modifier.padding(end = 8.dp)
                 )
             }
-            Text(text = "♦", color = Color(0xFFF44336))
+            Icon(
+                painter = painterResource(id = R.drawable.ic_ruby_detailed_video_screen),
+                contentDescription = "Setting",
+                modifier = Modifier.scale(1f),
+                tint = Color(0xFFF44336)
+            )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = item.price.toString(),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = Color(0xFFF44336)
             )
         }
@@ -763,8 +902,6 @@ private fun ShopItemRow(
 @Preview(showBackground = true)
 @Composable
 private fun ShopScreenPreview() {
-    PotagoTheme(dynamicColor = false) {
-        ShopScreen(navController = rememberNavController())
-    }
+    PurchaseInsufficientBottomSheetContent(onDismiss = {})
 }
 
