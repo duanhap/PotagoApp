@@ -83,7 +83,9 @@ sealed class Screen(val route: String) {
             return "edit_course/$wordSetId/$encodedName"
         }
     }
-    object Streak : Screen("streak_screen")
+    object Streak : Screen("streak_screen/{streakCount}") {
+        operator fun invoke(streakCount: Int) = "streak_screen/$streakCount"
+    }
 }
 
 @Composable
@@ -289,9 +291,14 @@ fun MainFlowContainer(rootNavController: NavController) {
                     initialTitle = wordSetName
                 )
             }
-            composable(Screen.Streak.route) {
+            composable(
+                route = Screen.Streak.route,
+                arguments = listOf(navArgument("streakCount") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val streakCount = backStackEntry.arguments?.getInt("streakCount") ?: 1
                 StreakScreen(
-                    navController = mainNavController
+                    navController = mainNavController,
+                    streakCount = streakCount
                 )
             }
         }

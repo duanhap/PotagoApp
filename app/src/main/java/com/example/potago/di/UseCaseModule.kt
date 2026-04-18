@@ -2,6 +2,7 @@ package com.example.potago.di
 
 import com.example.potago.domain.repository.*
 import com.example.potago.domain.usecase.*
+import com.example.potago.domain.repository.RewardRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -131,4 +132,10 @@ object UseCaseModule {
     fun provideObserveTodayStreakDateUseCase(
         repository: StreakRepository
     ): ObserveTodayStreakDateUseCase = ObserveTodayStreakDateUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideClaimRewardUseCase(
+        repository: RewardRepository
+    ): ClaimRewardUseCase = ClaimRewardUseCase(repository)
 }
