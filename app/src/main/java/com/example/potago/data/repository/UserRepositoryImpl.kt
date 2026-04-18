@@ -92,7 +92,9 @@ class UserRepositoryImpl @Inject constructor(
         return try {
             val response = apiService.getUserSettings()
             if (response.success && response.data != null) {
-                Result.Success(response.data.toDomain())
+                val setting = response.data.toDomain()
+                userDataStore.saveSetting(setting)
+                Result.Success(setting)
             } else {
                 Result.Error(response.message ?: "Unknown Error")
             }
@@ -114,7 +116,9 @@ class UserRepositoryImpl @Inject constructor(
             )
             val response = apiService.saveUserSettings(request)
             if (response.success && response.data != null) {
-                Result.Success(response.data.toDomain())
+                val setting = response.data.toDomain()
+                userDataStore.saveSetting(setting)
+                Result.Success(setting)
             } else {
                 Result.Error(response.message ?: "Unknown Error")
             }
@@ -129,6 +133,10 @@ class UserRepositoryImpl @Inject constructor(
 
     override fun getSavedUser(): Flow<User?> {
         return userDataStore.getUser()
+    }
+
+    override fun getSavedSetting(): Flow<Setting?> {
+        return userDataStore.getSetting()
     }
 
     override suspend fun clearUser() {

@@ -2,32 +2,9 @@ package com.example.potago.di
 
 import com.example.potago.data.local.UserDataStore
 import com.example.potago.data.remote.FirebaseAuthDataSource
-import com.example.potago.data.remote.api.FlashcardApiService
-import com.example.potago.data.remote.api.SentenceApiService
-import com.example.potago.data.remote.api.UserApiService
-import com.example.potago.data.remote.api.VideoApiService
-import com.example.potago.data.remote.api.WordSetApiService
-import com.example.potago.data.remote.api.SentencePatternApiService
-import com.example.potago.data.repository.AuthRepositoryImpl
-import com.example.potago.data.repository.FlashcardRepositoryImpl
-import com.example.potago.data.repository.ItemRepositoryImpl
-import com.example.potago.data.remote.api.ItemApiService
-import com.example.potago.domain.repository.ItemRepository
-import com.example.potago.data.repository.MatchGameRepositoryImpl
-import com.example.potago.data.remote.api.MatchGameApiService
-import com.example.potago.domain.repository.MatchGameRepository
-import com.example.potago.data.repository.UserRepositoryImpl
-import com.example.potago.data.repository.SentencePatternRepositoryImpl
-import com.example.potago.data.repository.SentenceRepositoryImpl
-import com.example.potago.data.repository.VideoRepositoryImpl
-import com.example.potago.data.repository.WordSetRepositoryImpl
-import com.example.potago.domain.repository.AuthRepository
-import com.example.potago.domain.repository.FlashcardRepository
-import com.example.potago.domain.repository.UserRepository
-import com.example.potago.domain.repository.SentencePatternRepository
-import com.example.potago.domain.repository.SentenceRepository
-import com.example.potago.domain.repository.VideoRepository
-import com.example.potago.domain.repository.WordSetRepository
+import com.example.potago.data.remote.api.*
+import com.example.potago.data.repository.*
+import com.example.potago.domain.repository.*
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -89,6 +66,16 @@ object RepositoryModule {
 
     @Provides
     @Singleton
+    fun provideStreakRepository(
+        streakApiService: StreakApiService,
+        userDataStore: UserDataStore
+    ): StreakRepository = StreakRepositoryImpl(streakApiService, userDataStore)
+
+    @Provides
+    @Singleton
+    fun provideRewardRepository(
+        rewardApiService: RewardApiService
+    ): RewardRepository = RewardRepositoryImpl(rewardApiService)
     fun provideMatchGameRepository(
         matchGameApiService: MatchGameApiService
     ): MatchGameRepository = MatchGameRepositoryImpl(matchGameApiService)

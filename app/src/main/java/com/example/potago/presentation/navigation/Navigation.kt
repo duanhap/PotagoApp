@@ -38,6 +38,7 @@ import com.example.potago.presentation.screen.matchgame.MatchGameScreen
 import com.example.potago.presentation.screen.matchgame.MatchResultScreen
 import com.example.potago.presentation.screen.shop.ShopScreen
 import com.example.potago.presentation.screen.splash.SplashScreen
+import com.example.potago.presentation.screen.streak.StreakScreen
 import com.example.potago.presentation.screen.video.VideoScreen
 
 sealed class Screen(val route: String) {
@@ -96,6 +97,9 @@ sealed class Screen(val route: String) {
             val encodedName = Uri.encode(wordSetName)
             return "edit_course/$wordSetId/$encodedName"
         }
+    }
+    object Streak : Screen("streak_screen/{streakCount}") {
+        operator fun invoke(streakCount: Int) = "streak_screen/$streakCount"
     }
 }
 
@@ -177,7 +181,10 @@ fun MainFlowContainer(rootNavController: NavController) {
                 PotatoScreen(mainNavController)
             }
             composable(Screen.Setting.route) {
-                SettingScreen(mainNavController)
+                SettingScreen(
+                    navController = mainNavController,
+                    rootNavController = rootNavController // Truyền rootNavController vào đây
+                )
             }
             composable(Screen.Goal.route) {
                 GoalScreen(mainNavController)
@@ -342,6 +349,16 @@ fun MainFlowContainer(rootNavController: NavController) {
                     navController = mainNavController,
                     wordSetId = wordSetId,
                     initialTitle = wordSetName
+                )
+            }
+            composable(
+                route = Screen.Streak.route,
+                arguments = listOf(navArgument("streakCount") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val streakCount = backStackEntry.arguments?.getInt("streakCount") ?: 1
+                StreakScreen(
+                    navController = mainNavController,
+                    streakCount = streakCount
                 )
             }
         }
