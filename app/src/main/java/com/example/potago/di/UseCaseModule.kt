@@ -3,6 +3,9 @@ package com.example.potago.di
 import com.example.potago.domain.repository.*
 import com.example.potago.domain.usecase.*
 import com.example.potago.domain.repository.RewardRepository
+import com.example.potago.domain.repository.ItemRepository
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -138,4 +141,9 @@ object UseCaseModule {
     fun provideClaimRewardUseCase(
         repository: RewardRepository
     ): ClaimRewardUseCase = ClaimRewardUseCase(repository)
+    fun provideUploadAvatarUseCase(
+        userRepository: UserRepository,
+        @ApplicationContext context: Context
+    ): UploadAvatarUseCase = UploadAvatarUseCase(userRepository, context)
+
 }
