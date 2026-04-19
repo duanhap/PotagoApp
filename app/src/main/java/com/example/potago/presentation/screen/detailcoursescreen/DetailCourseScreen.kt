@@ -63,6 +63,9 @@ fun DetailCourseScreen(
         onEditCourseClick = {
             navController.navigate(Screen.EditCourse(wordSetId, wordSetName))
         },
+        onListCardsClick = {
+            navController.navigate(Screen.ListOfCards(wordSetId, wordSetName))
+        },
         onConfirmDeleteWordSet = onConfirmDeleteWordSet
     )
 }
@@ -74,6 +77,7 @@ private fun DetailCourseScreenContent(
     onSlideDownClick: () -> Unit,
     onMatchGameClick: () -> Unit,
     onEditCourseClick: () -> Unit,
+    onListCardsClick: () -> Unit,
     onConfirmDeleteWordSet: () -> Unit = {}
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -180,7 +184,8 @@ private fun DetailCourseScreenContent(
                 Spacer(modifier = Modifier.height(10.dp))
                 DetailActionCard(
                     iconRes = R.drawable.ic_detail_course_screen_list_cards,
-                    title = "Xem danh sách thẻ"
+                    title = "Xem danh sách thẻ",
+                    onClick = onListCardsClick
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 DetailActionCard(
@@ -424,6 +429,7 @@ private fun DetailCourseScreenPreview() {
         onSlideDownClick = {},
         onMatchGameClick = {},
         onEditCourseClick = {},
+        onListCardsClick = {},
         onConfirmDeleteWordSet = {}
     )
 }

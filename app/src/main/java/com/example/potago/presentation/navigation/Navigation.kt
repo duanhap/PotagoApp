@@ -130,6 +130,13 @@ sealed class Screen(val route: String) {
     object Streak : Screen("streak_screen/{streakCount}") {
         operator fun invoke(streakCount: Int) = "streak_screen/$streakCount"
     }
+
+    object ListOfCards : Screen("list_of_cards/{wordSetId}/{wordSetName}") {
+        operator fun invoke(wordSetId: Long, wordSetName: String): String {
+            val encodedName = Uri.encode(wordSetName)
+            return "list_of_cards/$wordSetId/$encodedName"
+        }
+    }
 }
 
 @Composable
@@ -406,6 +413,27 @@ fun MainFlowContainer(rootNavController: NavController) {
                     StreakScreen(
                         navController = mainNavController,
                         streakCount = streakCount
+                    )
+                }
+                composable(
+                    route = Screen.ListOfCards.route,
+                    arguments = listOf(
+                        navArgument("wordSetId") { type = NavType.LongType },
+                        navArgument("wordSetName") { type = NavType.StringType }
+                    ),
+                    enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up) },
+                    exitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down) }
+                ) { backStackEntry ->
+                    val wordSetName = backStackEntry.arguments
+                        ?.getString("wordSetName")
+                        ?.let(Uri::decode)
+                        ?.takeIf { it.isNotBlank() }
+                        ?: ""
+                    val wordSetId = backStackEntry.arguments?.getLong("wordSetId") ?: 0L
+                    com.example.potago.presentation.screen.listofcardsscreen.ListOfCardsScreen(
+                        navController = mainNavController,
+                        wordSetId = wordSetId,
+                        wordSetName = wordSetName
                     )
                 }
             }
