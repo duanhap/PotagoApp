@@ -8,16 +8,20 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -50,6 +54,7 @@ import com.example.potago.presentation.screen.myvideo.AddButton
 import com.example.potago.presentation.screen.potato.SettingButton
 import com.example.potago.presentation.screen.setting.BackButton
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -140,21 +145,44 @@ private fun FlashCardScreenContent(
 
         FlashCardProgress(progressText, progressFactor)
         
-        Spacer(modifier = Modifier.height(30.dp))
+        Spacer(modifier = Modifier.weight(1f))
         
         if (uiState.uiState is UiState.Loading && uiState.words.isEmpty()) {
             Box(modifier = Modifier.fillMaxWidth().height(384.dp), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = Color(0xFF58CC02))
             }
         } else if (currentWord != null) {
-            FlashCardPanel(word = currentWord, termLangCode = uiState.termLangCode)
+            androidx.compose.animation.AnimatedContent(
+                targetState = currentWord,
+                transitionSpec = {
+                    (androidx.compose.animation.scaleIn(
+                        initialScale = 0.75f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    ) + androidx.compose.animation.fadeIn(
+                        animationSpec = tween(200)
+                    )).togetherWith(
+                        androidx.compose.animation.fadeOut(animationSpec = tween(100))
+                    )
+                },
+                label = "cardTransition"
+            ) { word ->
+                FlashCardPanel(
+                    word = word,
+                    termLangCode = uiState.termLangCode,
+                    onSwipeLeft = { onNext("unknown") },
+                    onSwipeRight = { onNext("known") }
+                )
+            }
         } else {
             Box(modifier = Modifier.fillMaxWidth().height(384.dp), contentAlignment = Alignment.Center) {
                 Text(text = "Không có dữ liệu")
             }
         }
 
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.weight(2.3f))
         
         FlashCardBottomActions(
             isRandomMode = uiState.mode == "random",
@@ -163,8 +191,8 @@ private fun FlashCardScreenContent(
             onKnown = { onNext("known") },
             onToggleMode = onToggleMode
         )
-        
-        Spacer(modifier = Modifier.height(76.dp))
+
+        Spacer(modifier = Modifier.weight(2f))
         Image(
             painter = painterResource(id = R.drawable.ic_flashcard_slideup_button),
             contentDescription = "Slide up",
@@ -376,10 +404,32 @@ private fun FlashCardProgress(progressText: String, progressFactor: Float) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FlashCardPanel(word: Word, termLangCode: String) {
+private fun FlashCardPanel(
+    word: Word,
+    termLangCode: String,
+    onSwipeLeft: () -> Unit = {},
+    onSwipeRight: () -> Unit = {}
+) {
     val context = LocalContext.current
     var tts: TextToSpeech? by remember { mutableStateOf(null) }
+    var showDescriptionSheet by remember(word.id) { mutableStateOf(false) }
+    var descRowPressed by remember { mutableStateOf(false) }
+    val descRowScale by animateFloatAsState(
+        targetValue = if (descRowPressed) 0.93f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "descScale"
+    )
+
+    // Drag state — chỉ trượt ngang, dùng Animatable để bay ra ngoài trước khi callback
+    val dragOffsetX = remember(word.id) { androidx.compose.animation.core.Animatable(0f) }
+    val swipeThreshold = 250f
+    val flyOutDistance = 1200f
+    val tiltDeg = (dragOffsetX.value / 20f).coerceIn(-15f, 15f)
+    val overlayAlpha = (kotlin.math.abs(dragOffsetX.value) / swipeThreshold).coerceIn(0f, 0.5f)
+    val isDraggingLeft = dragOffsetX.value < 0
+    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
 
     DisposableEffect(Unit) {
         val ttsInstance = TextToSpeech(context) { status ->
@@ -407,11 +457,64 @@ private fun FlashCardPanel(word: Word, termLangCode: String) {
             .fillMaxWidth()
             .height(384.dp)
             .graphicsLayer {
+                translationX = dragOffsetX.value
+                rotationZ = tiltDeg
                 rotationY = rotation
                 cameraDistance = 12f * density
             }
             .pointerInput(word.id) {
                 detectTapGestures(onTap = { rotated = !rotated })
+            }
+            .pointerInput(word.id) {
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        coroutineScope.launch {
+                            when {
+                                dragOffsetX.value < -swipeThreshold -> {
+                                    // Bay ra trái rồi callback
+                                    dragOffsetX.animateTo(
+                                        -flyOutDistance,
+                                        animationSpec = tween(250)
+                                    )
+                                    onSwipeLeft()
+                                }
+                                dragOffsetX.value > swipeThreshold -> {
+                                    // Bay ra phải rồi callback
+                                    dragOffsetX.animateTo(
+                                        flyOutDistance,
+                                        animationSpec = tween(250)
+                                    )
+                                    onSwipeRight()
+                                }
+                                else -> {
+                                    // Chưa đủ → spring về 0
+                                    dragOffsetX.animateTo(
+                                        0f,
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            stiffness = Spring.StiffnessMedium
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    onDragCancel = {
+                        coroutineScope.launch {
+                            dragOffsetX.animateTo(0f, animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            ))
+                        }
+                    },
+                    onHorizontalDrag = { _, dragAmount ->
+                        coroutineScope.launch {
+                            // Khi thẻ đang lật (mặt sau), trục X bị mirror → đảo dấu
+                            val direction = if (rotated) -1f else 1f
+                            dragOffsetX.snapTo(dragOffsetX.value + dragAmount * direction)
+                        }
+                    }
+                )
             }
     ) {
         if (rotation <= 90f || rotation >= 270f) {
@@ -478,7 +581,18 @@ private fun FlashCardPanel(word: Word, termLangCode: String) {
                         Row(
                             modifier = Modifier.fillMaxWidth()
                                 .align(Alignment.TopStart)
-                                .padding(horizontal = 24.dp, vertical = 24.dp),
+                                .padding(horizontal = 24.dp, vertical = 24.dp)
+                                .graphicsLayer { scaleX = descRowScale; scaleY = descRowScale }
+                                .pointerInput(Unit) {
+                                    detectTapGestures(
+                                        onPress = {
+                                            descRowPressed = true
+                                            tryAwaitRelease()
+                                            descRowPressed = false
+                                        },
+                                        onTap = { showDescriptionSheet = true }
+                                    )
+                                },
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Image(
@@ -527,8 +641,43 @@ private fun FlashCardPanel(word: Word, termLangCode: String) {
                 )
             }
         }
-        
 
+        // Overlay màu khi kéo: đỏ trái, xanh phải
+        if (overlayAlpha > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(
+                        if (isDraggingLeft) Color(0xFFFF383C).copy(alpha = overlayAlpha)
+                        else Color(0xFF58CC02).copy(alpha = overlayAlpha)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                androidx.compose.material3.Icon(
+                    painter = painterResource(
+                        id = if (isDraggingLeft) R.drawable.ic_cancel_round else R.drawable.ic_know_flash_card
+                    ),
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = overlayAlpha * 2f),
+                    modifier = Modifier.size(if (isDraggingLeft) 48.dp else 64.dp)
+                )
+            }
+        }
+    }
+
+    // Description bottom sheet
+    if (showDescriptionSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showDescriptionSheet = false },
+            containerColor = Color.White,
+            dragHandle = { BottomSheetDefaults.DragHandle() }
+        ) {
+            DescriptionBottomSheetContent(
+                word = word,
+                onDismiss = { showDescriptionSheet = false }
+            )
+        }
     }
 }
 
@@ -758,7 +907,7 @@ fun RandomModeBottomSheet(
         Text(
             text = "ĐỂ SAU",
             modifier = Modifier.clickable { onDismiss() },
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.labelLarge,
             color = Color(0xFF3B82F6),
         )
         
@@ -904,4 +1053,126 @@ fun RandomModeBottomSheetShow() {
         onConfirm = {},
         onDismiss = {}
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DescriptionBottomSheetContent(
+    word: Word,
+    onDismiss: () -> Unit
+) {
+    var start by remember { mutableStateOf(false) }
+    var showBubble by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(100)
+        start = true
+        delay(300)
+        showBubble = true
+    }
+
+    val mascotTransition = updateTransition(targetState = start, label = "mascot")
+    val mascotScale by mascotTransition.animateFloat(label = "scale") { if (it) 1f else 0.8f }
+    val mascotAlpha by mascotTransition.animateFloat(label = "alpha") { if (it) 1f else 0f }
+
+    val bubbleTransition = updateTransition(targetState = showBubble, label = "bubble")
+    val bubbleScale by bubbleTransition.animateFloat(label = "scale") { if (it) 1f else 0.5f }
+    val bubbleAlpha by bubbleTransition.animateFloat(label = "alpha") { if (it) 1f else 0f }
+
+    Column(
+        modifier = androidx.compose.foundation.layout.WindowInsets.navigationBars
+            .asPaddingValues()
+            .let { navPadding ->
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 20.dp + navPadding.calculateBottomPadding())
+            }
+    ) {
+        // Mascot + bubble row
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.ic_teaching_mascot),
+                contentDescription = "Mascot",
+                modifier = Modifier
+                    .size(120.dp)
+                    .graphicsLayer {
+                        scaleX = mascotScale
+                        scaleY = mascotScale
+                        alpha = mascotAlpha
+                    }
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Box(
+                modifier = Modifier
+                    .graphicsLayer {
+                        scaleX = bubbleScale
+                        scaleY = bubbleScale
+                        alpha = bubbleAlpha
+                    }
+                    .background(Color.White, RoundedCornerShape(12.dp))
+                    .border(
+                        1.dp, Color(0xFFE5E7EB),
+                        RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp, bottomStart = 12.dp)
+                    )
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+            ) {
+                Text(
+                    text = "Theo như những gì tôi biết >-<",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color(0xFF4B5563)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Label
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Image(
+                painter = painterResource(id = R.drawable.ic_light_bub),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "Hiển thị mô tả",
+                color = Color(0xFFEAB308),
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Description — scrollable, max 10 lines
+        val scrollState = rememberScrollState()
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = (14 * 10 + 16).dp) // ~10 dòng
+                .padding(horizontal = 10.dp, vertical = 10.dp)
+        ) {
+            Text(
+                text = word.description ?: "Không có mô tả.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFF4B5563),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(scrollState)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Confirm button
+        BigPotagoButton(
+            text = "XÁC NHẬN",
+            enabled = true,
+            onClick = onDismiss
+        )
+    }
 }
