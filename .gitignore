@@ -16,3 +16,5 @@ local.properties
 Potago.ddl
 SSH
 SSH.pub
+/.cursor
+/.idea
