@@ -63,6 +63,19 @@ fun LibraryScreen(
     val recentSentencePatternsState by viewModel.recentSentencePatterns.collectAsState()
     val allSentencePatternsState by viewModel.allSentencePatterns.collectAsState()
 
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshLibrary()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     // Hoisted the UI content to a stateless Composable to allow Previews
     LibraryScreenContent(
         recentWordSetsState = recentWordSetsState,
