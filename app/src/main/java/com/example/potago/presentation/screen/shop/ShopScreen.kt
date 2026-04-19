@@ -255,7 +255,7 @@ fun ShopScreen(
 
                 ShopSection("Bảo vệ chuỗi", streakItems, uiState.diamond, onShopItemClick)
                 ShopSection("Thời gian siêu cấp", superXpItems, uiState.diamond, onShopItemClick)
-                //ShopSection("Hack KN", hackKnItems, uiState.diamond, onShopItemClick)
+                ShopSection("Hack KN", hackKnItems, uiState.diamond, onShopItemClick)
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
@@ -495,7 +495,23 @@ private fun OwnedItemBottomSheetContent(
         Spacer(modifier = Modifier.height(28.dp))
         when (item.kind) {
             OwnedItemKind.WaterFreeze -> {
-                ShopSheetPrimaryButton(text = "XÁC NHẬN", enabled = true, onClick = onConfirm)
+                ShopSheetPrimaryButton(
+                    text = "SỬ DỤNG",
+                    enabled = item.quantity > 0,
+                    onClick = onUse
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "ĐỂ SAU",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFF3B82F6)
+                    )
+                }
             }
 
             OwnedItemKind.HackKn, OwnedItemKind.SieuKn -> {
