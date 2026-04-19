@@ -7,4 +7,12 @@ interface WordSetRepository {
     suspend fun getWordSets(): Result<List<WordSet>>
     suspend fun getRecentWordSets(limit: Int = 3): Result<List<WordSet>>
     suspend fun getWordSetById(wordSetId: Long): Result<WordSet>
+    suspend fun updateWordSet(
+        wordSetId: Long,
+        defLangCode: String?,
+        description: String?,
+        isPublic: Boolean,
+        name: String?,
+        termLangCode: String?
+    ): Result<WordSet>
 }
