@@ -4,6 +4,7 @@ import com.example.potago.domain.repository.*
 import com.example.potago.domain.usecase.*
 import com.example.potago.domain.repository.RewardRepository
 import com.example.potago.domain.repository.ItemRepository
+import com.example.potago.domain.repository.ItemSessionRepository
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.example.potago.domain.repository.StreakRepository
@@ -154,4 +155,22 @@ object UseCaseModule {
         userRepository: UserRepository,
         streakRepository: StreakRepository
     ): SyncUserSessionUseCase = SyncUserSessionUseCase(userRepository, streakRepository)
+
+    @Provides
+    @Singleton
+    fun provideActivateItemUseCase(
+        repository: ItemSessionRepository
+    ): ActivateItemUseCase = ActivateItemUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideObserveActiveItemSessionUseCase(
+        repository: ItemSessionRepository
+    ): ObserveActiveItemSessionUseCase = ObserveActiveItemSessionUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideCheckAndExpireItemSessionUseCase(
+        repository: ItemSessionRepository
+    ): CheckAndExpireItemSessionUseCase = CheckAndExpireItemSessionUseCase(repository)
 }

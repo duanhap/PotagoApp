@@ -61,8 +61,9 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideItemRepository(
-        itemApiService: ItemApiService
-    ): ItemRepository = ItemRepositoryImpl(itemApiService)
+        itemApiService: ItemApiService,
+        userDataStore: UserDataStore
+    ): ItemRepository = ItemRepositoryImpl(itemApiService, userDataStore)
 
     @Provides
     @Singleton
@@ -82,4 +83,10 @@ object RepositoryModule {
     fun provideMatchGameRepository(
         matchGameApiService: MatchGameApiService
     ): MatchGameRepository = MatchGameRepositoryImpl(matchGameApiService)
+
+    @Provides
+    @Singleton
+    fun provideItemSessionRepository(
+        userDataStore: UserDataStore
+    ): ItemSessionRepository = ItemSessionRepositoryImpl(userDataStore)
 }
