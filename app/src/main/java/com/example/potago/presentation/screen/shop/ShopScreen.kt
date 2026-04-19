@@ -1,5 +1,7 @@
 package com.example.potago.presentation.screen.shop
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
@@ -26,8 +28,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -50,10 +54,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.potago.domain.model.ActiveItemSession
 import com.example.potago.presentation.screen.UiState
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.ui.Alignment
@@ -61,6 +67,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
@@ -115,6 +122,7 @@ private sealed class ShopActiveSheet {
     data class OwnedDetail(val item: OwnedItem) : ShopActiveSheet()
     data class PurchaseConfirm(val item: ShopItem) : ShopActiveSheet()
     data class PurchaseInsufficient(val item: ShopItem) : ShopActiveSheet()
+    data class ItemConflict(val activeItemType: String) : ShopActiveSheet()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -132,6 +140,8 @@ fun ShopScreen(
         viewModel.events.collectLatest { event ->
             when (event) {
                 is ShopEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
+                is ShopEvent.ShowConflictSheet -> activeSheet =
+                    ShopActiveSheet.ItemConflict(event.activeItemType)
             }
         }
     }
@@ -288,10 +298,15 @@ fun ShopScreen(
                         is ShopActiveSheet.PurchaseInsufficient -> PurchaseInsufficientBottomSheetContent(
                             onDismiss = { activeSheet = null }
                         )
+
+                        is ShopActiveSheet.ItemConflict -> ItemConflictBottomSheetContent(
+                            onDismiss = { activeSheet = null }
+                        )
                     }
                 }
             }
         }
+
     }
 
 }
@@ -464,7 +479,7 @@ private fun OwnedItemBottomSheetContent(
             contentAlignment = Alignment.Center
         ) {
             Image(
-                painter = painterResource(id =if(item.kind == OwnedItemKind.WaterFreeze) notoBigIce else  item.imageRes),
+                painter = painterResource(id = if (item.kind == OwnedItemKind.WaterFreeze) notoBigIce else item.imageRes),
                 contentDescription = item.name,
                 modifier = Modifier.size(heroSize),
                 contentScale = ContentScale.Fit
@@ -584,19 +599,21 @@ private fun PurchaseInsufficientBottomSheetContent(
             .padding(bottom = 28.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
                 .height(180.dp)
         ) {
             Image(
                 painter = painterResource(R.drawable.ic_looking_mascot),
                 contentDescription = null,
-                modifier = Modifier.scale(0.8f)
-                    .offset(x=-40.dp),
+                modifier = Modifier
+                    .scale(0.8f)
+                    .offset(x = -40.dp),
             )
             Surface(
                 modifier = Modifier
                     .padding(top = 40.dp)
-                    .offset(x=-20.dp),
+                    .offset(x = -20.dp),
                 shape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp, bottomStart = 16.dp),
                 color = Color.White,
                 border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)),
@@ -901,7 +918,163 @@ private fun ShopItemRow(
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
 @Composable
-private fun ShopScreenPreview() {
+private fun PurchaseInsufficientBottomSheetContent() {
     PurchaseInsufficientBottomSheetContent(onDismiss = {})
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true)
+@Composable
+private fun ItemConflictBottomSheetContentPreview() {
+    ItemConflictBottomSheetContent(onDismiss = {})
+}
+
+
+// --- Active Item Badge ---
+@Composable
+fun ActiveItemBadge(
+    session: ActiveItemSession,
+    remainingMs: Long,
+    expanded: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val itemLabel = when (session.itemType) {
+        ItemType.SUPER_XP -> "X2 kinh nghiệm"
+        ItemType.HACK_XP -> "X3 kinh nghiệm"
+        else -> session.itemType.toString()
+    }
+
+    val minutes = (remainingMs / 1000 / 60).toInt()
+    val seconds = (remainingMs / 1000 % 60).toInt()
+    val timeText = "%02d:%02d".format(minutes, seconds)
+
+
+    // Hiệu ứng nhún
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.9f else 1f,
+        label = "icon_scale"
+    )
+
+    Row(
+        modifier = modifier
+            .animateContentSize() // 🔥 quan trọng
+            .background(
+                brush = Brush.horizontalGradient(
+                    listOf(
+                        Color(0xFF1A3D01),
+                        Color(0xFF58CC02)
+                    )
+                ),
+                shape = RoundedCornerShape(28.dp)
+            )
+            .padding(end = if (expanded) 15.dp else 0.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+
+        // 🔥 IMAGE (luôn hiển thị)
+        Image(
+            painter = painterResource(id = R.drawable.ic_using_item),
+            contentDescription = null,
+            modifier = Modifier
+                .clip(CircleShape)
+                .size(48.dp) // to hơn row -> nổi lên
+                .clickable { onClick() }
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .clickable(
+                    interactionSource = interactionSource, // 🔥 GẮN VÀO ĐÂY
+                    indication = ripple(
+                        bounded = true,
+                        radius = 25.dp,
+                        color = Color.White.copy(alpha = 0.3f)
+                    )
+                ) {
+                    onClick()
+                },
+
+        )
+
+        // 🔥 CONTENT (chỉ hiện khi expanded)
+        AnimatedVisibility(visible = expanded) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(modifier = Modifier.width(6.dp))
+
+                Column {
+                    Text(
+                        text = itemLabel,
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                    Text(
+                        text = timeText,
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+            }
+        }
+    }
+}
+
+// --- Item Conflict Bottom Sheet ---
+@Composable
+private fun ItemConflictBottomSheetContent(onDismiss: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 28.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(160.dp),
+        ) {
+            Image(
+                painter = painterResource(R.drawable.ic_sick_mascot_shop_screen),
+                contentDescription = null,
+                modifier = Modifier.size(150.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(top = 20.dp),
+                shape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp, bottomStart = 16.dp),
+                color = Color.White,
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)),
+                shadowElevation = 2.dp
+            ) {
+                Text(
+                    text = "Chóng đầu đau mặt quá!@%*^",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF4B5563),
+                    modifier = Modifier.padding(horizontal = 13.dp, vertical = 12.dp)
+                )
+            }
+        }
+        Text(
+            text = "Mỗi lần chỉ sử dụng được 1 loại buff.\nQuá liều đôi khi sẽ không tốt cho potato.",
+            style = MaterialTheme.typography.titleLarge.copy(
+                lineHeight = 26.sp,
+                fontWeight = FontWeight.Black
+            ),
+            color = Color.Black.copy(alpha = 0.75f),
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp)
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        ShopSheetPrimaryButton(text = "XÁC NHẬN", enabled = true, onClick = onDismiss)
+    }
+}

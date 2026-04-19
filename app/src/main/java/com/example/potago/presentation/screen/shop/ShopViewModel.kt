@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.potago.domain.model.Item
 import com.example.potago.domain.model.Result
+import com.example.potago.domain.usecase.ActivateItemResult
+import com.example.potago.domain.usecase.ActivateItemUseCase
 import com.example.potago.domain.usecase.GetItemsUseCase
-import com.example.potago.domain.usecase.GetUserProfileUseCase
+import com.example.potago.domain.usecase.ObserveUserUseCase
 import com.example.potago.domain.usecase.PurchaseItemUseCase
 import com.example.potago.domain.usecase.UseItemUseCase
 import com.example.potago.presentation.screen.UiState
@@ -27,9 +29,9 @@ data class ShopUiState(
 
 sealed class ShopEvent {
     data class ShowSnackbar(val message: String) : ShopEvent()
+    data class ShowConflictSheet(val activeItemType: String) : ShopEvent()
 }
 
-// Item types matching backend
 object ItemType {
     const val WATER_STREAK = "water_streak"
     const val SUPER_XP = "super_xp"
@@ -39,31 +41,25 @@ object ItemType {
 @HiltViewModel
 class ShopViewModel @Inject constructor(
     private val getItemsUseCase: GetItemsUseCase,
-    private val getUserProfileUseCase: GetUserProfileUseCase,
+    private val observeUserUseCase: ObserveUserUseCase,
     private val purchaseItemUseCase: PurchaseItemUseCase,
-    private val useItemUseCase: UseItemUseCase
+    private val useItemUseCase: UseItemUseCase,
+    private val activateItemUseCase: ActivateItemUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ShopUiState())
     val uiState: StateFlow<ShopUiState> = _uiState.asStateFlow()
 
-    private val _events = Channel<ShopEvent>()
+    private val _events = Channel<ShopEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
     init {
-        loadData()
-    }
-
-    private fun loadData() {
         viewModelScope.launch {
-            // Load diamond balance
-            when (val result = getUserProfileUseCase()) {
-                is Result.Success -> _uiState.update { it.copy(diamond = result.data?.diamond ?: 0) }
-                else -> {}
+            observeUserUseCase().collect { user ->
+                _uiState.update { it.copy(diamond = user?.diamond ?: 0) }
             }
         }
         viewModelScope.launch {
-            // Load items
             when (val result = getItemsUseCase()) {
                 is Result.Success -> _uiState.update { it.copy(items = UiState.Success(result.data)) }
                 is Result.Error -> _uiState.update { it.copy(items = UiState.Error(result.message ?: "Lỗi")) }
@@ -77,14 +73,8 @@ class ShopViewModel @Inject constructor(
             _uiState.update { it.copy(isActionLoading = true) }
             when (val result = purchaseItemUseCase(itemType, quantity)) {
                 is Result.Success -> {
-                    val (item, diamondRemaining) = result.data!!
-                    _uiState.update {
-                        it.copy(
-                            items = UiState.Success(item),
-                            diamond = diamondRemaining,
-                            isActionLoading = false
-                        )
-                    }
+                    val (item, _) = result.data!!
+                    _uiState.update { it.copy(items = UiState.Success(item), isActionLoading = false) }
                     _events.send(ShopEvent.ShowSnackbar("Mua thành công!"))
                 }
                 is Result.Error -> {
@@ -97,23 +87,46 @@ class ShopViewModel @Inject constructor(
     }
 
     fun useItem(itemType: String) {
+        if (itemType == ItemType.WATER_STREAK) {
+            // Water Freeze không có session timer — gọi API bình thường
+            viewModelScope.launch {
+                _uiState.update { it.copy(isActionLoading = true) }
+                when (val result = useItemUseCase(itemType)) {
+                    is Result.Success -> {
+                        _uiState.update { it.copy(items = UiState.Success(result.data!!), isActionLoading = false) }
+                        _events.send(ShopEvent.ShowSnackbar("Đã sử dụng Water Freeze!"))
+                    }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(isActionLoading = false) }
+                        _events.send(ShopEvent.ShowSnackbar(result.message ?: "Thất bại"))
+                    }
+                    else -> _uiState.update { it.copy(isActionLoading = false) }
+                }
+            }
+            return
+        }
+
+        // Siêu KN / Hack KN → activate session + gọi API
         viewModelScope.launch {
             _uiState.update { it.copy(isActionLoading = true) }
-            when (val result = useItemUseCase(itemType)) {
-                is Result.Success -> {
-                    _uiState.update {
-                        it.copy(
-                            items = UiState.Success(result.data!!),
-                            isActionLoading = false
-                        )
-                    }
-                    _events.send(ShopEvent.ShowSnackbar("Đã sử dụng!"))
-                }
-                is Result.Error -> {
+            when (val activateResult = activateItemUseCase(itemType)) {
+                is ActivateItemResult.ConflictWithOtherItem -> {
                     _uiState.update { it.copy(isActionLoading = false) }
-                    _events.send(ShopEvent.ShowSnackbar(result.message ?: "Thất bại"))
+                    _events.send(ShopEvent.ShowConflictSheet(activateResult.activeItemType))
                 }
-                else -> _uiState.update { it.copy(isActionLoading = false) }
+                is ActivateItemResult.Success -> {
+                    when (val result = useItemUseCase(itemType)) {
+                        is Result.Success -> {
+                            _uiState.update { it.copy(items = UiState.Success(result.data!!), isActionLoading = false) }
+                            _events.send(ShopEvent.ShowSnackbar("Đã kích hoạt!"))
+                        }
+                        is Result.Error -> {
+                            _uiState.update { it.copy(isActionLoading = false) }
+                            _events.send(ShopEvent.ShowSnackbar(result.message ?: "Thất bại"))
+                        }
+                        else -> _uiState.update { it.copy(isActionLoading = false) }
+                    }
+                }
             }
         }
     }

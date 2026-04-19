@@ -165,7 +165,7 @@ fun DetailedVideoScreen(
         launch {
             while (true) {
                 delay(500)
-                Log.d("DEBUG", "currentSubtitleIndex: $currentSubtitleIndex, currentTimeMs: $currentTimeMs")
+               // Log.d("DEBUG", "currentSubtitleIndex: $currentSubtitleIndex, currentTimeMs: $currentTimeMs")
             }
         }
     }
@@ -715,7 +715,7 @@ fun SingleSubtitleView(
             ) { (targetIndex, questionMode) ->
                     val scrollState = rememberScrollState()
                     val subtitle = subtitles.getOrNull(targetIndex)
-                    Log.d("DEBUG", "subtitle: $subtitle")
+                    //Log.d("DEBUG", "subtitle: $subtitle")
                     if (subtitle != null) {
                         Box(
                             modifier = Modifier
