@@ -131,6 +131,16 @@ data class Item(
     val userId: Int = 0
 )
 
+data class ActiveItemSession(
+    val itemType: String,       // "super_xp" hoặc "hack_xp"
+    val startTimeMs: Long,      // System.currentTimeMillis() lúc bắt đầu
+    val totalDurationMs: Long   // Tổng thời lượng (ms), cộng dồn nếu dùng thêm
+) {
+    val endTimeMs: Long get() = startTimeMs + totalDurationMs
+    val remainingMs: Long get() = (endTimeMs - System.currentTimeMillis()).coerceAtLeast(0L)
+    val isActive: Boolean get() = remainingMs > 0L
+}
+
 data class Video(
     val id: Int = 0,
     val title: String? = null,
