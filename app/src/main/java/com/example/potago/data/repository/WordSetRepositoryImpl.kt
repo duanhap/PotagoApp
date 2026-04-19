@@ -2,6 +2,7 @@ package com.example.potago.data.repository
 
 import com.example.potago.data.remote.api.ApiResponse
 import com.example.potago.data.remote.api.WordSetApiService
+import com.example.potago.data.remote.dto.UpdateWordSetRequest
 import com.example.potago.data.remote.dto.toDomain
 import com.example.potago.domain.model.Result
 import com.example.potago.domain.model.WordSet
@@ -67,6 +68,33 @@ class WordSetRepositoryImpl @Inject constructor(
             }
         } else {
             Result.Error(e.message ?: "Lỗi không xác định")
+        }
+    }
+
+    override suspend fun updateWordSet(
+        wordSetId: Long,
+        defLangCode: String?,
+        description: String?,
+        isPublic: Boolean,
+        name: String?,
+        termLangCode: String?
+    ): Result<WordSet> {
+        return try {
+            val request = UpdateWordSetRequest(
+                defLangCode = defLangCode,
+                description = description,
+                isPublic = isPublic,
+                name = name,
+                termLangCode = termLangCode
+            )
+            val response = wordSetApiService.updateWordSet(wordSetId, request)
+            if (response.success && response.data != null) {
+                Result.Success(response.data.toDomain())
+            } else {
+                Result.Error(response.message)
+            }
+        } catch (e: Exception) {
+            handleError(e)
         }
     }
 }

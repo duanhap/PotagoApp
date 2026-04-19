@@ -22,9 +22,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,30 +38,50 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.potago.R
+import com.example.potago.presentation.navigation.Screen
 
 @Composable
 fun EditCourseScreen(
     navController: NavController,
     @Suppress("UNUSED_PARAMETER") wordSetId: Long,
-    initialTitle: String
+    initialTitle: String,
+    viewModel: EditCourseViewModel = hiltViewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(uiState.isSuccess) {
+        if (uiState.isSuccess) {
+            navController.navigate(Screen.DetailCourse(wordSetId, uiState.title)) {
+                popUpTo(Screen.DetailCourse.route) {
+                    inclusive = true
+                }
+            }
+        }
+    }
+
     EditCourseScreenContent(
-        initialTitle = initialTitle,
+        title = uiState.title.ifEmpty { initialTitle },
+        onTitleChange = viewModel::onTitleChange,
+        description = uiState.description,
+        onDescriptionChange = viewModel::onDescriptionChange,
+        termLanguageLabel = uiState.termLanguageLabel,
+        definitionLanguageLabel = uiState.definitionLanguageLabel,
         onBackClick = { navController.popBackStack() },
-        onSaveClick = { navController.popBackStack() }
+        onSaveClick = { viewModel.saveChanges() }
     )
 }
 
 @Composable
 private fun EditCourseScreenContent(
-    initialTitle: String,
+    title: String,
+    onTitleChange: (String) -> Unit,
+    description: String,
+    onDescriptionChange: (String) -> Unit,
+    termLanguageLabel: String,
+    definitionLanguageLabel: String,
     onBackClick: () -> Unit,
     onSaveClick: () -> Unit
 ) {
-    var title by rememberSaveable { mutableStateOf(initialTitle) }
-    var description by rememberSaveable { mutableStateOf("") }
-    var termLanguageLabel by rememberSaveable { mutableStateOf("English") }
-    var definitionLanguageLabel by rememberSaveable { mutableStateOf("Tiếng Việt") }
 
     Box(
         modifier = Modifier
@@ -109,7 +129,7 @@ private fun EditCourseScreenContent(
 
             UnderlinedTextFieldBlock(
                 value = title,
-                onValueChange = { title = it },
+                onValueChange = onTitleChange,
                 placeholder = "Nhập tiêu đề vô đây",
                 label = "Tiêu đề",
                 singleLine = true
@@ -119,7 +139,7 @@ private fun EditCourseScreenContent(
 
             UnderlinedTextFieldBlock(
                 value = description,
-                onValueChange = { description = it },
+                onValueChange = onDescriptionChange,
                 placeholder = "Nhập mô tả vô đây",
                 label = "Mô tả",
                 singleLine = false
@@ -275,7 +295,12 @@ private fun LanguageSelectBlock(
 @Composable
 private fun EditCourseScreenPreview() {
     EditCourseScreenContent(
-        initialTitle = "Ordering Food",
+        title = "Ordering Food",
+        onTitleChange = {},
+        description = "",
+        onDescriptionChange = {},
+        termLanguageLabel = "English",
+        definitionLanguageLabel = "Tiếng Việt",
         onBackClick = {},
         onSaveClick = {}
     )

@@ -50,7 +50,9 @@ class LibraryViewModel @Inject constructor(
 
     private fun loadRecentWordSets() {
         viewModelScope.launch {
-            _recentWordSets.value = UiState.Loading
+            if (_recentWordSets.value !is UiState.Success) {
+                _recentWordSets.value = UiState.Loading
+            }
             when (val result = getRecentWordSetsUseCase()) {
                 is Result.Success -> _recentWordSets.value = UiState.Success(result.data)
                 is Result.Error -> _recentWordSets.value = UiState.Error(result.message)
@@ -61,7 +63,9 @@ class LibraryViewModel @Inject constructor(
 
     private fun loadAllWordSets() {
         viewModelScope.launch {
-            _allWordSets.value = UiState.Loading
+            if (_allWordSets.value !is UiState.Success) {
+                _allWordSets.value = UiState.Loading
+            }
             when (val result = getWordSetsUseCase()) {
                 is Result.Success -> _allWordSets.value = UiState.Success(result.data)
                 is Result.Error -> _allWordSets.value = UiState.Error(result.message)
@@ -72,7 +76,9 @@ class LibraryViewModel @Inject constructor(
 
     private fun loadRecentSentencePatterns() {
         viewModelScope.launch {
-            _recentSentencePatterns.value = UiState.Loading
+            if (_recentSentencePatterns.value !is UiState.Success) {
+                _recentSentencePatterns.value = UiState.Loading
+            }
             when (val result = getRecentSentencePatternsUseCase()) {
                 is Result.Success -> _recentSentencePatterns.value = UiState.Success(result.data)
                 is Result.Error -> _recentSentencePatterns.value = UiState.Error(result.message)
@@ -83,7 +89,9 @@ class LibraryViewModel @Inject constructor(
 
     private fun loadAllSentencePatterns() {
         viewModelScope.launch {
-            _allSentencePatterns.value = UiState.Loading
+            if (_allSentencePatterns.value !is UiState.Success) {
+                _allSentencePatterns.value = UiState.Loading
+            }
             when (val result = getSentencePatternsUseCase()) {
                 is Result.Success -> _allSentencePatterns.value = UiState.Success(result.data)
                 is Result.Error -> _allSentencePatterns.value = UiState.Error(result.message)
