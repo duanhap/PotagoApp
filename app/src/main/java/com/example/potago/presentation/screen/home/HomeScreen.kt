@@ -105,7 +105,8 @@ fun HomeScreen(
                 SectionHeader(
                     title = "Câu gần đây",
                     onSeeMoreClick = {},
-                    modifier = Modifier.padding(horizontal = 20.dp)
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                    showSeeMore = false
                 )
                 RecentSentencesSection(uiState = homeUiState.recentSentences)
                 Spacer(modifier = Modifier.height(20.dp))
@@ -240,12 +241,11 @@ private fun WordSetPager(
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 20.dp),
-            pageSpacing = 12.dp
         ) { page ->
             WordSetCard(
                 wordSet = wordSets[page],
-                onContinueClick = { onContinueClick(wordSets[page]) }
+                onContinueClick = { onContinueClick(wordSets[page]) },
+                modifier = Modifier.padding(horizontal = 20.dp)
             )
         }
 
@@ -276,10 +276,11 @@ private fun WordSetPager(
 @Composable
 private fun WordSetCard(
     wordSet: WordSet,
-    onContinueClick: () -> Unit
+    onContinueClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .clip(RoundedCornerShape(24.dp))
             .fillMaxWidth()
             .background(
