@@ -426,7 +426,7 @@ private fun FlashCardPanel(
     val dragOffsetX = remember(word.id) { androidx.compose.animation.core.Animatable(0f) }
     val swipeThreshold = 250f
     val flyOutDistance = 1200f
-    val tiltDeg = (dragOffsetX.value / 20f).coerceIn(-15f, 15f)
+
     val overlayAlpha = (kotlin.math.abs(dragOffsetX.value) / swipeThreshold).coerceIn(0f, 0.5f)
     val isDraggingLeft = dragOffsetX.value < 0
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
@@ -450,7 +450,10 @@ private fun FlashCardPanel(
         animationSpec = tween(durationMillis = 400),
         label = "rotation"
     )
-
+    /// Nghiêng mình (bỏ dòng rotated đi thì sẽ nghiêng dưới)
+    val tiltDeg = ((dragOffsetX.value / 20f)
+            * if (rotated) -1f else 1f)
+        .coerceIn(-15f, 15f)
     Box(
         modifier = Modifier
             .padding(horizontal = 20.dp)
