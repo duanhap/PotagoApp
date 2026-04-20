@@ -26,11 +26,11 @@ class FlashcardRepositoryImpl @Inject constructor(
         return try {
             val response = apiService.getFlashcards(wordSetId, mode, currentWordId, size, filter)
             if (response.success) {
-                val words = response.data?.map { it.toDomain() } ?: emptyList()
+                val words = response.data?.map { it.toDomain() } ?: emptyList<Word>()
                 val total = response.pagination?.total ?: words.size
                 Result.Success(FlashcardsResponse(words, total))
             } else {
-                Result.Error(response.message)
+                Result.Error(response.message ?: "Lỗi không xác định")
             }
         } catch (e: Exception) {
             handleError(e)
@@ -43,7 +43,7 @@ class FlashcardRepositoryImpl @Inject constructor(
             if (response.success && response.data != null) {
                 Result.Success(response.data.toDomain())
             } else {
-                Result.Error(response.message)
+                Result.Error(response.message ?: "Lỗi không xác định")
             }
         } catch (e: Exception) {
             handleError(e)
@@ -54,8 +54,8 @@ class FlashcardRepositoryImpl @Inject constructor(
         return if (e is HttpException) {
             try {
                 val errorBody = e.response()?.errorBody()?.string()
-                val apiResponse = gson.fromJson(errorBody, ApiResponse::class.java)
-                Result.Error(apiResponse.message ?: "Lỗi hệ thống (${e.code()})")
+                val apiResponse = gson.fromJson(errorBody, ApiResponse::class.java) as? ApiResponse<*>
+                Result.Error(apiResponse?.message ?: "Lỗi hệ thống (${e.code()})")
             } catch (jsonEx: Exception) {
                 Result.Error("Lỗi: ${e.message()}")
             }
