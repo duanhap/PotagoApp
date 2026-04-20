@@ -18,8 +18,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 
 data class GoalUiState(
     val selectedXp: Int? = null,
+    val initialXp: Int? = null,
     val isLoadingSettings: Boolean = true,
-    val isSaving: Boolean = false
+    val isSaving: Boolean = false,
+    val isSaveButtonEnabled: Boolean = false
 )
 
 @HiltViewModel
@@ -35,14 +37,21 @@ class GoalViewModel @Inject constructor(
     val uiEvent = _uiEvent.receiveAsFlow()
 
     init {
-        // Khi vừa vào màn Goal, lấy goal hiện tại để dropdown hiển thị đúng.
+        loadSettings()
+    }
+
+    private fun loadSettings() {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingSettings = true) }
             when (val settingsResult = getUserSettingsUseCase()) {
                 is Result.Success -> {
+                    val xp = settingsResult.data.experienceGoal
                     _uiState.update { state ->
                         state.copy(
-                            selectedXp = settingsResult.data.experienceGoal,
-                            isLoadingSettings = false
+                            selectedXp = xp,
+                            initialXp = xp,
+                            isLoadingSettings = false,
+                            isSaveButtonEnabled = false
                         )
                     }
                 }
@@ -50,7 +59,9 @@ class GoalViewModel @Inject constructor(
                     _uiState.update { state ->
                         state.copy(
                             selectedXp = null,
-                            isLoadingSettings = false
+                            initialXp = null,
+                            isLoadingSettings = false,
+                            isSaveButtonEnabled = false
                         )
                     }
                 }
@@ -63,16 +74,22 @@ class GoalViewModel @Inject constructor(
         }
     }
 
+    fun onXpSelected(xp: Int) {
+        _uiState.update { state ->
+            state.copy(
+                selectedXp = xp,
+                isSaveButtonEnabled = xp != state.initialXp
+            )
+        }
+    }
+
     fun onSaveGoal(experienceGoal: Int) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isSaving = true)
+            _uiState.update { it.copy(isSaving = true) }
 
             try {
-                // Backend yêu cầu body có notification + language,
-                // nên lấy settings hiện tại để không ghi đè lung tung.
                 val currentSettings = when (val settingsResult = getUserSettingsUseCase()) {
                     is Result.Success -> settingsResult.data
-                    is Result.Error -> null
                     else -> null
                 }
 
@@ -99,9 +116,8 @@ class GoalViewModel @Inject constructor(
                     else -> {}
                 }
             } finally {
-                _uiState.value = _uiState.value.copy(isSaving = false)
+                _uiState.update { it.copy(isSaving = false) }
             }
         }
     }
 }
-

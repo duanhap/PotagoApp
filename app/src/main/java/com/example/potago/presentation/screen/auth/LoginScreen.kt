@@ -246,7 +246,8 @@ fun PasswordField(
     value: String,
     isPasswordVisible: Boolean,
     onValueChange: (String) -> Unit,
-    onTogglePasswordVisibility: () -> Unit
+    onTogglePasswordVisibility: () -> Unit,
+    isReadOnly : Boolean = false
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -305,6 +306,7 @@ fun PasswordField(
             },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             singleLine = true,
+            readOnly = isReadOnly
         )
     }
 }

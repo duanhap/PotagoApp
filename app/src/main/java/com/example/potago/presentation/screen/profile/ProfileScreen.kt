@@ -131,7 +131,8 @@ fun ProfileScreen(
                     value = uiState.password,
                     isPasswordVisible = isPasswordVisible,
                     onValueChange = viewModel::onPasswordChange,
-                    onTogglePasswordVisibility = { isPasswordVisible = !isPasswordVisible }
+                    onTogglePasswordVisibility = { isPasswordVisible = !isPasswordVisible },
+                    isReadOnly = true
                 )
             }
 
