@@ -116,6 +116,12 @@ object UseCaseModule {
     
     @Provides
     @Singleton
+    fun provideUpdateWordSetUseCase(
+        repository: WordSetRepository
+    ): UpdateWordSetUseCase = UpdateWordSetUseCase(repository)
+
+    @Provides
+    @Singleton
     fun provideUpdateWordStatusUseCase(
         repository: FlashcardRepository
     ): UpdateWordStatusUseCase = UpdateWordStatusUseCase(repository)
