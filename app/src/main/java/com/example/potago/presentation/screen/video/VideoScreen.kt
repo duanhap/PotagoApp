@@ -204,7 +204,7 @@ fun FilterChips(
     selectedIndex: Int,
     onTabSelected: (Int) -> Unit
 ) {
-    val filters = listOf("English", "日本語", "汉语")
+    val filters = listOf("English", "日本語", "中文")
 
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp),

@@ -95,7 +95,7 @@ private fun RecommendVideoContent(
     onLoadMore: () -> Unit,
     onVideoClick: (Int) -> Unit
 ) {
-    val languages = listOf("English", "日本語", "汉语")
+    val languages = listOf("English", "日本語", "中文")
     var selectedIndex by remember { mutableStateOf(0) }
     val listState = rememberLazyListState()
 

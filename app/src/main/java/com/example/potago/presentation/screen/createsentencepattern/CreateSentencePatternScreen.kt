@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
@@ -31,6 +32,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.potago.R
+import com.example.potago.presentation.screen.createwordset.SaveButton
+import com.example.potago.presentation.screen.setting.BackButton
 import com.example.potago.presentation.ui.theme.Nunito
 import kotlinx.coroutines.flow.collectLatest
 
@@ -88,7 +91,10 @@ fun CreateSentencePatternScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(GreenLight, RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp))
+                            .background(
+                                GreenLight,
+                                RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp)
+                            )
                             .padding(horizontal = 20.dp, vertical = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
@@ -124,7 +130,12 @@ fun CreateSentencePatternScreen(
                     SentenceCard(
                         sentence = sentence,
                         onTermChange = { viewModel.onSentenceTermChange(sentence.id, it) },
-                        onDefinitionChange = { viewModel.onSentenceDefinitionChange(sentence.id, it) },
+                        onDefinitionChange = {
+                            viewModel.onSentenceDefinitionChange(
+                                sentence.id,
+                                it
+                            )
+                        },
                         onDelete = { viewModel.deleteOrClearSentence(sentence.id) }
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -133,24 +144,42 @@ fun CreateSentencePatternScreen(
 
             // ── FAB ────────────────────────────────────────────────────
             Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 24.dp)
+                modifier = Modifier.align(Alignment.BottomCenter)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .background(GreenPrimary)
-                        .clickable { viewModel.addSentence() },
-                    contentAlignment = Alignment.Center
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shadowElevation = 20.dp,
+                    color = Color.White
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_add),
-                        contentDescription = "Thêm câu",
-                        tint = Color.White,
-                        modifier = Modifier.size(28.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Divider(
+                            thickness = 1.dp,
+                            color = Color(0xFFE5E7EB),
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .offset(y = -10.dp)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(CircleShape)
+                                .background(GreenPrimary)
+                                .clickable { viewModel.addSentence() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_add),
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
                 }
             }
 
@@ -171,7 +200,7 @@ fun CreateSentencePatternScreen(
 
             // ── Save confirm ───────────────────────────────────────────
             if (uiState.showSaveConfirm) {
-                ConfirmSheet(
+                ConfirmBottomSheet(
                     message = "Xác nhận lưu chứ !?",
                     confirmText = "Xác nhận",
                     cancelText = "Tiếp tục",
@@ -185,7 +214,7 @@ fun CreateSentencePatternScreen(
 
             // ── Cancel confirm ─────────────────────────────────────────
             if (uiState.showCancelConfirm) {
-                ConfirmSheet(
+                ConfirmBottomSheet(
                     message = "Xác nhận hủy chứ !?",
                     confirmText = "Xác nhận",
                     cancelText = "Tiếp tục",
@@ -198,53 +227,96 @@ fun CreateSentencePatternScreen(
 }
 
 @Composable
-private fun TopBar(isSaving: Boolean, onClose: () -> Unit, onSave: () -> Unit) {
-    Surface(modifier = Modifier.fillMaxWidth(), color = Color(0xE6FFFFFF), shadowElevation = 2.dp) {
-        Row(
-            modifier = Modifier.fillMaxWidth().height(59.dp).padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
+private fun TopBar(
+    isSaving: Boolean,
+    onClose: () -> Unit,
+    onSave: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        tonalElevation = 3.dp,
+        shadowElevation = 4.dp,
+        color = Color(0xFFFFFFFF)
+    ) {
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
-            IconButton(onClick = onClose) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_add),
-                    contentDescription = "Đóng",
-                    modifier = Modifier.size(24.dp).rotate(45f),
-                    tint = Color.Black
+
+            // ✅ Row chỉ còn Text → quyết định height
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(modifier = Modifier.width(60.dp)) // chừa chỗ cho back button
+                Text(
+                    text = "Tạo học phần",
+                    style = MaterialTheme.typography.displayMedium,
+                    modifier = Modifier.weight(1f),
                 )
             }
-            Text(
-                text = "Tạo mẫu câu",
-                fontFamily = Nunito,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 32.sp,
-                modifier = Modifier.weight(1f)
-            )
+
+            Box(
+                modifier = Modifier.matchParentSize()
+            ) {
+                BackButton(
+                    onClick = onClose,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .wrapContentSize()
+                )
+            }
             if (isSaving) {
-                CircularProgressIndicator(modifier = Modifier.size(28.dp), color = GreenPrimary, strokeWidth = 2.dp)
+                CircularProgressIndicator(
+                    modifier = Modifier.size(28.dp),
+                    color = GreenPrimary,
+                    strokeWidth = 2.dp
+                )
             } else {
-                IconButton(onClick = onSave) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_check_green_circle),
-                        contentDescription = "Lưu",
-                        modifier = Modifier.size(36.dp),
-                        tint = Color.Unspecified
+                Box(
+                    modifier = Modifier.matchParentSize()
+                ) {
+                    SaveButton(
+                        onSave,
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .wrapContentSize()
                     )
                 }
             }
+
         }
     }
 }
 
 @Composable
-private fun UnderlineField(value: String, onValueChange: (String) -> Unit, placeholder: String, label: String) {
+private fun UnderlineField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    label: String
+) {
     Column(modifier = Modifier.fillMaxWidth()) {
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            textStyle = TextStyle(fontFamily = Nunito, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextPrimary),
+            textStyle = TextStyle(
+                fontFamily = Nunito,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = TextPrimary
+            ),
             cursorBrush = SolidColor(GreenPrimary),
             decorationBox = { inner ->
-                if (value.isEmpty()) Text(text = placeholder, fontFamily = Nunito, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextHint)
+                if (value.isEmpty()) Text(
+                    text = placeholder,
+                    fontFamily = Nunito,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = TextHint
+                )
                 inner()
             },
             modifier = Modifier.fillMaxWidth()
@@ -252,29 +324,72 @@ private fun UnderlineField(value: String, onValueChange: (String) -> Unit, place
         Spacer(modifier = Modifier.height(4.dp))
         HorizontalDivider(thickness = 2.dp, color = Color.Black)
         Spacer(modifier = Modifier.height(4.dp))
-        Text(text = label, fontFamily = Nunito, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp, color = Color.Black)
+        Text(
+            text = label,
+            fontFamily = Nunito,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 12.sp,
+            color = Color.Black
+        )
     }
 }
 
 @Composable
 private fun LanguageDropdown(value: String, label: String, onValueChange: (String) -> Unit) {
-    val languages = listOf("en" to "English", "vi" to "Tiếng Việt", "ja" to "日本語", "zh" to "中文")
+    val languages =
+        listOf("en" to "English", "vi" to "Tiếng Việt", "ja" to "日本語", "zh" to "中文")
     var expanded by remember { mutableStateOf(false) }
     val displayName = languages.find { it.first == value }?.second ?: value
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.fillMaxWidth().clickable { expanded = true }, verticalAlignment = Alignment.CenterVertically) {
-            Text(text = displayName, fontFamily = Nunito, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xCC000000), modifier = Modifier.weight(1f))
-            Icon(painter = painterResource(R.drawable.ic_back), contentDescription = null, modifier = Modifier.size(20.dp).rotate(-90f), tint = Color.Black)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = true },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = displayName,
+                fontFamily = Nunito,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = Color(0xCC000000),
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                painter = painterResource(R.drawable.ic_back),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(20.dp)
+                    .rotate(-90f),
+                tint = Color.Black
+            )
         }
         Spacer(modifier = Modifier.height(4.dp))
         HorizontalDivider(thickness = 2.dp, color = Color.Black)
         Spacer(modifier = Modifier.height(4.dp))
-        Text(text = label, fontFamily = Nunito, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp, color = Color.Black)
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.background(Color.White)) {
+        Text(
+            text = label,
+            fontFamily = Nunito,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 12.sp,
+            color = Color.Black
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.background(Color.White)
+        ) {
             languages.forEach { (code, name) ->
                 DropdownMenuItem(
-                    text = { Text(text = name, fontFamily = Nunito, fontWeight = if (code == value) FontWeight.ExtraBold else FontWeight.Normal, color = if (code == value) GreenPrimary else Color.Black) },
+                    text = {
+                        Text(
+                            text = name,
+                            fontFamily = Nunito,
+                            fontWeight = if (code == value) FontWeight.ExtraBold else FontWeight.Normal,
+                            color = if (code == value) GreenPrimary else Color.Black
+                        )
+                    },
                     onClick = { onValueChange(code); expanded = false }
                 )
             }
@@ -283,24 +398,47 @@ private fun LanguageDropdown(value: String, label: String, onValueChange: (Strin
 }
 
 @Composable
-private fun SentenceCard(sentence: SentenceInput, onTermChange: (String) -> Unit, onDefinitionChange: (String) -> Unit, onDelete: () -> Unit) {
+private fun SentenceCard(
+    sentence: SentenceInput,
+    onTermChange: (String) -> Unit,
+    onDefinitionChange: (String) -> Unit,
+    onDelete: () -> Unit
+) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
             .border(1.dp, CardBorder, RoundedCornerShape(20.dp))
             .clip(RoundedCornerShape(20.dp))
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 17.dp, vertical = 12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White)
+                .padding(horizontal = 17.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             CardField(value = sentence.term, onValueChange = onTermChange, label = "Câu")
-            CardField(value = sentence.definition, onValueChange = onDefinitionChange, label = "Nghĩa")
+            CardField(
+                value = sentence.definition,
+                onValueChange = onDefinitionChange,
+                label = "Nghĩa"
+            )
         }
         Box(
-            modifier = Modifier.fillMaxWidth().height(31.dp).background(DeleteBg).clickable { onDelete() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(31.dp)
+                .background(DeleteBg)
+                .clickable { onDelete() },
             contentAlignment = Alignment.Center
         ) {
-            Icon(painter = painterResource(R.drawable.ic_bin), contentDescription = "Xóa", tint = DeleteIcon, modifier = Modifier.size(24.dp))
+            Icon(
+                painter = painterResource(R.drawable.ic_bin),
+                contentDescription = "Xóa",
+                tint = DeleteIcon,
+                modifier = Modifier.size(24.dp)
+            )
         }
     }
 }
@@ -311,10 +449,21 @@ private fun CardField(value: String, onValueChange: (String) -> Unit, label: Str
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            textStyle = TextStyle(fontFamily = Nunito, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextPrimary),
+            textStyle = TextStyle(
+                fontFamily = Nunito,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = TextPrimary
+            ),
             cursorBrush = SolidColor(GreenPrimary),
             decorationBox = { inner ->
-                if (value.isEmpty()) Text(text = label, fontFamily = Nunito, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextHint)
+//                if (value.isEmpty()) Text(
+//                    text = label,
+//                    fontFamily = Nunito,
+//                    fontWeight = FontWeight.Bold,
+//                    fontSize = 16.sp,
+//                    color = TextHint
+//                )
                 inner()
             },
             modifier = Modifier.fillMaxWidth()
@@ -322,16 +471,29 @@ private fun CardField(value: String, onValueChange: (String) -> Unit, label: Str
         Spacer(modifier = Modifier.height(4.dp))
         HorizontalDivider(thickness = 2.dp, color = Color.Black)
         Spacer(modifier = Modifier.height(2.dp))
-        Text(text = label, fontFamily = Nunito, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp, color = Color.Black)
+        Text(
+            text = label,
+            fontFamily = Nunito,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 12.sp,
+            color = Color.Black
+        )
     }
 }
 
 @Composable
-private fun CollapsedHeaderBar(title: String, termLang: String, defLang: String, sentenceCount: Int) {
+private fun CollapsedHeaderBar(
+    title: String,
+    termLang: String,
+    defLang: String,
+    sentenceCount: Int
+) {
     val langMap = mapOf("en" to "EN", "vi" to "VI", "ja" to "JA", "zh" to "ZH")
     Surface(modifier = Modifier.fillMaxWidth(), color = GreenLight, shadowElevation = 4.dp) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -344,14 +506,20 @@ private fun CollapsedHeaderBar(title: String, termLang: String, defLang: String,
             Surface(shape = RoundedCornerShape(8.dp), color = Color.White.copy(alpha = 0.7f)) {
                 Text(
                     text = "${langMap[termLang] ?: termLang.uppercase()} → ${langMap[defLang] ?: defLang.uppercase()}",
-                    fontFamily = Nunito, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFF46A302),
+                    fontFamily = Nunito,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    color = Color(0xFF46A302),
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             }
             Surface(shape = RoundedCornerShape(8.dp), color = GreenPrimary) {
                 Text(
                     text = "$sentenceCount câu",
-                    fontFamily = Nunito, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White,
+                    fontFamily = Nunito,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    color = Color.White,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             }
@@ -359,53 +527,144 @@ private fun CollapsedHeaderBar(title: String, termLang: String, defLang: String,
     }
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ConfirmSheet(message: String, confirmText: String, cancelText: String, onConfirm: () -> Unit, onCancel: () -> Unit) {
+private fun ConfirmBottomSheet(
+    message: String,
+    confirmText: String,
+    cancelText: String,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit
+) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
     ModalBottomSheet(
-        onDismissRequest = onCancel, sheetState = sheetState, containerColor = Color.White,
+        onDismissRequest = onCancel,
+        sheetState = sheetState,
+        containerColor = Color.White,
         dragHandle = {
-            Box(modifier = Modifier.padding(top = 11.dp).width(48.dp).height(6.dp).background(Color(0xFFE5E7EB), RoundedCornerShape(999.dp)))
+            Box(
+                modifier = Modifier
+                    .padding(top = 11.dp)
+                    .width(48.dp)
+                    .height(6.dp)
+                    .background(Color(0xFFE5E7EB), RoundedCornerShape(999.dp))
+            )
         }
     ) {
-        Column(modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp).padding(bottom = 28.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp)
+        ) {
             Spacer(modifier = Modifier.height(16.dp))
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                Box(modifier = Modifier.width(130.dp), contentAlignment = Alignment.TopStart) {
-                    Image(
-                        painter = painterResource(R.drawable.ic_looking_mascot), contentDescription = null,
-                        modifier = Modifier.size(width = 112.dp, height = 120.dp).padding(start = 4.dp), contentScale = ContentScale.Fit
-                    )
-                    Text(text = "?", fontFamily = Nunito, fontWeight = FontWeight.ExtraBold, fontSize = 52.sp, color = Color(0xFF4B4B4B), modifier = Modifier.align(Alignment.TopEnd).padding(end = 4.dp))
-                }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+                    .padding(horizontal = 10.dp)
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.asking_mascot_manage_video_screen),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .scale(0.8f)
+                )
                 Surface(
-                    modifier = Modifier.weight(1f).padding(top = 10.dp, start = 4.dp),
+                    modifier = Modifier
+                        .padding(top = 70.dp),
                     shape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp, bottomStart = 16.dp),
-                    color = Color.White, border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)), shadowElevation = 2.dp
+                    color = Color.White,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)),
+                    shadowElevation = 2.dp
                 ) {
-                    Text(text = message, fontFamily = Nunito, fontWeight = FontWeight.Bold, fontSize = 16.sp, lineHeight = 24.sp, color = Color(0xFF4B5563), modifier = Modifier.padding(horizontal = 15.dp, vertical = 16.dp))
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF4B5563),
+                        lineHeight = 24.sp,
+                        modifier = Modifier.padding(horizontal = 13.dp, vertical = 14.dp)
+                    )
                 }
             }
-            Spacer(modifier = Modifier.height(28.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Buttons row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Cancel button
                 var cancelPressed by remember { mutableStateOf(false) }
-                Box(modifier = Modifier.weight(1f).height(51.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFFE5E7EB))) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(51.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFFE5E7EB))
+                ) {
                     Box(
-                        modifier = Modifier.fillMaxWidth().height(if (cancelPressed) 51.dp else 48.dp)
-                            .clip(RoundedCornerShape(16.dp)).background(Color.White).border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(16.dp))
-                            .pointerInput(Unit) { detectTapGestures(onPress = { cancelPressed = true; tryAwaitRelease(); cancelPressed = false }, onTap = { onCancel() }) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(if (cancelPressed) 51.dp else 48.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color.White)
+                            .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(16.dp))
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onPress = { cancelPressed = true; tryAwaitRelease(); cancelPressed = false },
+                                    onTap = { onCancel() }
+                                )
+                            },
                         contentAlignment = Alignment.Center
-                    ) { Text(text = cancelText, fontFamily = Nunito, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = Color(0xFF374151)) }
+                    ) {
+                        Text(
+                            text = cancelText,
+                            fontFamily = Nunito,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 14.sp,
+                            color = Color(0xFF374151)
+                        )
+                    }
                 }
+
+                // Confirm button
                 var confirmPressed by remember { mutableStateOf(false) }
-                Box(modifier = Modifier.weight(1f).height(51.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF46A302))) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(51.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFF46A302))
+                ) {
                     Box(
-                        modifier = Modifier.fillMaxWidth().height(if (confirmPressed) 51.dp else 48.dp)
-                            .clip(RoundedCornerShape(16.dp)).background(GreenPrimary)
-                            .pointerInput(Unit) { detectTapGestures(onPress = { confirmPressed = true; tryAwaitRelease(); confirmPressed = false }, onTap = { onConfirm() }) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(if (confirmPressed) 51.dp else 48.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFF58CC02))
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onPress = { confirmPressed = true; tryAwaitRelease(); confirmPressed = false },
+                                    onTap = { onConfirm() }
+                                )
+                            },
                         contentAlignment = Alignment.Center
-                    ) { Text(text = confirmText, fontFamily = Nunito, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = Color.White) }
+                    ) {
+                        Text(
+                            text = confirmText,
+                            fontFamily = Nunito,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 14.sp,
+                            color = Color.White
+                        )
+                    }
                 }
             }
         }
