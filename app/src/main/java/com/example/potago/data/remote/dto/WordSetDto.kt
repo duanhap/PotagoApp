@@ -32,3 +32,22 @@ fun WordSetDto.toDomain(): WordSet {
         amountOfWords =  amountOfWords
     )
 }
+
+data class CreateWordSetRequest(
+    @SerializedName("name") val name: String,
+    @SerializedName("description") val description: String?,
+    @SerializedName("is_public") val isPublic: Boolean = false,
+    @SerializedName("def_lang_code") val defLangCode: String,
+    @SerializedName("term_lang_code") val termLangCode: String
+)
+
+data class WordInputDto(
+    @SerializedName("term") val term: String,
+    @SerializedName("definition") val definition: String,
+    @SerializedName("description") val description: String? = null
+)
+
+data class CreateWordSetWithWordsRequest(
+    @SerializedName("word_set_id") val wordSetId: Long,
+    @SerializedName("words") val words: List<WordInputDto>
+)
