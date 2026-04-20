@@ -50,6 +50,7 @@ import com.example.potago.presentation.screen.profile.ProfileScreen
 import com.example.potago.presentation.screen.recommendvideo.RecommendVideoScreen
 import com.example.potago.presentation.screen.shop.ActiveItemBadge
 import com.example.potago.presentation.screen.setting.SettingScreen
+import com.example.potago.presentation.screen.createsentencepattern.CreateSentencePatternScreen
 import com.example.potago.presentation.screen.createwordset.CreateWordSetScreen
 import com.example.potago.presentation.screen.matchgame.MatchGameScreen
 import com.example.potago.presentation.screen.matchgame.MatchResultScreen
@@ -82,6 +83,7 @@ sealed class Screen(val route: String) {
     object Profile : Screen("profile")
     object Shop : Screen("shop")
     object CreateWordSet : Screen("create_word_set")
+    object CreateSentencePattern : Screen("create_sentence_pattern")
     object MatchGame : Screen("match_game/{wordSetId}/{wordSetName}") {
         operator fun invoke(wordSetId: Long, wordSetName: String): String {
             val encodedName = android.net.Uri.encode(wordSetName)
@@ -243,6 +245,9 @@ fun MainFlowContainer(rootNavController: NavController) {
                 }
                 composable(Screen.CreateWordSet.route) {
                     CreateWordSetScreen(mainNavController)
+                }
+                composable(Screen.CreateSentencePattern.route) {
+                    CreateSentencePatternScreen(mainNavController)
                 }
                 composable(
                     route = Screen.MatchGame.route,
