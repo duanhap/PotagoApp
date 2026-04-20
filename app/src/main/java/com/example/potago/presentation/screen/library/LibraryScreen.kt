@@ -71,6 +71,18 @@ fun LibraryScreen(
 
     var isAddOverlayVisible by remember { mutableStateOf(false) }
 
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshLibrary()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -91,7 +103,9 @@ fun LibraryScreen(
             },
             onRetry = { viewModel.refreshLibrary() },
             isAddOverlayVisible = isAddOverlayVisible,
-            onToggleAddOverlay = { isAddOverlayVisible = it }
+            onToggleAddOverlay = { isAddOverlayVisible = it },
+            onCreateWordSet = { navController.navigate(Screen.CreateWordSet.route) },
+            onCreateSentencePattern = { navController.navigate(Screen.CreateSentencePattern.route) },
         )
     }
 
@@ -106,7 +120,9 @@ private fun LibraryScreenContent(
     onWordSetClick: (WordSet) -> Unit,
     onRetry: () -> Unit,
     isAddOverlayVisible: Boolean,
-    onToggleAddOverlay: (Boolean) -> Unit
+    onToggleAddOverlay: (Boolean) -> Unit,
+    onCreateWordSet: () -> Unit = {},
+    onCreateSentencePattern: () -> Unit = {},
 ) {
     var selectedTab by remember { mutableStateOf(LibraryTab.COURSE) }
 
@@ -144,11 +160,10 @@ private fun LibraryScreenContent(
                 onDismiss = { onToggleAddOverlay(false) },
                 onChooseCourse = {
                     onToggleAddOverlay(false)
-                    // TODO: navigate to "create word set" screen if you already have one.
-                },
+                    onCreateWordSet()                },
                 onChooseSentence = {
                     onToggleAddOverlay(false)
-                    // TODO: navigate to "create sentence pattern" screen if you already have one.
+                    onCreateSentencePattern()
                 }
             )
         }
