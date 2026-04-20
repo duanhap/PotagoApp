@@ -347,46 +347,53 @@ private fun TopAppBar(
     onBackClick: () -> Unit = {},
     onAddClick: () -> Unit = {}
 ){
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 12.dp)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        tonalElevation = 3.dp,
+        shadowElevation = 4.dp,
+        color = Color(0xFFFFFFFF)
     ) {
-
-        // ✅ Row chỉ còn Text → quyết định height
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Spacer(modifier = Modifier.width(60.dp)) // chừa chỗ cho back button
-            Text(
-                text = "Video của bạn",
-                style = MaterialTheme.typography.displayMedium,
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        // 🔥 BackButton overlay
         Box(
-            modifier = Modifier.matchParentSize()
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
-            BackButton(
-                onClick = onBackClick,
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .wrapContentSize()
-            )
-        }
-        // 🔥 trick ở đây
-        Box(
-            modifier = Modifier.matchParentSize()
-        ) {
-            AddButton(
-                onAddClick,
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .wrapContentSize()
-            )
+
+            // ✅ Row chỉ còn Text → quyết định height
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(modifier = Modifier.width(60.dp)) // chừa chỗ cho back button
+                Text(
+                    text = "Video của bạn",
+                    style = MaterialTheme.typography.displayMedium,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            // 🔥 BackButton overlay
+            Box(
+                modifier = Modifier.matchParentSize()
+            ) {
+                BackButton(
+                    onClick = onBackClick,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .wrapContentSize()
+                )
+            }
+            // 🔥 trick ở đây
+            Box(
+                modifier = Modifier.matchParentSize()
+            ) {
+                AddButton(
+                    onAddClick,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .wrapContentSize()
+                )
+            }
         }
     }
 }
