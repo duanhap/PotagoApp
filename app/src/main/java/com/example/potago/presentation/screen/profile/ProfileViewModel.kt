@@ -26,7 +26,8 @@ data class ProfileUiState(
     val email: String = "",
     val password: String = "",
     val isSaving: Boolean = false,
-    val isUploadingAvatar: Boolean = false
+    val isUploadingAvatar: Boolean = false,
+    val isSaveButtonEnabled: Boolean = false
 )
 
 sealed class ProfileEvent {
@@ -63,6 +64,7 @@ class ProfileViewModel @Inject constructor(
                             email = cachedUser.email ?: ""
                         )
                     }
+                    updateSaveButtonState()
                 }
             }
         }
@@ -78,6 +80,7 @@ class ProfileViewModel @Inject constructor(
                             email = user.email ?: ""
                         )
                     }
+                    updateSaveButtonState()
                 }
                 is Result.Error -> {
                     if (_uiState.value.user is UiState.Loading) {
@@ -89,7 +92,19 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    fun onNameChange(value: String) = _uiState.update { it.copy(name = value) }
+    private fun updateSaveButtonState() {
+        val currentState = _uiState.value
+        val originalName = (currentState.user as? UiState.Success)?.data?.name ?: ""
+        val isNameChanged = currentState.name.isNotBlank() && currentState.name != originalName
+        
+        _uiState.update { it.copy(isSaveButtonEnabled = isNameChanged) }
+    }
+
+    fun onNameChange(value: String) {
+        _uiState.update { it.copy(name = value) }
+        updateSaveButtonState()
+    }
+    
     fun onEmailChange(value: String) = _uiState.update { it.copy(email = value) }
     fun onPasswordChange(value: String) = _uiState.update { it.copy(password = value) }
 
@@ -104,6 +119,7 @@ class ProfileViewModel @Inject constructor(
                             user = UiState.Success(result.data!!)
                         )
                     }
+                    updateSaveButtonState()
                     _events.send(ProfileEvent.ShowSnackbar("Cập nhật ảnh thành công!"))
                 }
                 is Result.Error -> {
@@ -130,6 +146,7 @@ class ProfileViewModel @Inject constructor(
                             user = UiState.Success(result.data!!)
                         )
                     }
+                    updateSaveButtonState()
                     _events.send(ProfileEvent.ShowSnackbar("Lưu thành công!"))
                 }
                 is Result.Error -> {

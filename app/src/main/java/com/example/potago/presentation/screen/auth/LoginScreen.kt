@@ -304,7 +304,8 @@ fun PasswordField(
                 PasswordVisualTransformation()
             },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            singleLine = true
+            singleLine = true,
+            readOnly = true
         )
     }
 }
