@@ -305,7 +305,6 @@ fun PasswordField(
             },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             singleLine = true,
-            readOnly = true
         )
     }
 }
