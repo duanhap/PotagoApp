@@ -132,7 +132,7 @@ private fun LibraryScreenContent(
             .background(Color(0xFFFFFFFF))
     ) {
         Column {
-            Spacer(modifier = Modifier.height(80.dp))
+            Spacer(modifier = Modifier.height(75.dp))
             LibraryTabSection(
                 selectedTab = selectedTab,
                 onSelectTab = { selectedTab = it }
