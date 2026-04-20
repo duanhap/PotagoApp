@@ -85,6 +85,7 @@ fun LibraryScreen(
         onWordSetClick = { wordSet ->
             navController.navigate(Screen.FlashCard(wordSet.id, wordSet.name))
         },
+        onCreateWordSet = { navController.navigate(Screen.CreateWordSet.route) },
         onRetry = { viewModel.refreshLibrary() }
     )
 }
@@ -96,6 +97,7 @@ private fun LibraryScreenContent(
     recentSentencePatternsState: UiState<List<SetencePattern>>,
     allSentencePatternsState: UiState<List<SetencePattern>>,
     onWordSetClick: (WordSet) -> Unit,
+    onCreateWordSet: () -> Unit = {},
     onRetry: () -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(LibraryTab.COURSE) }
@@ -137,7 +139,7 @@ private fun LibraryScreenContent(
                 onDismiss = { isAddOverlayVisible = false },
                 onChooseCourse = {
                     isAddOverlayVisible = false
-                    // TODO: navigate to "create word set" screen if you already have one.
+                    onCreateWordSet()
                 },
                 onChooseSentence = {
                     isAddOverlayVisible = false
