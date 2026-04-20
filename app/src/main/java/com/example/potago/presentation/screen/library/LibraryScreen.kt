@@ -1,5 +1,6 @@
 package com.example.potago.presentation.screen.library
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +25,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,6 +52,8 @@ import com.example.potago.domain.model.SetencePattern
 import com.example.potago.domain.model.WordSet
 import com.example.potago.presentation.navigation.Screen
 import com.example.potago.presentation.screen.UiState
+import com.example.potago.presentation.screen.myvideo.AddButton
+import com.example.potago.presentation.screen.setting.BackButton
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
@@ -63,6 +69,8 @@ fun LibraryScreen(
     val recentSentencePatternsState by viewModel.recentSentencePatterns.collectAsState()
     val allSentencePatternsState by viewModel.allSentencePatterns.collectAsState()
 
+    var isAddOverlayVisible by remember { mutableStateOf(false) }
+
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
@@ -75,20 +83,32 @@ fun LibraryScreen(
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
-
-    // Hoisted the UI content to a stateless Composable to allow Previews
-    LibraryScreenContent(
-        recentWordSetsState = recentWordSetsState,
-        allWordSetsState = allWordSetsState,
-        recentSentencePatternsState = recentSentencePatternsState,
-        allSentencePatternsState = allSentencePatternsState,
-        onWordSetClick = { wordSet ->
-            navController.navigate(Screen.FlashCard(wordSet.id, wordSet.name))
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                onAddClick = { isAddOverlayVisible = true }
+            )
         },
-        onCreateWordSet = { navController.navigate(Screen.CreateWordSet.route) },
-        onCreateSentencePattern = { navController.navigate(Screen.CreateSentencePattern.route) },
-        onRetry = { viewModel.refreshLibrary() }
-    )
+    ) { innerPadding ->
+        // Giữ nguyên theo yêu cầu của user: Box này có vẻ thừa nhưng user muốn giữ để làm đẹp
+        Box(modifier = Modifier.padding(innerPadding))
+        // Hoisted the UI content to a stateless Composable to allow Previews
+        LibraryScreenContent(
+            recentWordSetsState = recentWordSetsState,
+            allWordSetsState = allWordSetsState,
+            recentSentencePatternsState = recentSentencePatternsState,
+            allSentencePatternsState = allSentencePatternsState,
+            onWordSetClick = { wordSet ->
+                navController.navigate(Screen.FlashCard(wordSet.id, wordSet.name))
+            },
+            onRetry = { viewModel.refreshLibrary() },
+            isAddOverlayVisible = isAddOverlayVisible,
+            onToggleAddOverlay = { isAddOverlayVisible = it },
+            onCreateWordSet = { navController.navigate(Screen.CreateWordSet.route) },
+            onCreateSentencePattern = { navController.navigate(Screen.CreateSentencePattern.route) },
+        )
+    }
+
 }
 
 @Composable
@@ -98,12 +118,13 @@ private fun LibraryScreenContent(
     recentSentencePatternsState: UiState<List<SetencePattern>>,
     allSentencePatternsState: UiState<List<SetencePattern>>,
     onWordSetClick: (WordSet) -> Unit,
+    onRetry: () -> Unit,
+    isAddOverlayVisible: Boolean,
+    onToggleAddOverlay: (Boolean) -> Unit,
     onCreateWordSet: () -> Unit = {},
     onCreateSentencePattern: () -> Unit = {},
-    onRetry: () -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(LibraryTab.COURSE) }
-    var isAddOverlayVisible by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -111,9 +132,7 @@ private fun LibraryScreenContent(
             .background(Color(0xFFFFFFFF))
     ) {
         Column {
-            LibraryHeader(
-                onAddClick = { isAddOverlayVisible = true }
-            )
+            Spacer(modifier = Modifier.height(80.dp))
             LibraryTabSection(
                 selectedTab = selectedTab,
                 onSelectTab = { selectedTab = it }
@@ -138,13 +157,12 @@ private fun LibraryScreenContent(
         if (isAddOverlayVisible) {
             AddOverlay(
                 selectedTab = selectedTab,
-                onDismiss = { isAddOverlayVisible = false },
+                onDismiss = { onToggleAddOverlay(false) },
                 onChooseCourse = {
-                    isAddOverlayVisible = false
-                    onCreateWordSet()
-                },
+                    onToggleAddOverlay(false)
+                    onCreateWordSet()                },
                 onChooseSentence = {
-                    isAddOverlayVisible = false
+                    onToggleAddOverlay(false)
                     onCreateSentencePattern()
                 }
             )
@@ -155,48 +173,6 @@ private fun LibraryScreenContent(
 private enum class LibraryTab {
     COURSE,
     SENTENCE
-}
-
-@Composable
-private fun LibraryHeader(
-    onAddClick: () -> Unit
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Color.White,
-        shadowElevation = 2.dp
-    ) {
-        Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(59.dp)
-                    .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Thư viện",
-                    fontSize = 32.sp,
-                    lineHeight = 24.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color.Black
-                )
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_add),
-                    contentDescription = "Add",
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clickable(onClick = onAddClick),
-                    tint = Color.Unspecified
-                )
-            }
-            HorizontalDivider(
-                thickness = 1.dp,
-                color = Color(0xFFF3F4F6)
-            )
-        }
-    }
 }
 
 @Composable
@@ -246,14 +222,14 @@ private fun AddOverlay(
 
             AddOverlayButton(
                 selected = courseSelected,
-                iconRes = R.drawable.ic_folder,
+                iconRes = R.drawable.ic_word_set,
                 text = "Học phần",
                 onClick = onChooseCourse
             )
             Spacer(modifier = Modifier.height(12.dp))
             AddOverlayButton(
                 selected = sentenceSelected,
-                iconRes = R.drawable.ic_library,
+                iconRes = R.drawable.ic_sentence_partten,
                 text = "Mẫu câu",
                 onClick = onChooseSentence
             )
@@ -341,25 +317,20 @@ private fun LibraryTabChip(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    Box(
-        modifier = Modifier
-            .width(103.dp)
-            .height(34.dp)
-            .background(Color.White, RoundedCornerShape(24.dp))
-            .border(
-                width = 1.dp,
-                color = if (selected) Color.Black else Color(0x1A000000),
-                shape = RoundedCornerShape(24.dp)
-            )
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (selected) Color.Black else Color.LightGray.copy(alpha = 0.5f)
+        ),
+        color = Color.Transparent
     ) {
         Text(
             text = text,
-            fontSize = 12.sp,
-            lineHeight = 20.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = Color.Black
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = if (selected) Color.Black else Color.Gray
         )
     }
 }
@@ -535,7 +506,7 @@ private fun SentencePatternCard(pattern: SetencePattern) {
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                painter = painterResource(id = R.drawable.ic_folder),
+                painter = painterResource(id = R.drawable.ic_sentence_partten),
                 contentDescription = "Sentence icon",
                 modifier = Modifier.size(24.dp),
                 tint = Color.White
@@ -602,7 +573,7 @@ private fun WordSetCard(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                painter = painterResource(id = R.drawable.ic_folder),
+                painter = painterResource(id = R.drawable.ic_word_set),
                 contentDescription = "Word set icon",
                 modifier = Modifier.size(24.dp),
                 tint = Color.White
@@ -683,23 +654,66 @@ private fun EmptyContentState(message: String) {
             painter = painterResource(id = R.drawable.ic_library_sleeping_potago),
             contentDescription = "Sleeping potato",
             modifier = Modifier
-                .size(120.dp),
+                .size(150.dp),
             contentScale = ContentScale.Fit
         )
         Spacer(modifier = Modifier.height(18.dp))
         Text(
             text = message,
-            fontSize = 18.sp,
-            lineHeight = 24.sp,
-            fontWeight = FontWeight.ExtraBold,
+            style = MaterialTheme.typography.titleMedium,
             color = Color(0x80000000)
         )
+    }
+}
+@Composable
+private fun TopAppBar(
+    onAddClick: () -> Unit = {}
+){
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        tonalElevation = 3.dp,
+        shadowElevation = 4.dp,
+        color = Color(0xFFFFFFFF)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+        ) {
+
+            // ✅ Row chỉ còn Text → quyết định height
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Thư viện",
+                    style = MaterialTheme.typography.displayMedium,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+
+            // 🔥 trick ở đây
+            Box(
+                modifier = Modifier.matchParentSize()
+            ) {
+                AddButton(
+                    onAddClick,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .wrapContentSize()
+                )
+            }
+        }
     }
 }
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun LibraryScreenPreview() {
+    var isAddOverlayVisible by remember { mutableStateOf(false) }
+
     // Used the stateless LibraryScreenContent for Preview to avoid hiltViewModel() crash
     LibraryScreenContent(
         recentWordSetsState = UiState.Success(emptyList()),
@@ -707,6 +721,8 @@ private fun LibraryScreenPreview() {
         recentSentencePatternsState = UiState.Success(emptyList()),
         allSentencePatternsState = UiState.Success(emptyList()),
         onWordSetClick = {},
-        onRetry = {}
+        onRetry = {},
+        isAddOverlayVisible = isAddOverlayVisible,
+        onToggleAddOverlay = { isAddOverlayVisible = it }
     )
 }
