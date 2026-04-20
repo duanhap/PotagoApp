@@ -13,11 +13,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -26,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.potago.R
 import com.example.potago.presentation.navigation.Screen
+import com.example.potago.presentation.screen.setting.BackButton
 import com.example.potago.presentation.ui.theme.Nunito
 import com.example.potago.presentation.ui.theme.PotagoTheme
 
@@ -53,23 +61,28 @@ fun MatchResultScreen(
         topBar = {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = Color.White,
-                shadowElevation = 2.dp
+                tonalElevation = 3.dp,
+                shadowElevation = 4.dp,
+                color = Color(0xFFFFFFFF)
             ) {
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
-                        .padding(horizontal = 20.dp),
-                    contentAlignment = Alignment.CenterStart
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
                 ) {
-                    Text(
-                        text = "Kết quả",
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 32.sp,
-                        color = Color.Black
-                    )
+
+                    // ✅ Row chỉ còn Text → quyết định height
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Kết quả",
+                            style = MaterialTheme.typography.displayMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
         },
@@ -83,46 +96,9 @@ fun MatchResultScreen(
         ) {
 
             // ── Hero: mountain + mascot + time ──────────────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(240.dp)
-                    .padding(horizontal = 16.dp)
-            ) {
-                // Mountain image — left side
-                Image(
-                    painter = painterResource(R.drawable.ic_result_mountain),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(220.dp)
-                        .align(Alignment.BottomStart),
-                    contentScale = ContentScale.Fit
-                )
-                // Mascot + time badge — bottom right, time above mascot head
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(end = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = String.format("%.1f s", completedTime),
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 24.sp,
-                        color = Color(0xFF58CC02),
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    )
-                    Image(
-                        painter = painterResource(R.drawable.ic_mascot_turn_back),
-                        contentDescription = null,
-                        modifier = Modifier.size(140.dp),
-                        contentScale = ContentScale.Fit
-                    )
-                }
-            }
+            MountainAndMascot(completedTime)
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.weight(2f))
 
             // ── Kỷ lục ──────────────────────────────────────────────────
             Text(
@@ -174,7 +150,7 @@ fun MatchResultScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.weight(2f))
 
             // ── Phần thưởng ─────────────────────────────────────────────
             Text(
@@ -190,7 +166,6 @@ fun MatchResultScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // XP card
                 RewardCard(
@@ -208,28 +183,25 @@ fun MatchResultScreen(
                             Icon(
                                 painter = painterResource(R.drawable.ic_experience_points),
                                 contentDescription = null,
-                                modifier = Modifier.size(33.dp),
+                                modifier = Modifier.size(20.dp),
                                 tint = Color.Unspecified
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "$xpReward",
-                                fontFamily = Nunito,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 24.sp,
+                                style = MaterialTheme.typography.titleLarge,
                                 color = Color(0xFFA16207)
                             )
-                            Spacer(modifier = Modifier.width(2.dp))
+                            Spacer(modifier = Modifier.width(5.dp))
                             Text(
                                 text = "XP",
-                                fontFamily = Nunito,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 18.sp,
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                                 color = Color(0xFFA16207)
                             )
                         }
                     }
                 )
+                Spacer(modifier = Modifier.width(10.dp))
                 // Diamond card
                 RewardCard(
                     modifier = Modifier.weight(1f),
@@ -243,27 +215,25 @@ fun MatchResultScreen(
                             horizontalArrangement = Arrangement.Center,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(
-                                text = "♦",
-                                fontFamily = Nunito,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 22.sp,
-                                color = Color(0xFFF44336)
+                            Image(
+                                painter = painterResource(R.drawable.ic_ruby_detailed_video_screen),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(7.dp))
                             Text(
                                 text = "$diamondReward",
-                                fontFamily = Nunito,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 24.sp,
+                                style = MaterialTheme.typography.titleLarge,
                                 color = Color(0xFFF44336)
                             )
                         }
                     }
                 )
+                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.weight(1f))
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.weight(3f))
 
             // ── Mascot + bubble ─────────────────────────────────────────
             Row(
@@ -273,12 +243,12 @@ fun MatchResultScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Image(
-                    painter = painterResource(R.drawable.normal_mascot),
+                    painter = painterResource(R.drawable.empty_box_1),
                     contentDescription = null,
                     modifier = Modifier.size(120.dp),
                     contentScale = ContentScale.Fit
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(20.dp))
                 Surface(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp, bottomStart = 16.dp),
@@ -298,7 +268,7 @@ fun MatchResultScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.weight(3f))
 
             // ── Buttons ─────────────────────────────────────────────────
             Row(
@@ -329,6 +299,76 @@ fun MatchResultScreen(
                     }
                 )
             }
+            Spacer(modifier = Modifier.weight(0.5f))
+        }
+    }
+}
+
+@Composable
+private fun MountainAndMascot(completedTime: Double) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Color(0xFFBFDBFE),
+                RoundedCornerShape(bottomStart =  20.dp, bottomEnd = 20.dp)
+            )
+            .height(250.dp)
+            .padding(horizontal = 16.dp)
+    ) {
+        // Mountain image — left side
+        Image(
+            painter = painterResource(R.drawable.ic_result_mountain),
+            contentDescription = null,
+            modifier = Modifier
+                .size(230.dp)
+                .align(Alignment.BottomStart)
+                .padding(bottom = 15.dp),
+            contentScale = ContentScale.Fit
+        )
+        // Mascot + time badge — bottom right, time above mascot head
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+
+            Box(modifier = Modifier.padding(bottom = 4.dp).offset(y =30.dp)) {
+                // Stroke layer
+                Text(
+                    text = String.format("%.1f s", completedTime),
+                    style = TextStyle(
+                        fontSize = 24.sp,
+                        fontFamily = com.example.potago.presentation.screen.streak.Nunito,
+                        fontWeight = FontWeight.ExtraBold,
+                        textAlign = TextAlign.Center,
+                        drawStyle = Stroke(
+                            width = 13f,
+                            join = StrokeJoin.Round
+                        )
+                    ),
+                    color = Color(0x8046A302)
+                )
+
+                // Fill layer
+                Text(
+                    text = String.format("%.1f s", completedTime),
+                    style = TextStyle(
+                        fontSize = 24.sp,
+                        fontFamily = Nunito,
+                        fontWeight = FontWeight.ExtraBold,
+                        textAlign = TextAlign.Center,
+                        color = Color(0xFFFFFFFF)
+                    )
+                )
+            }
+            Image(
+                painter = painterResource(R.drawable.ic_mascot_turn_back),
+                contentDescription = null,
+                modifier = Modifier.size(140.dp).offset(y =30.dp),
+                contentScale = ContentScale.Fit
+            )
         }
     }
 }
@@ -419,19 +459,21 @@ private fun ResultButton(
         }
     }
 }
-//
-//@Preview(showBackground = true, showSystemUi = true)
-//@Composable
-//fun MatchResultScreenPreview() {
-//    PotagoTheme(dynamicColor = false) {
-//        MatchResultScreen(
-//            navController = NavController(LocalContext.current),
-//            completedTime = 15.5,
-//            bestTime = 12.0,
-//            bestDate = "12 tháng 8 năm 2025"
-//        )
-//    }
-//}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun MatchResultScreenPreview() {
+    PotagoTheme(dynamicColor = false) {
+        MatchResultScreen(
+            navController = NavController(LocalContext.current),
+            completedTime = 15.5,
+            bestTime = 12.0,
+            bestDate = "12 tháng 8 năm 2025",
+            wordSetId = 1,
+            wordSetName = "Test Set"
+        )
+    }
+}
 
 private fun formatBestDate(dateStr: String): String {
     if (dateStr.isBlank()) return ""
