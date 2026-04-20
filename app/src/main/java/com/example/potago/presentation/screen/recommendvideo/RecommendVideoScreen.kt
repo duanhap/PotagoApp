@@ -37,6 +37,7 @@ import com.example.potago.R
 import com.example.potago.domain.model.Video
 import com.example.potago.presentation.navigation.Screen
 import com.example.potago.presentation.screen.UiState
+import com.example.potago.presentation.screen.setting.BackButton
 import com.example.potago.presentation.ui.component.ShimmerItem
 import kotlinx.coroutines.flow.collectLatest
 
@@ -299,45 +300,42 @@ private fun TopAppBar(
         shadowElevation = 4.dp,
         color = Color(0xFFFFFFFF)
     ) {
-        Row(
+
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
-            BackButton(onBackClick)
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = "Đề xuất video",
-                style = MaterialTheme.typography.displayMedium,
-            )
+
+            // ✅ Row chỉ còn Text → quyết định height
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(modifier = Modifier.width(60.dp)) // chừa chỗ cho back button
+                Text(
+                    text = "Hồ sơ",
+                    style = MaterialTheme.typography.displayMedium,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            // 🔥 BackButton overlay
+            Box(
+                modifier = Modifier.matchParentSize()
+            ) {
+                BackButton(
+                    onClick = onBackClick,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .wrapContentSize()
+                )
+            }
         }
     }
 }
 
-@Composable
-private fun BackButton(
-    onClick: () -> Unit
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
 
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.85f else 1f,
-        label = "icon_scale"
-    )
-
-    IconButton(
-        onClick = onClick,
-        interactionSource = interactionSource
-    ) {
-        Icon(
-            painter = painterResource(id = R.drawable.ic_back),
-            contentDescription = "Back",
-            modifier = Modifier.scale(scale)
-        )
-    }
-}
 
 @Preview(showBackground = true)
 @Composable
