@@ -1,6 +1,7 @@
 package com.example.potago.domain.repository
 
 import com.example.potago.domain.model.Result
+import com.example.potago.domain.model.Word
 import com.example.potago.domain.model.WordSet
 
 interface WordSetRepository {
@@ -22,4 +23,5 @@ interface WordSetRepository {
         name: String?,
         termLangCode: String?
     ): Result<WordSet>
+    suspend fun getWordsByWordSetId(wordSetId: Long): Result<List<Word>>
 }
