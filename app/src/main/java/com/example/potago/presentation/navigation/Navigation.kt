@@ -94,17 +94,19 @@ sealed class Screen(val route: String) {
     }
 
     object MatchResult :
-        Screen("match_result/{completedTime}/{bestTime}/{bestDate}/{wordSetId}/{wordSetName}") {
+        Screen("match_result/{completedTime}/{bestTime}/{bestDate}/{wordSetId}/{wordSetName}/{hackXp}/{superXp}") {
         operator fun invoke(
             completedTime: Double,
             bestTime: Double,
             bestDate: String,
             wordSetId: Long,
-            wordSetName: String
+            wordSetName: String,
+            hackXp: Boolean = false,
+            superXp: Boolean = false
         ): String {
             val encodedDate = android.net.Uri.encode(bestDate.ifBlank { "-" })
             val encodedName = android.net.Uri.encode(wordSetName)
-            return "match_result/$completedTime/$bestTime/$encodedDate/$wordSetId/$encodedName"
+            return "match_result/$completedTime/$bestTime/$encodedDate/$wordSetId/$encodedName/$hackXp/$superXp"
         }
     }
 
@@ -133,8 +135,11 @@ sealed class Screen(val route: String) {
         }
     }
 
-    object Streak : Screen("streak_screen/{streakCount}") {
-        operator fun invoke(streakCount: Int) = "streak_screen/$streakCount"
+    object Streak : Screen("streak_screen/{streakCount}?nextRoute={nextRoute}") {
+        operator fun invoke(streakCount: Int, nextRoute: String? = null): String {
+            val base = "streak_screen/$streakCount"
+            return if (nextRoute != null) "$base?nextRoute=${android.net.Uri.encode(nextRoute)}" else base
+        }
     }
 
     object ListOfCards : Screen("list_of_cards/{wordSetId}/{wordSetName}") {
@@ -291,7 +296,9 @@ fun MainFlowContainer(rootNavController: NavController) {
                         navArgument("bestTime") { type = NavType.FloatType },
                         navArgument("bestDate") { type = NavType.StringType },
                         navArgument("wordSetId") { type = NavType.LongType },
-                        navArgument("wordSetName") { type = NavType.StringType }
+                        navArgument("wordSetName") { type = NavType.StringType },
+                        navArgument("hackXp") { type = NavType.BoolType; defaultValue = false },
+                        navArgument("superXp") { type = NavType.BoolType; defaultValue = false }
                     ),
                     enterTransition = { fadeIn(tween(300)) }
                 ) { backStackEntry ->
@@ -303,13 +310,17 @@ fun MainFlowContainer(rootNavController: NavController) {
                     val wordSetId = backStackEntry.arguments?.getLong("wordSetId") ?: 0L
                     val wordSetName = backStackEntry.arguments?.getString("wordSetName")
                         ?.let(Uri::decode) ?: ""
+                    val hackXp = backStackEntry.arguments?.getBoolean("hackXp") ?: false
+                    val superXp = backStackEntry.arguments?.getBoolean("superXp") ?: false
                     MatchResultScreen(
                         navController = mainNavController,
                         completedTime = completedTime,
                         bestTime = bestTime,
                         bestDate = bestDate,
                         wordSetId = wordSetId,
-                        wordSetName = wordSetName
+                        wordSetName = wordSetName,
+                        hackExperience = hackXp,
+                        superExperience = superXp
                     )
                 }
                 composable(Screen.RecommendVideo.route) {
@@ -427,12 +438,24 @@ fun MainFlowContainer(rootNavController: NavController) {
                 }
                 composable(
                     route = Screen.Streak.route,
-                    arguments = listOf(navArgument("streakCount") { type = NavType.IntType })
+                    arguments = listOf(
+                        navArgument("streakCount") { type = NavType.IntType },
+                        navArgument("nextRoute") { type = NavType.StringType; nullable = true; defaultValue = null }
+                    )
                 ) { backStackEntry ->
                     val streakCount = backStackEntry.arguments?.getInt("streakCount") ?: 1
+                    val nextRoute = backStackEntry.arguments?.getString("nextRoute")
+                        ?.let(Uri::decode)
                     StreakScreen(
                         navController = mainNavController,
-                        streakCount = streakCount
+                        streakCount = streakCount,
+                        onFinished = if (nextRoute != null) {
+                            {
+                                mainNavController.navigate(nextRoute) {
+                                    popUpTo(Screen.Streak.route) { inclusive = true }
+                                }
+                            }
+                        } else null
                     )
                 }
                 composable(

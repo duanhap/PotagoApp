@@ -55,7 +55,8 @@ val Nunito = FontFamily(
 fun StreakScreen(
     navController: NavController? = null,
     streakCount: Int = 13,
-    isSickTest: Boolean = true
+    isSickTest: Boolean = true,
+    onFinished: (() -> Unit)? = null
 ) {
     val view = LocalView.current
     val context = LocalContext.current
@@ -97,8 +98,12 @@ fun StreakScreen(
 
     // Tự động back sau 5 giây
     LaunchedEffect(Unit) {
-        delay(6800L) // Thay đổi từ 20000L thành 5000L theo yêu cầu
-        navController?.popBackStack()
+        delay(6800L)
+        if (onFinished != null) {
+            onFinished()
+        } else {
+            navController?.popBackStack()
+        }
     }
 
     // --- Animation Logic ---
