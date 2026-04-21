@@ -14,4 +14,12 @@ interface FlashcardRepository {
     ): Result<FlashcardsResponse>
 
     suspend fun updateWordStatus(wordId: Long, status: String): Result<Word>
+
+    suspend fun updateWord(
+        wordId: Long,
+        term: String,
+        definition: String,
+        description: String,
+        status: String
+    ): Result<Word>
 }

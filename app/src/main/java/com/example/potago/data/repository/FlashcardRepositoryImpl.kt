@@ -50,6 +50,31 @@ class FlashcardRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun updateWord(
+        wordId: Long,
+        term: String,
+        definition: String,
+        description: String,
+        status: String
+    ): Result<Word> {
+        return try {
+            val body = mapOf(
+                "term" to term,
+                "definition" to definition,
+                "description" to description,
+                "status" to status
+            )
+            val response = apiService.updateWord(wordId, body)
+            if (response.success && response.data != null) {
+                Result.Success(response.data.toDomain())
+            } else {
+                Result.Error(response.message ?: "Lỗi không xác định")
+            }
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
     private fun <T> handleError(e: Exception): Result<T> {
         return if (e is HttpException) {
             try {
