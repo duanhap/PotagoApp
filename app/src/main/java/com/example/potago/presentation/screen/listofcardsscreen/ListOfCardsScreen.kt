@@ -3,6 +3,8 @@ package com.example.potago.presentation.screen.listofcardsscreen
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -53,6 +55,8 @@ fun ListOfCardsScreen(
         viewModel.loadCards(wordSetId)
     }
 
+    var wordPendingDelete by remember { mutableStateOf<Word?>(null) }
+
     ListOfCardsScreenContent(
         uiState = uiState,
         wordSetName = wordSetName,
@@ -61,9 +65,19 @@ fun ListOfCardsScreen(
         onSearchQueryChange = viewModel::onSearchQueryChange,
         onVolumeClick = { /* Handle TTS / Audio */ },
         onEditClick = { word -> navController.navigate(Screen.EditCard(word.id)) },
-        onDeleteClick = { /* Handle Delete Card */ },
+        onDeleteClick = { word -> wordPendingDelete = word },
         onAddClick = { navController.navigate(Screen.AddCard(wordSetId)) }
     )
+
+    wordPendingDelete?.let { word ->
+        DeleteConfirmBottomSheet(
+            onDismiss = { wordPendingDelete = null },
+            onConfirm = {
+                viewModel.deleteWord(word.id)
+                wordPendingDelete = null
+            }
+        )
+    }
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -140,15 +154,8 @@ fun ListOfCardsScreenContent(
 
                 else -> {
                     val filteredCards = uiState.cards.filter { word ->
-                        val matchTab = when (uiState.filterType) {
-                            FilterType.ALL -> true
-                            FilterType.LEARNED -> word.status.equals("know", ignoreCase = true)
-                            FilterType.LEARNING -> !word.status.equals("know", ignoreCase = true)
-                        }
-                        val matchSearch =
-                            word.term.contains(uiState.searchQuery, ignoreCase = true) ||
-                                    word.definition.contains(uiState.searchQuery, ignoreCase = true)
-                        matchTab && matchSearch
+                        word.term.contains(uiState.searchQuery, ignoreCase = true) ||
+                                word.definition.contains(uiState.searchQuery, ignoreCase = true)
                     }
 
                     if (filteredCards.isEmpty()) {
@@ -448,7 +455,7 @@ fun CardItemNode(
                         .padding(horizontal = 10.dp, vertical = 3.dp)
                 ) {
                     Text(
-                        text = if (word.status.equals("know", ignoreCase = true))
+                        text = if (word.status.equals("known", ignoreCase = true))
                             "Đã thuộc" else "Chưa thuộc",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
@@ -561,6 +568,143 @@ fun CardItemNode(
                     overflow = TextOverflow.Ellipsis,
                     fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                 )
+            }
+        }
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Delete Confirm Bottom Sheet
+// ────────────────────────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DeleteConfirmBottomSheet(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = Color.White,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(top = 12.dp, bottom = 8.dp)
+                    .width(48.dp)
+                    .height(5.dp)
+                    .background(Color(0xFFE5E7EB), RoundedCornerShape(50))
+            )
+        }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 36.dp),
+        ) {
+            // ── Mascot + speech bubble row ───────────────────────────────
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, bottom = 32.dp),
+                verticalAlignment = Alignment.Bottom
+            ) {
+                // Mascot image
+                Image(
+                    painter = painterResource(id = R.drawable.ic_looking_mascot),
+                    contentDescription = null,
+                    modifier = Modifier.size(110.dp)
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // "?" label + speech bubble
+                Column(
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = Arrangement.Bottom
+                ) {
+                    Text(
+                        text = "?",
+                        fontSize = 52.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF4B4B4B),
+                        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+                    )
+                    // Speech bubble
+                    Surface(
+                        shape = RoundedCornerShape(
+                            topStart = 0.dp,
+                            topEnd = 16.dp,
+                            bottomStart = 16.dp,
+                            bottomEnd = 16.dp
+                        ),
+                        color = Color.White,
+                        border = BorderStroke(
+                            1.dp, Color(0xFFE5E7EB)
+                        ),
+                        shadowElevation = 2.dp
+                    ) {
+                        Text(
+                            text = "Xác nhận xóa chứ !?",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF4B5563),
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)
+                        )
+                    }
+                }
+            }
+
+            // ── Buttons ──────────────────────────────────────────────────
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Từ chối (Cancel)
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color.White,
+                    border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
+                    shadowElevation = 2.dp,
+                    onClick = onDismiss
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "Từ chối",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFF374151)
+                        )
+                    }
+                }
+
+                // Xác nhận (Confirm)
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFF58CC02),
+                    border = BorderStroke(1.dp, Color(0xFF46A302)),
+                    shadowElevation = 2.dp,
+                    onClick = onConfirm
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "Xác nhận",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+                    }
+                }
             }
         }
     }

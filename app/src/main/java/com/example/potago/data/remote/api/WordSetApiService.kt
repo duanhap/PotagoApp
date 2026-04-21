@@ -7,6 +7,7 @@ import com.example.potago.data.remote.dto.CreateWordSetWithWordsRequest
 import com.example.potago.data.remote.dto.CreateWordRequest
 import retrofit2.http.PUT
 import retrofit2.http.POST
+import retrofit2.http.DELETE
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Query
@@ -49,6 +50,12 @@ interface WordSetApiService {
 
     @GET("/api/words")
     suspend fun getWordsByWordSetId(
-        @Query("word_set_id") wordSetId: Long
+        @Query("word_set_id") wordSetId: Long,
+        @Query("status") status: String? = null
     ): ApiResponse<List<WordDto>>
+
+    @DELETE("/api/words")
+    suspend fun deleteWord(
+        @Query("word_id") wordId: Long
+    ): ApiResponse<Unit>
 }
