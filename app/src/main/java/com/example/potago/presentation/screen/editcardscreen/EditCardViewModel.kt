@@ -2,6 +2,8 @@ package com.example.potago.presentation.screen.editcardscreen
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.potago.domain.usecase.UpdateWordUseCase
+import com.example.potago.domain.model.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,8 +24,7 @@ data class EditCardUiState(
 
 @HiltViewModel
 class EditCardViewModel @Inject constructor(
-    // TODO: Inject repository when available
-    // private val wordSetRepository: WordSetRepository
+    private val updateWordUseCase: UpdateWordUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(EditCardUiState())
@@ -33,30 +34,7 @@ class EditCardViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, cardId = cardId) }
             
-            // TODO: Load card data from repository
-            // Example:
-            // when (val result = wordSetRepository.getCard(cardId)) {
-            //     is Result.Success -> {
-            //         _uiState.update {
-            //             it.copy(
-            //                 term = result.data.term,
-            //                 definition = result.data.definition,
-            //                 description = result.data.description ?: "",
-            //                 isLoading = false
-            //             )
-            //         }
-            //     }
-            //     is Result.Error -> {
-            //         _uiState.update {
-            //             it.copy(
-            //                 isLoading = false,
-            //                 error = result.message
-            //             )
-            //         }
-            //     }
-            // }
-            
-            // Temporary mock data for preview
+            // Temporary mock data for preview since there is no GET word endpoint requested
             _uiState.update {
                 it.copy(
                     term = "El perro",
@@ -82,41 +60,33 @@ class EditCardViewModel @Inject constructor(
 
     fun saveCard() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoading = true, error = null) }
             
-            // TODO: Save card data to repository
-            // Example:
-            // val updatedCard = Card(
-            //     id = _uiState.value.cardId,
-            //     term = _uiState.value.term,
-            //     definition = _uiState.value.definition,
-            //     description = _uiState.value.description
-            // )
-            // when (val result = wordSetRepository.updateCard(updatedCard)) {
-            //     is Result.Success -> {
-            //         _uiState.update {
-            //             it.copy(
-            //                 isLoading = false,
-            //                 isSuccess = true
-            //             )
-            //         }
-            //     }
-            //     is Result.Error -> {
-            //         _uiState.update {
-            //             it.copy(
-            //                 isLoading = false,
-            //                 error = result.message
-            //             )
-            //         }
-            //     }
-            // }
-            
-            // Temporary mock success
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    isSuccess = true
-                )
+            val currentState = _uiState.value
+            when (val result = updateWordUseCase(
+                wordId = currentState.cardId,
+                term = currentState.term,
+                definition = currentState.definition,
+                description = currentState.description,
+                status = "unknown"
+            )) {
+                is Result.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            isSuccess = true
+                        )
+                    }
+                }
+                is Result.Error -> {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = result.message
+                        )
+                    }
+                }
+                else -> {}
             }
         }
     }
