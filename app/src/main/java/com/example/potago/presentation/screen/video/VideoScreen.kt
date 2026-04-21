@@ -87,7 +87,7 @@ private fun VideoContent(
         contentPadding = PaddingValues(horizontal = 20.dp)
     ) {
         item {
-            Spacer(modifier = Modifier.height(90.dp))
+            Spacer(modifier = Modifier.height(100.dp))
             Image(
                 painter = painterResource(id = R.drawable.video_screen_mascot),
                 contentDescription = null,
