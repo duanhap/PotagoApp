@@ -1,5 +1,9 @@
 package com.example.potago.presentation.screen.matchgame
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -44,18 +48,49 @@ fun MatchResultScreen(
     bestTime: Double,
     bestDate: String,
     wordSetId: Long,
-    wordSetName: String
+    wordSetName: String,
+    hackExperience: Boolean = false,
+    superExperience: Boolean = false
 ) {
-    val xpReward = when {
-        completedTime <= 20 -> 20
-        completedTime <= 40 -> 15
+    val baseXp = when {
+        completedTime <= 20 -> 5
+        completedTime <= 40 -> 5
         else -> 10
     }
+    val multiplier = when {
+        hackExperience -> 3
+        superExperience -> 2
+        else -> 1
+    }
+    val xpReward = baseXp * multiplier
+    val hasBonus = multiplier > 1
+    val multiplierLabel = "x$multiplier"
+
     val diamondReward = when {
-        completedTime <= 20 -> 15
-        completedTime <= 40 -> 10
+        completedTime <= 20 -> 5
+        completedTime <= 40 -> 5
         else -> 5
     }
+
+    // Animation states cho bonus tag
+    var showTag by remember { mutableStateOf(false) }
+    var showFinalXp by remember { mutableStateOf(false) }
+    LaunchedEffect(hasBonus) {
+        if (hasBonus) {
+            kotlinx.coroutines.delay(800)
+            showTag = true
+            kotlinx.coroutines.delay(300)
+            showFinalXp = true
+        }
+    }
+    val tagScale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (showTag) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
+        ),
+        label = "tagScale"
+    )
 
     Scaffold(
         topBar = {
@@ -186,13 +221,41 @@ fun MatchResultScreen(
                                 modifier = Modifier.size(20.dp),
                                 tint = Color.Unspecified
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "$xpReward",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = Color(0xFFA16207)
-                            )
-                            Spacer(modifier = Modifier.width(5.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(contentAlignment = Alignment.TopEnd) {
+                                AnimatedContent(
+                                    targetState = if (hasBonus && showFinalXp) xpReward else baseXp,
+                                    transitionSpec = {
+                                        (slideInVertically { it } + androidx.compose.animation.fadeIn())
+                                            .togetherWith(slideOutVertically { -it } + androidx.compose.animation.fadeOut())
+                                    },
+                                    label = "xpNumber"
+                                ) { xp ->
+                                    Text(
+                                        text = "$xp",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        color = Color(0xFFA16207)
+                                    )
+                                }
+                                if (hasBonus) {
+                                    Box(
+                                        modifier = Modifier
+                                            .offset(x = 20.dp, y = (-15).dp)
+                                            .graphicsLayer { scaleX = tagScale; scaleY = tagScale }
+                                            .background(Color(0xFFEF4444), RoundedCornerShape(5.dp))
+                                            .padding(horizontal = 4.dp, vertical = 1.dp)
+                                    ) {
+                                        Text(
+                                            text = multiplierLabel,
+                                            fontFamily = Nunito,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            fontSize = 10.sp,
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "XP",
                                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
