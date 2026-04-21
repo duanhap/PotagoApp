@@ -34,6 +34,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.potago.R
 import com.example.potago.domain.model.Word
+import com.example.potago.presentation.navigation.Screen
 
 // ────────────────────────────────────────────────────────────────────────────
 // Screen Entry Point
@@ -59,7 +60,7 @@ fun ListOfCardsScreen(
         onFilterChange = viewModel::onFilterChange,
         onSearchQueryChange = viewModel::onSearchQueryChange,
         onVolumeClick = { /* Handle TTS / Audio */ },
-        onEditClick = { /* Handle Edit Card */ },
+        onEditClick = { word -> navController.navigate(Screen.EditCard(word.id)) },
         onDeleteClick = { /* Handle Delete Card */ },
         onAddClick = { /* Handle Add Card Navigation */ }
     )
