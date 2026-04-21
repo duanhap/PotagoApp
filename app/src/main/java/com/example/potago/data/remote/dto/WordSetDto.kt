@@ -47,6 +47,14 @@ data class WordInputDto(
     @SerializedName("description") val description: String? = null
 )
 
+data class CreateWordRequest(
+    @SerializedName("word_set_id") val wordSetId: Long,
+    @SerializedName("term") val term: String,
+    @SerializedName("definition") val definition: String,
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("status") val status: String = "new"
+)
+
 data class CreateWordSetWithWordsRequest(
     @SerializedName("word_set_id") val wordSetId: Long,
     @SerializedName("words") val words: List<WordInputDto>
