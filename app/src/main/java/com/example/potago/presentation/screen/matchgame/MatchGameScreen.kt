@@ -1,6 +1,12 @@
 package com.example.potago.presentation.screen.matchgame
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -21,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -46,22 +53,43 @@ fun MatchGameScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(wordSetId) {
-        viewModel.startGame(wordSetId)
+        viewModel.startGame(wordSetId, wordSetName)
     }
 
-    // Navigate to result when finished
-    LaunchedEffect(uiState.isFinished) {
-        if (uiState.isFinished) {
-            navController.navigate(
-                Screen.MatchResult(
-                    completedTime = uiState.completedTime,
-                    bestTime = uiState.bestTime?.bestTime ?: 0.0,
-                    bestDate = uiState.bestTime?.date ?: "",
-                    wordSetId = wordSetId,
-                    wordSetName = wordSetName
-                )
-            ) {
-                popUpTo(Screen.MatchGame.route) { inclusive = true }
+    // Navigate dựa trên navEvent từ ViewModel
+    LaunchedEffect(Unit) {
+        viewModel.navEvent.collect { event ->
+            when (event) {
+                is MatchGameNavEvent.ToStreak -> {
+                    // Chỉ navigate 1 lần sang Streak, kèm nextRoute để sau đó tự navigate sang MatchResult
+                    val matchResultRoute = Screen.MatchResult(
+                        completedTime = event.completedTime,
+                        bestTime = event.bestTime,
+                        bestDate = event.bestDate,
+                        wordSetId = event.wordSetId,
+                        wordSetName = event.wordSetName,
+                        hackXp = event.hackXp,
+                        superXp = event.superXp
+                    )
+                    navController.navigate(Screen.Streak(event.streakCount, matchResultRoute)) {
+                        popUpTo(Screen.MatchGame.route) { inclusive = true }
+                    }
+                }
+                is MatchGameNavEvent.ToResult -> {
+                    navController.navigate(
+                        Screen.MatchResult(
+                            completedTime = event.completedTime,
+                            bestTime = event.bestTime,
+                            bestDate = event.bestDate,
+                            wordSetId = event.wordSetId,
+                            wordSetName = event.wordSetName,
+                            hackXp = event.hackXp,
+                            superXp = event.superXp
+                        )
+                    ) {
+                        popUpTo(Screen.MatchGame.route) { inclusive = true }
+                    }
+                }
             }
         }
     }
@@ -123,6 +151,11 @@ fun MatchGameScreen(
                         )
                     }
                 }
+            }
+
+            // Overlay loading khi đang submit + claim reward
+            if (uiState.isSubmitting) {
+                SubmittingOverlay()
             }
         }
     }
@@ -413,4 +446,123 @@ private fun ExitConfirmDialog(
 @Composable
 fun MascotBubblePreview() {
     MascotBubble(elapsedSeconds = 10.0)
+}
+
+@Composable
+private fun SubmittingOverlay() {
+    val infiniteTransition = rememberInfiniteTransition(label = "submit_loading")
+
+    // 3 chấm nhảy lần lượt
+    val dot1Alpha by infiniteTransition.animateFloat(
+        initialValue = 0.2f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 900
+                0.2f at 0; 1f at 150; 0.2f at 450
+            },
+            repeatMode = RepeatMode.Restart
+        ), label = "d1"
+    )
+    val dot2Alpha by infiniteTransition.animateFloat(
+        initialValue = 0.2f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 900
+                0.2f at 150; 1f at 300; 0.2f at 600
+            },
+            repeatMode = RepeatMode.Restart
+        ), label = "d2"
+    )
+    val dot3Alpha by infiniteTransition.animateFloat(
+        initialValue = 0.2f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 900
+                0.2f at 300; 1f at 450; 0.2f at 750
+            },
+            repeatMode = RepeatMode.Restart
+        ), label = "d3"
+    )
+
+    // Scale nhảy lên xuống
+    val dot1Scale by infiniteTransition.animateFloat(
+        initialValue = 1f, targetValue = 1.4f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 900
+                1f at 0; 1.4f at 150; 1f at 450
+            },
+            repeatMode = RepeatMode.Restart
+        ), label = "s1"
+    )
+    val dot2Scale by infiniteTransition.animateFloat(
+        initialValue = 1f, targetValue = 1.4f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 900
+                1f at 150; 1.4f at 300; 1f at 600
+            },
+            repeatMode = RepeatMode.Restart
+        ), label = "s2"
+    )
+    val dot3Scale by infiniteTransition.animateFloat(
+        initialValue = 1f, targetValue = 1.4f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 900
+                1f at 300; 1.4f at 450; 1f at 750
+            },
+            repeatMode = RepeatMode.Restart
+        ), label = "s3"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.45f))
+            .clickable(enabled = false) {},
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Mascot icon xoay
+            val rotation by infiniteTransition.animateFloat(
+                initialValue = 0f, targetValue = 360f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1200, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart
+                ), label = "rot"
+            )
+            Icon(
+                painter = painterResource(R.drawable.ic_experience_points),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(56.dp)
+                    .graphicsLayer { rotationZ = rotation },
+                tint = Color.Unspecified
+            )
+
+            // 3 chấm nhảy
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                listOf(dot1Alpha to dot1Scale, dot2Alpha to dot2Scale, dot3Alpha to dot3Scale).forEach { (alpha, scale) ->
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .graphicsLayer { scaleX = scale; scaleY = scale; this.alpha = alpha }
+                            .background(Color(0xFF58CC02), androidx.compose.foundation.shape.CircleShape)
+                    )
+                }
+            }
+
+            Text(
+                text = "Đang tính điểm...",
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            )
+        }
+    }
 }
