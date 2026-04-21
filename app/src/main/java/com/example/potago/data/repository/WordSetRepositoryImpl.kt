@@ -4,6 +4,7 @@ import com.example.potago.data.remote.api.ApiResponse
 import com.example.potago.data.remote.api.WordSetApiService
 import com.example.potago.data.remote.dto.CreateWordSetRequest
 import com.example.potago.data.remote.dto.CreateWordSetWithWordsRequest
+import com.example.potago.data.remote.dto.CreateWordRequest
 import com.example.potago.data.remote.dto.UpdateWordSetRequest
 import com.example.potago.data.remote.dto.WordInputDto
 import com.example.potago.data.remote.dto.toDomain
@@ -69,6 +70,31 @@ class WordSetRepositoryImpl @Inject constructor(
                 Result.Success(words)
             } else {
                 Result.Error(response.message)
+            }
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
+    override suspend fun addWord(
+        wordSetId: Long,
+        term: String,
+        definition: String,
+        description: String?
+    ): Result<Word> {
+        return try {
+            val request = CreateWordRequest(
+                wordSetId = wordSetId,
+                term = term,
+                definition = definition,
+                description = description,
+                status = "new"
+            )
+            val response = wordSetApiService.createWord(request)
+            if (response.success && response.data != null) {
+                Result.Success(response.data.toDomain())
+            } else {
+                Result.Error(response.message ?: "Thêm thẻ thất bại")
             }
         } catch (e: Exception) {
             handleError(e)

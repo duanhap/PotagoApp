@@ -23,5 +23,11 @@ interface WordSetRepository {
         name: String?,
         termLangCode: String?
     ): Result<WordSet>
-    suspend fun getWordsByWordSetId(wordSetId: Long, status: String? = null): Result<List<Word>>
+    suspend fun getWordsByWordSetId(wordSetId: Long): Result<List<Word>>
+    suspend fun addWord(
+        wordSetId: Long,
+        term: String,
+        definition: String,
+        description: String?
+    ): Result<Word>
 }
