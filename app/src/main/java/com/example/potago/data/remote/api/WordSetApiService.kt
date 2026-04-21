@@ -4,6 +4,7 @@ import com.example.potago.data.remote.dto.WordDto
 import com.example.potago.data.remote.dto.WordSetDto
 import com.example.potago.data.remote.dto.CreateWordSetRequest
 import com.example.potago.data.remote.dto.CreateWordSetWithWordsRequest
+import com.example.potago.data.remote.dto.CreateWordRequest
 import retrofit2.http.PUT
 import retrofit2.http.POST
 import retrofit2.http.Body
@@ -34,6 +35,11 @@ interface WordSetApiService {
     suspend fun createWordsBulk(
         @Body request: CreateWordSetWithWordsRequest
     ): ApiResponse<List<Any>>
+
+    @POST("/api/words")
+    suspend fun createWord(
+        @Body request: CreateWordRequest
+    ): ApiResponse<WordDto>
 
     @PUT("/api/word-sets")
     suspend fun updateWordSet(
