@@ -62,9 +62,9 @@ class WordSetRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getWordsByWordSetId(wordSetId: Long): Result<List<Word>> {
+    override suspend fun getWordsByWordSetId(wordSetId: Long, status: String?): Result<List<Word>> {
         return try {
-            val response = wordSetApiService.getWordsByWordSetId(wordSetId)
+            val response = wordSetApiService.getWordsByWordSetId(wordSetId, status)
             if (response.success) {
                 val words = response.data?.map { it.toDomain() } ?: emptyList()
                 Result.Success(words)
@@ -95,6 +95,19 @@ class WordSetRepositoryImpl @Inject constructor(
                 Result.Success(response.data.toDomain())
             } else {
                 Result.Error(response.message ?: "Thêm thẻ thất bại")
+            }
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
+    override suspend fun deleteWord(wordId: Long): Result<Unit> {
+        return try {
+            val response = wordSetApiService.deleteWord(wordId)
+            if (response.success) {
+                Result.Success(Unit)
+            } else {
+                Result.Error(response.message ?: "Xóa thẻ thất bại")
             }
         } catch (e: Exception) {
             handleError(e)
