@@ -1,5 +1,6 @@
 package com.example.potago.data.remote.api
 
+import com.example.potago.data.remote.dto.WordDto
 import com.example.potago.data.remote.dto.WordSetDto
 import com.example.potago.data.remote.dto.CreateWordSetRequest
 import com.example.potago.data.remote.dto.CreateWordSetWithWordsRequest
@@ -39,4 +40,9 @@ interface WordSetApiService {
         @Query("word_set_id") wordSetId: Long,
         @Body request: UpdateWordSetRequest
     ): ApiResponse<WordSetDto>
+
+    @GET("/api/words")
+    suspend fun getWordsByWordSetId(
+        @Query("word_set_id") wordSetId: Long
+    ): ApiResponse<List<WordDto>>
 }

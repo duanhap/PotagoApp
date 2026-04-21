@@ -179,4 +179,10 @@ object UseCaseModule {
     fun provideCheckAndExpireItemSessionUseCase(
         repository: ItemSessionRepository
     ): CheckAndExpireItemSessionUseCase = CheckAndExpireItemSessionUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideGetWordsByWordSetIdUseCase(
+        repository: WordSetRepository
+    ): GetWordsByWordSetIdUseCase = GetWordsByWordSetIdUseCase(repository)
 }
