@@ -35,6 +35,8 @@ import com.example.potago.R
 import com.example.potago.presentation.screen.UiState
 import com.example.potago.presentation.screen.auth.BigPotagoButton
 import com.example.potago.presentation.screen.auth.PasswordField
+import com.example.potago.presentation.screen.myvideo.AddButton
+import com.example.potago.presentation.screen.setting.BackButton
 import kotlinx.coroutines.flow.collectLatest
 
 @Composable
@@ -103,7 +105,8 @@ fun ProfileScreen(
                             tint = if (isFocused) Color(0xFF89E219) else Color.LightGray,
                             modifier = Modifier.size(20.dp)
                         )
-                    }
+                    },
+                    isReadOnly = false
                 )
 
                 ProfileTextField(
@@ -119,7 +122,8 @@ fun ProfileScreen(
                             tint = if (isFocused) Color(0xFF89E219) else Color.LightGray,
                             modifier = Modifier.size(20.dp)
                         )
-                    }
+                    },
+                    isReadOnly = true
                 )
 
                 PasswordField(
@@ -138,7 +142,7 @@ fun ProfileScreen(
             Box(modifier = Modifier.padding(horizontal = 20.dp)) {
                 BigPotagoButton(
                     text = "LƯU",
-                    enabled = !uiState.isSaving,
+                    enabled = uiState.isSaveButtonEnabled && !uiState.isSaving,
                     isLoading = uiState.isSaving,
                     onClick = viewModel::saveProfile
                 )
@@ -158,43 +162,43 @@ private fun ProfileTopBar(onBackClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth(),
         tonalElevation = 3.dp,
         shadowElevation = 4.dp,
-        color = Color.White
+        color = Color(0xFFFFFFFF)
     ) {
-        Row(
+
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
-            ProfileBackButton(onClick = onBackClick)
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = "Hồ sơ",
-                style = MaterialTheme.typography.displayMedium
-            )
+
+            // ✅ Row chỉ còn Text → quyết định height
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(modifier = Modifier.width(60.dp)) // chừa chỗ cho back button
+                Text(
+                    text = "Hồ sơ",
+                    style = MaterialTheme.typography.displayMedium,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            // 🔥 BackButton overlay
+            Box(
+                modifier = Modifier.matchParentSize()
+            ) {
+                BackButton(
+                    onClick = onBackClick,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .wrapContentSize()
+                )
+            }
         }
     }
 }
 
-@Composable
-private fun ProfileBackButton(onClick: () -> Unit) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.85f else 1f,
-        label = "back_scale"
-    )
-    IconButton(
-        onClick = onClick,
-        interactionSource = interactionSource
-    ) {
-        Icon(
-            painter = painterResource(id = R.drawable.ic_back),
-            contentDescription = "Back",
-            modifier = Modifier.scale(scale)
-        )
-    }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Avatar Section
@@ -268,7 +272,8 @@ private fun ProfileTextField(
     onValueChange: (String) -> Unit,
     placeholder: String = "",
     keyboardType: KeyboardType = KeyboardType.Text,
-    leadingIcon: (@Composable (isFocused: Boolean) -> Unit)? = null
+    leadingIcon: (@Composable (isFocused: Boolean) -> Unit)? = null,
+    isReadOnly : Boolean = true
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -279,7 +284,7 @@ private fun ProfileTextField(
             modifier = Modifier.padding(bottom = 8.dp)
         )
         OutlinedTextField(
-            textStyle = MaterialTheme.typography.bodyLarge,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = if (isFocused && !isReadOnly) Color.Black else Color(0xFFCCCCCC)),
             value = value,
             onValueChange = onValueChange,
             placeholder = {
@@ -304,18 +309,8 @@ private fun ProfileTextField(
             ),
             leadingIcon = leadingIcon?.let { icon -> { icon(isFocused) } },
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-            singleLine = true
+            singleLine = true,
+            readOnly = isReadOnly
         )
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Preview
-// ─────────────────────────────────────────────────────────────────────────────
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun ProfileScreenPreview() {
-    MaterialTheme {
-        ProfileScreen()
     }
 }

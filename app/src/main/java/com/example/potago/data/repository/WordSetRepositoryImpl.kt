@@ -2,7 +2,10 @@ package com.example.potago.data.repository
 
 import com.example.potago.data.remote.api.ApiResponse
 import com.example.potago.data.remote.api.WordSetApiService
+import com.example.potago.data.remote.dto.CreateWordSetRequest
+import com.example.potago.data.remote.dto.CreateWordSetWithWordsRequest
 import com.example.potago.data.remote.dto.UpdateWordSetRequest
+import com.example.potago.data.remote.dto.WordInputDto
 import com.example.potago.data.remote.dto.toDomain
 import com.example.potago.domain.model.Result
 import com.example.potago.domain.model.Word
@@ -67,6 +70,43 @@ class WordSetRepositoryImpl @Inject constructor(
             } else {
                 Result.Error(response.message)
             }
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
+    override suspend fun createWordSetWithWords(
+        name: String,
+        description: String?,
+        termLangCode: String,
+        defLangCode: String,
+        words: List<Pair<String, String>>
+    ): Result<WordSet> {
+        return try {
+            // 1. Create word set
+            val createRequest = CreateWordSetRequest(
+                name = name,
+                description = description,
+                isPublic = false,
+                defLangCode = defLangCode,
+                termLangCode = termLangCode
+            )
+            val wsResponse = wordSetApiService.createWordSet(createRequest)
+            if (!wsResponse.success || wsResponse.data == null) {
+                return Result.Error(wsResponse.message ?: "Tạo học phần thất bại")
+            }
+            val wordSet = wsResponse.data.toDomain()
+
+            // 2. Create words if any valid ones
+            val validWords = words.filter { it.first.isNotBlank() && it.second.isNotBlank() }
+            if (validWords.isNotEmpty()) {
+                val wordsRequest = CreateWordSetWithWordsRequest(
+                    wordSetId = wordSet.id,
+                    words = validWords.map { WordInputDto(term = it.first, definition = it.second) }
+                )
+                wordSetApiService.createWordsBulk(wordsRequest)
+            }
+            Result.Success(wordSet)
         } catch (e: Exception) {
             handleError(e)
         }

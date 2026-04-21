@@ -2,6 +2,9 @@ package com.example.potago.data.repository
 
 import com.example.potago.data.remote.api.ApiResponse
 import com.example.potago.data.remote.api.SentencePatternApiService
+import com.example.potago.data.remote.dto.CreateSentencePatternRequest
+import com.example.potago.data.remote.dto.CreateSentencesRequest
+import com.example.potago.data.remote.dto.SentenceInputDto
 import com.example.potago.data.remote.dto.toDomain
 import com.example.potago.domain.model.Result
 import com.example.potago.domain.model.SetencePattern
@@ -38,6 +41,40 @@ class SentencePatternRepositoryImpl @Inject constructor(
             } else {
                 Result.Error(response.message)
             }
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
+    override suspend fun createSentencePatternWithSentences(
+        name: String,
+        description: String,
+        termLangCode: String,
+        defLangCode: String,
+        sentences: List<Pair<String, String>>
+    ): Result<SetencePattern> {
+        return try {
+            val createRequest = CreateSentencePatternRequest(
+                name = name,
+                description = description,
+                termLangCode = termLangCode,
+                defLangCode = defLangCode
+            )
+            val patternResponse = sentencePatternApiService.createSentencePattern(createRequest)
+            if (!patternResponse.success || patternResponse.data == null) {
+                return Result.Error(patternResponse.message ?: "Tạo mẫu câu thất bại")
+            }
+            val pattern = patternResponse.data.toDomain()
+
+            val validSentences = sentences.filter { it.first.isNotBlank() && it.second.isNotBlank() }
+            if (validSentences.isNotEmpty()) {
+                val sentencesRequest = CreateSentencesRequest(
+                    patternId = pattern.id,
+                    sentences = validSentences.map { SentenceInputDto(term = it.first, definition = it.second) }
+                )
+                sentencePatternApiService.createSentencesBulk(sentencesRequest)
+            }
+            Result.Success(pattern)
         } catch (e: Exception) {
             handleError(e)
         }
