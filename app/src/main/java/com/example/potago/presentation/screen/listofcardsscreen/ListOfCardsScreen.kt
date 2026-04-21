@@ -61,7 +61,7 @@ fun ListOfCardsScreen(
         onSearchQueryChange = viewModel::onSearchQueryChange,
         onVolumeClick = { /* Handle TTS / Audio */ },
         onEditClick = { word -> navController.navigate(Screen.EditCard(word.id)) },
-        onDeleteClick = { /* Handle Delete Card */ },
+        onDeleteClick = { word -> viewModel.deleteWord(word.id) },
         onAddClick = { navController.navigate(Screen.AddCard(wordSetId)) }
     )
 }
@@ -441,7 +441,7 @@ fun CardItemNode(
                         .padding(horizontal = 10.dp, vertical = 3.dp)
                 ) {
                     Text(
-                        text = if (word.status.equals("know", ignoreCase = true))
+                        text = if (word.status.equals("known", ignoreCase = true))
                             "Đã thuộc" else "Chưa thuộc",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,

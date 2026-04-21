@@ -101,6 +101,19 @@ class WordSetRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun deleteWord(wordId: Long): Result<Unit> {
+        return try {
+            val response = wordSetApiService.deleteWord(wordId)
+            if (response.success) {
+                Result.Success(Unit)
+            } else {
+                Result.Error(response.message ?: "Xóa thẻ thất bại")
+            }
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
     override suspend fun createWordSetWithWords(
         name: String,
         description: String?,

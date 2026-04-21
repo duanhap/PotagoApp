@@ -197,4 +197,10 @@ object UseCaseModule {
     fun provideAddWordUseCase(
         repository: WordSetRepository
     ): AddWordUseCase = AddWordUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideDeleteWordUseCase(
+        repository: WordSetRepository
+    ): DeleteWordUseCase = DeleteWordUseCase(repository)
 }
