@@ -140,15 +140,8 @@ fun ListOfCardsScreenContent(
 
                 else -> {
                     val filteredCards = uiState.cards.filter { word ->
-                        val matchTab = when (uiState.filterType) {
-                            FilterType.ALL -> true
-                            FilterType.LEARNED -> word.status.equals("know", ignoreCase = true)
-                            FilterType.LEARNING -> !word.status.equals("know", ignoreCase = true)
-                        }
-                        val matchSearch =
-                            word.term.contains(uiState.searchQuery, ignoreCase = true) ||
-                                    word.definition.contains(uiState.searchQuery, ignoreCase = true)
-                        matchTab && matchSearch
+                        word.term.contains(uiState.searchQuery, ignoreCase = true) ||
+                                word.definition.contains(uiState.searchQuery, ignoreCase = true)
                     }
 
                     if (filteredCards.isEmpty()) {

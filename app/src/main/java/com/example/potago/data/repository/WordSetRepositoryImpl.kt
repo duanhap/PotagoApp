@@ -61,9 +61,9 @@ class WordSetRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getWordsByWordSetId(wordSetId: Long): Result<List<Word>> {
+    override suspend fun getWordsByWordSetId(wordSetId: Long, status: String?): Result<List<Word>> {
         return try {
-            val response = wordSetApiService.getWordsByWordSetId(wordSetId)
+            val response = wordSetApiService.getWordsByWordSetId(wordSetId, status)
             if (response.success) {
                 val words = response.data?.map { it.toDomain() } ?: emptyList()
                 Result.Success(words)

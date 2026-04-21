@@ -43,6 +43,7 @@ interface WordSetApiService {
 
     @GET("/api/words")
     suspend fun getWordsByWordSetId(
-        @Query("word_set_id") wordSetId: Long
+        @Query("word_set_id") wordSetId: Long,
+        @Query("status") status: String? = null
     ): ApiResponse<List<WordDto>>
 }
