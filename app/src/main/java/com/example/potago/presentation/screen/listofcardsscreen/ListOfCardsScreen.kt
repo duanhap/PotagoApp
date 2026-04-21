@@ -1,5 +1,8 @@
 package com.example.potago.presentation.screen.listofcardsscreen
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,6 +21,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +34,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.potago.R
 import com.example.potago.domain.model.Word
+
+// ────────────────────────────────────────────────────────────────────────────
+// Screen Entry Point
+// ────────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun ListOfCardsScreen(
@@ -50,12 +58,16 @@ fun ListOfCardsScreen(
         onBackClick = { navController.popBackStack() },
         onFilterChange = viewModel::onFilterChange,
         onSearchQueryChange = viewModel::onSearchQueryChange,
-        onVolumeClick = { /* Handle TTS or Audio */ },
+        onVolumeClick = { /* Handle TTS / Audio */ },
         onEditClick = { /* Handle Edit Card */ },
         onDeleteClick = { /* Handle Delete Card */ },
         onAddClick = { /* Handle Add Card Navigation */ }
     )
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Content (stateless, preview-friendly)
+// ────────────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,140 +84,108 @@ fun ListOfCardsScreenContent(
 ) {
     Scaffold(
         topBar = {
-            Surface(
-                color = Color.White,
-                shadowElevation = 2.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp)
-                        .padding(horizontal = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_back),
-                        contentDescription = "Back",
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clickable(onClick = onBackClick),
-                        tint = Color.Black
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(
-                        text = "Danh sách thẻ",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.Black
-                    )
-                }
-            }
+            TopBarSection(
+                title = wordSetName,
+                onBackClick = onBackClick
+            )
         },
         floatingActionButtonPosition = FabPosition.Center,
         floatingActionButton = {
-            Surface(
-                shape = CircleShape,
-                color = Color(0xFF89E219),
-                modifier = Modifier
-                    .size(64.dp)
-                    .padding(bottom = 8.dp),
-                shadowElevation = 4.dp,
-                onClick = onAddClick
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Thêm phần tử mới",
-                        tint = Color.White,
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
-            }
+            AddCardFab(onClick = onAddClick)
         },
-        containerColor = Color(0xFFFAFAFA)
+        containerColor = Color(0xFFF5F5F5)
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Filter Tabs
+            // ── Filter Tabs ──────────────────────────────────────────────
             FilterTabs(
                 selectedType = uiState.filterType,
                 onFilterSelect = onFilterChange
             )
 
-            // Search Bar
-            OutlinedTextField(
-                value = uiState.searchQuery,
-                onValueChange = onSearchQueryChange,
-                placeholder = {
-                    Text("Nhập từ tìm kiếm", color = Color(0xFF9CA3AF), fontSize = 16.sp)
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Search",
-                        tint = Color(0xFF9CA3AF),
-                        modifier = Modifier.size(28.dp)
-                    )
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .padding(bottom = 12.dp)
-                    .height(56.dp),
-                shape = RoundedCornerShape(24.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Color(0xFFF3F4F6),
-                    unfocusedContainerColor = Color(0xFFF3F4F6),
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent,
-                    focusedTextColor = Color.Black,
-                    unfocusedTextColor = Color.Black
-                ),
-                singleLine = true
+            // ── Search Bar ───────────────────────────────────────────────
+            SearchBarField(
+                query = uiState.searchQuery,
+                onQueryChange = onSearchQueryChange
             )
 
-            if (uiState.isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Color.Black)
-                }
-            } else {
-                val filteredCards = uiState.cards.filter { word ->
-                    val matchTab = when (uiState.filterType) {
-                        FilterType.ALL -> true
-                        FilterType.LEARNED -> word.status.equals("know", ignoreCase = true)
-                        FilterType.LEARNING -> !word.status.equals("know", ignoreCase = true)
+            // ── Content ──────────────────────────────────────────────────
+            when {
+                uiState.isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = Color(0xFF1CB0F6))
                     }
-                    val matchSearch = word.term.contains(uiState.searchQuery, ignoreCase = true) ||
-                            word.definition.contains(uiState.searchQuery, ignoreCase = true)
-                    
-                    matchTab && matchSearch
                 }
 
-                if (filteredCards.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                uiState.error != null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
-                            text = "Không có thẻ nào phù hợp",
-                            color = Color.Gray,
-                            fontSize = 16.sp,
+                            text = uiState.error,
+                            color = Color(0xFFE53935),
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.Medium
                         )
                     }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 80.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(filteredCards, key = { it.id }) { word ->
-                            CardItemNode(
-                                word = word,
-                                onVolumeClick = { onVolumeClick(word) },
-                                onEditClick = { onEditClick(word) },
-                                onDeleteClick = { onDeleteClick(word) }
-                            )
+                }
+
+                else -> {
+                    val filteredCards = uiState.cards.filter { word ->
+                        val matchTab = when (uiState.filterType) {
+                            FilterType.ALL -> true
+                            FilterType.LEARNED -> word.status.equals("know", ignoreCase = true)
+                            FilterType.LEARNING -> !word.status.equals("know", ignoreCase = true)
+                        }
+                        val matchSearch =
+                            word.term.contains(uiState.searchQuery, ignoreCase = true) ||
+                                    word.definition.contains(uiState.searchQuery, ignoreCase = true)
+                        matchTab && matchSearch
+                    }
+
+                    if (filteredCards.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "Không có thẻ nào phù hợp",
+                                    color = Color(0xFF9CA3AF),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    } else {
+                        // Word count badge
+                        WordCountBadge(count = filteredCards.size)
+
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(
+                                start = 20.dp,
+                                end = 20.dp,
+                                top = 4.dp,
+                                bottom = 88.dp
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            items(filteredCards, key = { it.id }) { word ->
+                                CardItemNode(
+                                    word = word,
+                                    onVolumeClick = { onVolumeClick(word) },
+                                    onEditClick = { onEditClick(word) },
+                                    onDeleteClick = { onDeleteClick(word) }
+                                )
+                            }
                         }
                     }
                 }
@@ -213,6 +193,75 @@ fun ListOfCardsScreenContent(
         }
     }
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Top Bar
+// ────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun TopBarSection(title: String, onBackClick: () -> Unit) {
+    Surface(
+        color = Color.White,
+        shadowElevation = 2.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp)
+                .padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_back),
+                contentDescription = "Quay lại",
+                modifier = Modifier
+                    .size(36.dp)
+                    .clickable(onClick = onBackClick),
+                tint = Color.Black
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = title,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.Black,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// FAB
+// ────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun AddCardFab(onClick: () -> Unit) {
+    Surface(
+        shape = CircleShape,
+        color = Color(0xFF89E219),
+        modifier = Modifier
+            .size(60.dp)
+            .padding(bottom = 4.dp),
+        shadowElevation = 6.dp,
+        onClick = onClick
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Thêm thẻ mới",
+                tint = Color.White,
+                modifier = Modifier.size(32.dp)
+            )
+        }
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Filter Tabs
+// ────────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun FilterTabs(
@@ -222,46 +271,121 @@ fun FilterTabs(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        FilterTabItem("Tất cả", selectedType == FilterType.ALL) { onFilterSelect(FilterType.ALL) }
-        FilterTabItem("Chưa thuộc", selectedType == FilterType.LEARNING) { onFilterSelect(FilterType.LEARNING) }
-        FilterTabItem("Đã thuộc", selectedType == FilterType.LEARNED) { onFilterSelect(FilterType.LEARNED) }
+        FilterTabItem(
+            text = "Tất cả",
+            isSelected = selectedType == FilterType.ALL,
+            onClick = { onFilterSelect(FilterType.ALL) }
+        )
+        FilterTabItem(
+            text = "Chưa thuộc",
+            isSelected = selectedType == FilterType.LEARNING,
+            onClick = { onFilterSelect(FilterType.LEARNING) }
+        )
+        FilterTabItem(
+            text = "Đã thuộc",
+            isSelected = selectedType == FilterType.LEARNED,
+            onClick = { onFilterSelect(FilterType.LEARNED) }
+        )
     }
 }
 
 @Composable
 fun RowScope.FilterTabItem(text: String, isSelected: Boolean, onClick: () -> Unit) {
-    val borderColor = if (isSelected) Color.Black else Color(0x33000000)
-    val bgColor = Color.White
-    val textColor = Color.Black
+    val bgColor = if (isSelected) Color.Black else Color.White
+    val textColor = if (isSelected) Color.White else Color(0xFF6B7280)
+    val borderColor = if (isSelected) Color.Black else Color(0xFFE5E7EB)
 
     Box(
         modifier = Modifier
             .weight(1f)
-            .height(34.dp)
-            .border(
-                width = 1.dp,
-                color = borderColor,
-                shape = RoundedCornerShape(24.dp)
-            )
-            .background(
-                color = bgColor,
-                shape = RoundedCornerShape(24.dp)
-            )
+            .height(36.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(24.dp))
+            .background(bgColor, RoundedCornerShape(24.dp))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
             fontSize = 12.sp,
-            lineHeight = 20.sp,
-            fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
             color = textColor
         )
     }
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Search Bar
+// ────────────────────────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SearchBarField(query: String, onQueryChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        placeholder = {
+            Text("Tìm kiếm từ...", color = Color(0xFFB0B8C1), fontSize = 15.sp)
+        },
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = "Tìm kiếm",
+                tint = Color(0xFFB0B8C1),
+                modifier = Modifier.size(22.dp)
+            )
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 10.dp)
+            .height(52.dp),
+        shape = RoundedCornerShape(26.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            focusedBorderColor = Color(0xFF1CB0F6),
+            unfocusedBorderColor = Color(0xFFE5E7EB),
+            focusedTextColor = Color(0xFF111827),
+            unfocusedTextColor = Color(0xFF111827)
+        ),
+        singleLine = true
+    )
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Word count badge
+// ────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun WordCountBadge(count: Int) {
+    Row(
+        modifier = Modifier
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .background(Color(0xFFEFF6FF), RoundedCornerShape(8.dp))
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = "$count thuật ngữ",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF1D4ED8)
+            )
+        }
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Card Item
+// ────────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun CardItemNode(
@@ -272,127 +396,191 @@ fun CardItemNode(
 ) {
     var isMenuExpanded by remember { mutableStateOf(false) }
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White, RoundedCornerShape(12.dp))
-            .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(12.dp))
-            .padding(vertical = 14.dp, horizontal = 16.dp)
+    // Status indicator color
+    val statusColor = if (word.status.equals("know", ignoreCase = true))
+        Color(0xFF22C55E) else Color(0xFFF59E0B)
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        shadowElevation = 2.dp,
+        tonalElevation = 0.dp
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+        ) {
+            // ── Top row: speaker + status chip + menu ────────────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Speaker icon
+                // Speaker / audio icon
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFEFF6FF))
                         .clickable { onVolumeClick() },
-                    contentAlignment = Alignment.CenterStart
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_earphone), // Use an existing icon or earphone
-                        contentDescription = "Speaker",
-                        modifier = Modifier.size(24.dp),
-                        tint = Color(0xFF3B82F6) // Muted blue
+                        painter = painterResource(id = R.drawable.ic_earphone),
+                        contentDescription = "Phát âm",
+                        modifier = Modifier.size(18.dp),
+                        tint = Color(0xFF1D4ED8)
                     )
                 }
 
+                Spacer(modifier = Modifier.weight(1f))
+
+                // Status chip
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = statusColor.copy(alpha = 0.12f),
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        .padding(horizontal = 10.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = if (word.status.equals("know", ignoreCase = true))
+                            "Đã thuộc" else "Chưa thuộc",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = statusColor
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // More options menu
                 Box {
                     Icon(
                         imageVector = Icons.Default.MoreVert,
-                        contentDescription = "Options",
+                        contentDescription = "Tùy chọn",
                         modifier = Modifier
-                            .size(24.dp)
+                            .size(22.dp)
                             .clickable { isMenuExpanded = true },
-                        tint = Color(0x80000000)
+                        tint = Color(0xFFB0B8C1)
                     )
-
                     DropdownMenu(
                         expanded = isMenuExpanded,
                         onDismissRequest = { isMenuExpanded = false },
-                        offset = DpOffset(0.dp, (-8).dp)
+                        offset = DpOffset(0.dp, (-4).dp)
                     ) {
                         DropdownMenuItem(
-                            text = { 
+                            text = {
                                 Text(
-                                    "Chỉnh sửa", 
-                                    color = Color.Black, 
-                                    fontSize = 14.sp, 
-                                    fontWeight = FontWeight.Bold 
-                                ) 
+                                    "Chỉnh sửa",
+                                    color = Color(0xFF111827),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
                             },
                             onClick = {
                                 isMenuExpanded = false
                                 onEditClick()
                             },
                             leadingIcon = {
-                                Icon(Icons.Default.Edit, contentDescription = null, tint = Color.Black)
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = null,
+                                    tint = Color(0xFF6B7280)
+                                )
                             }
                         )
                         DropdownMenuItem(
-                            text = { 
+                            text = {
                                 Text(
-                                    "Xóa", 
-                                    color = Color.Red, 
-                                    fontSize = 14.sp, 
-                                    fontWeight = FontWeight.Bold 
-                                ) 
+                                    "Xóa",
+                                    color = Color(0xFFE53935),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
                             },
                             onClick = {
                                 isMenuExpanded = false
                                 onDeleteClick()
                             },
                             leadingIcon = {
-                                Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = null,
+                                    tint = Color(0xFFE53935)
+                                )
                             }
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // ── Term ────────────────────────────────────────────────────
             Text(
                 text = word.term.ifBlank { "Không có từ" },
-                fontSize = 18.sp,
+                fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = word.definition.ifBlank { "Không có định nghĩa" },
-                fontSize = 14.sp,
-                color = Color.Black,
+                color = Color(0xFF111827),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(4.dp))
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            // Divider
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 8.dp),
+                thickness = 1.dp,
+                color = Color(0xFFF3F4F6)
+            )
+
+            // ── Definition ──────────────────────────────────────────────
             Text(
-                text = word.description.orEmpty(),
-                fontSize = 12.sp,
-                color = Color(0x80000000),
-                maxLines = 1,
+                text = word.definition.ifBlank { "Không có định nghĩa" },
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Normal,
+                color = Color(0xFF6B7280),
+                maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
+
+            // ── Description (optional) ───────────────────────────────────
+            if (!word.description.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = word.description,
+                    fontSize = 12.sp,
+                    color = Color(0xFFB0B8C1),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                )
+            }
         }
     }
 }
 
-@Preview(showBackground = true)
+// ────────────────────────────────────────────────────────────────────────────
+// Preview
+// ────────────────────────────────────────────────────────────────────────────
+
+@Preview(showBackground = true, backgroundColor = 0xFFF5F5F5)
 @Composable
 fun ListOfCardsScreenPreview() {
     ListOfCardsScreenContent(
         uiState = ListOfCardsUiState(
             cards = listOf(
-                Word(1, "El perro", "The Dog", "Hi", "", "know"),
-                Word(2, "El gato", "The Cat", "", "", "learning")
+                Word(1, "Apple", "Quả táo", "A round fruit", "", "know"),
+                Word(2, "Banana", "Quả chuối", "A yellow fruit", "", "learning"),
+                Word(3, "Cherry", "Quả anh đào", null, "", "know")
             )
         ),
-        wordSetName = "Animales",
+        wordSetName = "Fruits",
         onBackClick = {},
         onFilterChange = {},
         onSearchQueryChange = {},
