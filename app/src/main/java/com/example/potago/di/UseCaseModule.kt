@@ -185,4 +185,10 @@ object UseCaseModule {
     fun provideGetWordsByWordSetIdUseCase(
         repository: WordSetRepository
     ): GetWordsByWordSetIdUseCase = GetWordsByWordSetIdUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideUpdateWordUseCase(
+        repository: FlashcardRepository
+    ): UpdateWordUseCase = UpdateWordUseCase(repository)
 }

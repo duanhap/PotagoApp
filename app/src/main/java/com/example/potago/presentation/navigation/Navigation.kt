@@ -34,6 +34,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.example.potago.presentation.screen.addvideo.AddVideoScreen
+import com.example.potago.presentation.screen.editcardscreen.EditCardScreen
 import com.example.potago.presentation.screen.auth.LoginScreen
 import com.example.potago.presentation.screen.auth.SignUpScreen
 import com.example.potago.presentation.screen.detailcoursescreen.DetailCourseScreen
@@ -140,6 +141,10 @@ sealed class Screen(val route: String) {
             val encodedName = Uri.encode(wordSetName)
             return "list_of_cards/$wordSetId/$encodedName"
         }
+    }
+
+    object EditCard : Screen("edit_card/{cardId}") {
+        operator fun invoke(cardId: Long) = "edit_card/$cardId"
     }
 }
 
@@ -444,6 +449,18 @@ fun MainFlowContainer(rootNavController: NavController) {
                         navController = mainNavController,
                         wordSetId = wordSetId,
                         wordSetName = wordSetName
+                    )
+                }
+                composable(
+                    route = Screen.EditCard.route,
+                    arguments = listOf(
+                        navArgument("cardId") { type = NavType.LongType }
+                    )
+                ) { backStackEntry ->
+                    val cardId = backStackEntry.arguments?.getLong("cardId") ?: 0L
+                    EditCardScreen(
+                        navController = mainNavController,
+                        cardId = cardId
                     )
                 }
             }
