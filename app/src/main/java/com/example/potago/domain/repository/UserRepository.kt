@@ -17,4 +17,7 @@ interface UserRepository {
     fun getSavedUser(): Flow<User?>
     fun getSavedSetting(): Flow<Setting?>
     suspend fun clearUser()
+    
+    suspend fun getRankingTop(): Result<List<User>>
+    suspend fun getMyRanking(): Result<Int>
 }

@@ -142,4 +142,30 @@ class UserRepositoryImpl @Inject constructor(
     override suspend fun clearUser() {
         userDataStore.clearUser()
     }
+
+    override suspend fun getRankingTop(): Result<List<User>> {
+        return try {
+            val response = apiService.getRankingTop()
+            if (response.success && response.data != null) {
+                Result.Success(response.data.map { it.toUser() })
+            } else {
+                Result.Error(response.message ?: "Unknown Error")
+            }
+        } catch (e: Exception) {
+            Result.Error("Network error: ${e.message}")
+        }
+    }
+
+    override suspend fun getMyRanking(): Result<Int> {
+        return try {
+            val response = apiService.getMyRanking()
+            if (response.success && response.data != null) {
+                Result.Success(response.data.rank)
+            } else {
+                Result.Error(response.message ?: "Unknown Error")
+            }
+        } catch (e: Exception) {
+            Result.Error("Network error: ${e.message}")
+        }
+    }
 }

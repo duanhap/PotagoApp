@@ -1,437 +1,240 @@
 package com.example.potago.presentation.screen.ranking
-import androidx.compose.runtime.*
-import androidx.compose.foundation.*
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.*
-import androidx.compose.foundation.text.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.*
-import androidx.compose.ui.graphics.*
-import androidx.compose.ui.text.font.*
-import androidx.compose.ui.unit.*
-import androidx.compose.ui.text.*
-import androidx.compose.ui.layout.*
-import androidx.compose.ui.geometry.*
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.potago.R
+import com.example.potago.domain.model.User
 
 @Composable
-fun RankScreen() {
-	val textField1 = remember { mutableStateOf("") }
-	val textField2 = remember { mutableStateOf("") }
-	val textField3 = remember { mutableStateOf("") }
-	val textField4 = remember { mutableStateOf("") }
-	val context = LocalContext.current
-
-	fun getDrawableId(vararg names: String): Int {
-		for (name in names) {
-			val resId = context.resources.getIdentifier(name, "drawable", context.packageName)
-			if (resId != 0) return resId
-		}
-		return 0
-	}
-
-	val rank1Icon = getDrawableId("top1", "1", "_1", "rank_1")
-	val rank2Icon = getDrawableId("top2", "2", "_2", "rank_2")
-	val rank3Icon = getDrawableId("top3", "3", "_3", "rank_3")
-	val yellowHairAvatar = getDrawableId("avataryellowhair", "avatar_yellow_hair")
-	val top1000Banner = getDrawableId("top1000", "Top 1000", "top_1000")
-	val pinkgirl = getDrawableId("pinkgirl", "pink_girl")
-	Column(
-		modifier = Modifier
-			.fillMaxWidth()
-			.fillMaxHeight()
-			.background(
-				color = Color(0xFFFFFFFF),
-			)
-	){
-		Column(
-			modifier = Modifier
-				.fillMaxWidth()
-				.weight(1f)
-				.background(
-					color = Color(0xFFFFFFFF),
-				)
-				.padding(bottom = 17.dp,)
-				.verticalScroll(rememberScrollState())
-		){
-
-			Column(
-				modifier = Modifier
-					.padding(bottom = 25.dp,)
-					.fillMaxWidth()
-			){
-				Row(
-					verticalAlignment = Alignment.CenterVertically,
-					modifier = Modifier
-						.fillMaxWidth()
-						.background(
-							color = Color(0xFFFFFFFF),
-						)
-						.shadow(
-							elevation = 2.dp,
-							spotColor = Color(0x1A000000),
-						)
-						.padding(vertical = 4.dp,)
-				){
-					Image(
-						painter = painterResource(id = R.drawable.ic_cancel),
-						contentDescription = "Potato illustration",
-						contentScale = ContentScale.Crop,
-						colorFilter = ColorFilter.tint(Color.Black),
-						modifier = Modifier
-							.padding(start = 20.dp,)
-							.size(24.dp)
-							.width(37.dp)
-							.height(39.dp)
-					)
-					Text("Xếp hạng",
-						color = Color(0xFF000000),
-						fontSize = 32.sp,
-						fontWeight = FontWeight.Bold,
-						modifier = Modifier
-							.padding(start = 20.dp,)
-					)
-				}
-
-				Column(
-					modifier = Modifier
-						.clip(shape = RoundedCornerShape(bottomEnd = 20.dp,))
-						.fillMaxWidth()
-
-						.padding(top = 10.dp,start = 14.dp,end = 26.dp,)
-				){
-					Image(
-						painter = painterResource(id = R.drawable.top1000),
-						contentDescription = "Potato illustration",
-						modifier = Modifier
-							.fillMaxWidth()
-					)
-				}
-			}
-			Row(
-				verticalAlignment = Alignment.CenterVertically,
-				modifier = Modifier
-					.padding(bottom = 14.dp,start = 20.dp,end = 20.dp,)
-					.border(
-						width = 1.dp,
-						color = Color(0x1A000000),
-						shape = RoundedCornerShape(15.dp)
-					)
-					.clip(shape = RoundedCornerShape(15.dp))
-					.fillMaxWidth()
-					.background(
-						color = Color(0xFFFFFFFF),
-						shape = RoundedCornerShape(15.dp)
-					)
-					.padding(vertical = 9.dp,horizontal = 13.dp,)
-			){
-				Image(
-					painter = painterResource(id = R.drawable.top1),
-					contentDescription = "Potato illustration",
-					contentScale = ContentScale.Crop,
-					modifier = Modifier
-						.padding(end = 20.dp,)
-						.width(37.dp)
-						.height(39.dp)
-				)
-				Image(
-					painter = painterResource(id = R.drawable.pinkgirl),
-					contentDescription = "Potato illustration",
-					contentScale = ContentScale.Crop,
-					modifier = Modifier
-						.padding(end = 20.dp,)
-						.width(37.dp)
-						.height(39.dp)
-				)
-				Column(
-				){
-					Text("雯雯",
-						color = Color(0xFF000000),
-						fontSize = 16.sp,
-						fontWeight = FontWeight.Bold,
-					)
-				}
-				Column(
-					modifier = Modifier
-						.weight(1f)
-				){
-				}
-				Column(
-				){
-					Text("345890102450 xp",
-						color = Color(0xFF000000),
-						fontSize = 14.sp,
-						fontWeight = FontWeight.Bold,
-					)
-				}
-			}
-			Column(
-				modifier = Modifier
-					.padding(bottom = 15.dp,start = 19.dp,end = 19.dp,)
-					.border(
-						width = 1.dp,
-						color = Color(0x1A000000),
-						shape = RoundedCornerShape(15.dp)
-					)
-					.clip(shape = RoundedCornerShape(15.dp))
-					.fillMaxWidth()
-					.background(
-						color = Color(0xFFFFFFFF),
-						shape = RoundedCornerShape(15.dp)
-					)
-					.padding(top = 10.dp,bottom = 10.dp,start = 14.dp,)
-			){
-				Image(
-					painter = painterResource(id = R.drawable.top2),
-					contentDescription = "Potato illustration",
-					contentScale = ContentScale.Crop,
-					modifier = Modifier
-						.padding(end = 20.dp,)
-						.width(37.dp)
-						.height(39.dp)
-				)
-			}
-			Column(
-				modifier = Modifier
-					.padding(bottom = 15.dp,start = 19.dp,end = 19.dp,)
-					.border(
-						width = 1.dp,
-						color = Color(0x1A000000),
-						shape = RoundedCornerShape(15.dp)
-					)
-					.clip(shape = RoundedCornerShape(15.dp))
-					.fillMaxWidth()
-					.background(
-						color = Color(0xFFFFFFFF),
-						shape = RoundedCornerShape(15.dp)
-					)
-					.padding(top = 10.dp,bottom = 10.dp,start = 14.dp,)
-			){
-				Image(
-					painter = painterResource(id = R.drawable.top3),
-					contentDescription = "Potato illustration",
-					contentScale = ContentScale.Crop,
-					modifier = Modifier
-						.padding(end = 20.dp,)
-						.width(37.dp)
-						.height(39.dp)
-				)
-			}
-			TextFieldView(
-				placeholder = "4",
-				value = textField1.value,
-				onValueChange = { newText -> textField1.value = newText },
-				textStyle = TextStyle(
-					color = Color(0xFF050505),
-					fontSize = 16.sp,
-					fontWeight = FontWeight.Bold,
-				),
-				modifier = Modifier
-					.padding(bottom = 15.dp,start = 19.dp,end = 19.dp,)
-					.border(
-						width = 1.dp,
-						color = Color(0x1A000000),
-						shape = RoundedCornerShape(15.dp)
-					)
-					.clip(shape = RoundedCornerShape(15.dp))
-					.fillMaxWidth()
-					.background(
-						color = Color(0xFFFFFFFF),
-						shape = RoundedCornerShape(15.dp)
-					)
-					.padding(vertical = 23.dp,horizontal = 28.dp,)
-			)
-			TextFieldView(
-				placeholder = "5",
-				value = textField2.value,
-				onValueChange = { newText -> textField2.value = newText },
-				textStyle = TextStyle(
-					color = Color(0xFF050505),
-					fontSize = 18.sp,
-					fontWeight = FontWeight.Bold,
-				),
-				modifier = Modifier
-					.padding(bottom = 13.dp,start = 19.dp,end = 19.dp,)
-					.border(
-						width = 1.dp,
-						color = Color(0x1A000000),
-						shape = RoundedCornerShape(15.dp)
-					)
-					.clip(shape = RoundedCornerShape(15.dp))
-					.fillMaxWidth()
-					.background(
-						color = Color(0xFFFFFFFF),
-						shape = RoundedCornerShape(15.dp)
-					)
-					.padding(vertical = 23.dp,horizontal = 29.dp,)
-			)
-			TextFieldView(
-				placeholder = "6",
-				value = textField3.value,
-				onValueChange = { newText -> textField3.value = newText },
-				textStyle = TextStyle(
-					color = Color(0xFF050505),
-					fontSize = 18.sp,
-					fontWeight = FontWeight.Bold,
-				),
-				modifier = Modifier
-					.padding(bottom = 14.dp,start = 19.dp,end = 19.dp,)
-					.border(
-						width = 1.dp,
-						color = Color(0x1A000000),
-						shape = RoundedCornerShape(15.dp)
-					)
-					.clip(shape = RoundedCornerShape(15.dp))
-					.fillMaxWidth()
-					.background(
-						color = Color(0xFFFFFFFF),
-						shape = RoundedCornerShape(15.dp)
-					)
-					.padding(vertical = 22.dp,horizontal = 28.dp,)
-			)
-			TextFieldView(
-				placeholder = "7",
-				value = textField4.value,
-				onValueChange = { newText -> textField4.value = newText },
-				textStyle = TextStyle(
-					color = Color(0xFF050505),
-					fontSize = 18.sp,
-					fontWeight = FontWeight.Bold,
-				),
-				modifier = Modifier
-					.padding(bottom = 13.dp,start = 19.dp,end = 19.dp,)
-					.border(
-						width = 1.dp,
-						color = Color(0x1A000000),
-						shape = RoundedCornerShape(15.dp)
-					)
-					.clip(shape = RoundedCornerShape(15.dp))
-					.fillMaxWidth()
-					.background(
-						color = Color(0xFFFFFFFF),
-						shape = RoundedCornerShape(15.dp)
-					)
-					.padding(vertical = 23.dp,horizontal = 28.dp,)
-			)
-			Column(
-				modifier = Modifier
-					.padding(horizontal = 9.dp,)
-					.fillMaxWidth()
-			){
-				Column(
-					modifier = Modifier
-						.padding(horizontal = 10.dp,)
-						.border(
-							width = 1.dp,
-							color = Color(0x1A000000),
-							shape = RoundedCornerShape(15.dp)
-						)
-						.clip(shape = RoundedCornerShape(15.dp))
-						.height(59.dp)
-						.fillMaxWidth()
-						.background(
-							color = Color(0xFFFFFFFF),
-							shape = RoundedCornerShape(15.dp)
-						)
-				){
-				}
-				Row(
-					verticalAlignment = Alignment.CenterVertically,
-					modifier = Modifier
-						.border(
-							width = 1.dp,
-							color = Color(0xFF89E219),
-							shape = RoundedCornerShape(15.dp)
-						)
-						.clip(shape = RoundedCornerShape(15.dp))
-						.fillMaxWidth()
-						.background(
-							color = Color(0xFFC4FF7A),
-							shape = RoundedCornerShape(15.dp)
-						)
-						.padding(16.dp)
-				){
-					Text("2222",
-						color = Color(0xFF050505),
-						fontSize = 18.sp,
-						fontWeight = FontWeight.Bold,
-						modifier = Modifier
-							.padding(end = 22.dp,)
-					)
-					AsyncImage(
-						model = if (yellowHairAvatar != 0) yellowHairAvatar else "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/jCkVt59ei4/htkcd7ho_expires_30_days.png",
-						contentDescription = null,
-						contentScale = ContentScale.Crop,
-						modifier = Modifier
-							.padding(end = 20.dp,)
-							.clip(shape = RoundedCornerShape(9999.dp))
-							.width(41.dp)
-							.height(41.dp)
-					)
-					Column(
-					){
-						Text("Dunsensei",
-							color = Color(0xFF000000),
-							fontSize = 16.sp,
-							fontWeight = FontWeight.Bold,
-						)
-					}
-					Column(
-						modifier = Modifier
-							.weight(1f)
-					){
-					}
-					Column(
-					){
-						Text("2450 xp",
-							color = Color(0xFF000000),
-							fontSize = 14.sp,
-							fontWeight = FontWeight.Bold,
-						)
-					}
-				}
-			}
-		}
-	}
-}
-
-@Composable
-fun TextFieldView(
-	modifier: Modifier = Modifier,
-	value: String,
-	onValueChange: (String) -> Unit,
-	placeholder: String = "",
-	textStyle: TextStyle = TextStyle.Default
+fun RankScreen(
+    navController: NavController,
+    viewModel: RankViewModel = hiltViewModel()
 ) {
-	BasicTextField(
-		value = value,
-		onValueChange = onValueChange,
-		textStyle = textStyle,
-		modifier = modifier,
-		decorationBox = { innerTextField ->
-			Box {
-				if (value.isEmpty()) {
-					Text(
-						text = placeholder,
-						style = textStyle.copy(color = Color(0xB3050505))
-					)
-				}
-				innerTextField()
-			}
-		}
-	)
+    val uiState by viewModel.uiState.collectAsState()
+
+    Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Header
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White)
+                    .shadow(elevation = 2.dp, spotColor = Color(0x1A000000))
+                    .padding(vertical = 12.dp, horizontal = 20.dp)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_cancel),
+                    contentDescription = "Back",
+                    colorFilter = ColorFilter.tint(Color.Black),
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clickable { navController.popBackStack() }
+                )
+                Text(
+                    "Xếp hạng",
+                    color = Color.Black,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 20.dp)
+                )
+            }
+
+            if (uiState.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Color(0xFF89E219))
+                }
+            } else if (uiState.error != null) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Lỗi: ${uiState.error}", color = Color.Red)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    contentPadding = PaddingValues(bottom = 100.dp)
+                ) {
+                    // Ranking Banner
+                    item {
+                        Image(
+                            painter = painterResource(id = R.drawable.top1000),
+                            contentDescription = "Top 1000 Banner",
+                            modifier = Modifier
+                                .padding(14.dp)
+                                .fillMaxWidth(),
+                            contentScale = ContentScale.FillWidth
+                        )
+                    }
+
+                    // Ranking List
+                    itemsIndexed(uiState.topUsers) { index, user ->
+                        RankItem(
+                            rank = index + 1,
+                            user = user,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 7.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // My Rank Section (Sticky at bottom)
+        if (!uiState.isLoading && uiState.myRank != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp, start = 12.dp, end = 12.dp)
+                    .fillMaxWidth()
+            ) {
+                // Background shadow layer if needed or just use the box
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .border(
+                            width = 1.dp,
+                            color = Color(0xFF89E219),
+                            shape = RoundedCornerShape(15.dp)
+                        )
+                        .clip(RoundedCornerShape(15.dp))
+                        .fillMaxWidth()
+                        .background(Color(0xFFC4FF7A))
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        "${uiState.myRank}",
+                        color = Color.Black,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(end = 16.dp)
+                    )
+                    
+                    // Avatar check
+                    AsyncImage(
+                        model = uiState.currentUser?.avatar ?: R.drawable.avataryellowhair,
+                        contentDescription = "My Avatar",
+                        modifier = Modifier
+                            .size(41.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop,
+                        placeholder = painterResource(id = R.drawable.avataryellowhair)
+                    )
+                    
+                    Text(
+                        uiState.currentUser?.name ?: "Bạn",
+                        color = Color.Black,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 12.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.weight(1f))
+                    
+                    Text(
+                        "${uiState.currentUser?.experiencePoints ?: 0} xp",
+                        color = Color.Black,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
 }
 
-@Preview(showBackground = true)
 @Composable
-fun RankScreenPreview() {
-	RankScreen()
+fun RankItem(rank: Int, user: User, modifier: Modifier = Modifier) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .border(
+                width = 1.dp,
+                color = Color(0x1A000000),
+                shape = RoundedCornerShape(15.dp)
+            )
+            .clip(RoundedCornerShape(15.dp))
+            .fillMaxWidth()
+            .background(Color.White)
+            .padding(vertical = 10.dp, horizontal = 14.dp)
+    ) {
+        // Rank Icon or Number
+        when (rank) {
+            1 -> Image(
+                painter = painterResource(id = R.drawable.top1),
+                contentDescription = "Rank 1",
+                modifier = Modifier.size(37.dp, 39.dp).padding(end = 12.dp)
+            )
+            2 -> Image(
+                painter = painterResource(id = R.drawable.top2),
+                contentDescription = "Rank 2",
+                modifier = Modifier.size(37.dp, 39.dp).padding(end = 12.dp)
+            )
+            3 -> Image(
+                painter = painterResource(id = R.drawable.top3),
+                contentDescription = "Rank 3",
+                modifier = Modifier.size(37.dp, 39.dp).padding(end = 12.dp)
+            )
+            else -> Text(
+                "$rank",
+                color = Color.Black,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.width(37.dp).padding(end = 12.dp)
+            )
+        }
+
+        // Avatar
+        AsyncImage(
+            model = if (user.avatar.isNullOrEmpty()) R.drawable.pinkgirl else user.avatar,
+            contentDescription = "Avatar",
+            modifier = Modifier
+                .size(37.dp, 39.dp)
+                .clip(CircleShape),
+            contentScale = ContentScale.Crop,
+            placeholder = painterResource(id = R.drawable.pinkgirl)
+        )
+
+        // Name
+        Text(
+            user.name,
+            color = Color.Black,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(start = 12.dp)
+        )
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // XP
+        Text(
+            "${user.experiencePoints} xp",
+            color = Color.Black,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
 }
