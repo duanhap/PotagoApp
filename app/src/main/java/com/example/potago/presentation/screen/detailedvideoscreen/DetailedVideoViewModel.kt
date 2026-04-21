@@ -15,9 +15,11 @@ import androidx.lifecycle.viewModelScope
 import com.example.potago.domain.model.Result
 import com.example.potago.domain.model.Subtitle
 import com.example.potago.domain.model.Video
+import com.example.potago.domain.usecase.CheckAndExpireItemSessionUseCase
 import com.example.potago.domain.usecase.ClaimRewardUseCase
 import com.example.potago.domain.usecase.GetSubtitlesUseCase
 import com.example.potago.domain.usecase.GetVideoUseCase
+import com.example.potago.domain.usecase.ObserveActiveItemSessionUseCase
 import com.example.potago.domain.usecase.SyncUserSessionUseCase
 import com.example.potago.presentation.navigation.Screen
 import com.example.potago.presentation.screen.UiState
@@ -28,9 +30,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.time.delay
 import java.io.File
 import javax.inject.Inject
 
@@ -48,6 +51,8 @@ class DetailedVideoViewModel @Inject constructor(
     private val getVideoUseCase: GetVideoUseCase,
     private val claimRewardUseCase: ClaimRewardUseCase,
     private val syncUserSessionUseCase: SyncUserSessionUseCase,
+    private val observeActiveItemSessionUseCase: ObserveActiveItemSessionUseCase,
+    private val checkAndExpireItemSessionUseCase: CheckAndExpireItemSessionUseCase,
     private val application: Application,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -107,6 +112,13 @@ class DetailedVideoViewModel @Inject constructor(
     private val _spokenTranscript = MutableStateFlow("")
     val spokenTranscript: StateFlow<String> = _spokenTranscript.asStateFlow()
 
+    // Logic Active Items
+    private val _hackExperience = MutableStateFlow(false)
+    val hackExperience: StateFlow<Boolean> = _hackExperience.asStateFlow()
+
+    private val _superExperience = MutableStateFlow(false)
+    val superExperience: StateFlow<Boolean> = _superExperience.asStateFlow()
+
     // Speech Recognition & Audio recording
     private var speechRecognizer: SpeechRecognizer? = null
     private val audioFilePath: String by lazy {
@@ -146,11 +158,10 @@ class DetailedVideoViewModel @Inject constructor(
 
     // Lưu vị trí video để restore sau khi quay lại từ StreakScreen
     var savedVideoPositionMs: Long = 0L
+
     init {
-        val videoId = savedStateHandle.get<Int>("videoId") ?: -1
-        if (videoId != -1) {
-            loadAllData(videoId)
-        }
+        loadAllData(videoId)
+        observeActiveItems()
     }
 
     private fun loadAllData(videoId: Int) {
@@ -159,6 +170,21 @@ class DetailedVideoViewModel @Inject constructor(
             launch { fetchVideo(videoId) }
             launch { fetchSubtitles(videoId) }
         }
+    }
+
+    private fun observeActiveItems() {
+        // Luôn check expire trước khi observe
+        viewModelScope.launch {
+            checkAndExpireItemSessionUseCase()
+        }
+
+        observeActiveItemSessionUseCase()
+            .onEach { session ->
+                _hackExperience.value = session?.itemType == "hack_xp" && session.isActive
+                _superExperience.value = session?.itemType == "super_xp" && session.isActive
+                Log.d("DetailedVideoVM", "Active Item: hack=${_hackExperience.value}, super=${_superExperience.value}")
+            }
+            .launchIn(viewModelScope)
     }
 
     private suspend fun fetchVideo(videoId: Int) {
@@ -282,10 +308,13 @@ class DetailedVideoViewModel @Inject constructor(
         viewModelScope.launch {
             _isClaimingReward.value = true
             try {
+                // Trước khi claim, check lại phát nữa cho chắc
+                checkAndExpireItemSessionUseCase()
+                
                 when (val result = claimRewardUseCase(
                     action = "learning-video",
-                    hackExperience = false,
-                    superExperience = false
+                    hackExperience = _hackExperience.value,
+                    superExperience = _superExperience.value
                 )) {
                     is Result.Success -> {
                         val streak = result.data.streak
@@ -310,6 +339,8 @@ class DetailedVideoViewModel @Inject constructor(
                 }
             } catch ( e: Exception) {
                 _uiEvent.send(UiEvent.ShowSnackbar(e.message ?: "Unknown error"))
+            } finally {
+                _isClaimingReward.value = false
             }
         }
     }
@@ -386,18 +417,16 @@ class DetailedVideoViewModel @Inject constructor(
         mediaRecorder = null // Không dùng MediaRecorder nữa
 
         // 2. Start Speech Recognition
-
-        // 2. Start Speech Recognition
         recognitionStartTime = System.currentTimeMillis()
         isRestartingRecognition = false
-        
+
         val rawLang = (videoState.value as? UiState.Success)?.data?.termLanguageCode ?: "en-US"
         val lang = when(rawLang.lowercase()) {
             "en" -> "en-US"
             "vi" -> "vi-VN"
             else -> rawLang
         }
-        
+
         if (speechRecognizer == null) {
             speechRecognizer = SpeechRecognizer.createSpeechRecognizer(application)
         }
