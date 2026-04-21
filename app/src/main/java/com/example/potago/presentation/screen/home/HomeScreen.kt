@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -21,6 +22,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -96,7 +98,9 @@ fun HomeScreen(
                     },
                     modifier = Modifier.padding(horizontal = 20.dp)
                 )
-                RecentWordSetsSection(uiState = homeUiState.recentWordSets, onContinueClick = {navController.navigate(Screen.FlashCard(it.id, it.name))})
+                RecentWordSetsSection(
+                    uiState = homeUiState.recentWordSets,
+                    onContinueClick = { navController.navigate(Screen.FlashCard(it.id, it.name)) })
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
@@ -168,7 +172,7 @@ fun HomeScreen(
                         iconBgColor = Color(0xFFFFEDD5),
                         iconTint = Color(0xFFF97316),
                         modifier = Modifier.weight(1f),
-                        onItemClick = { navController.navigate(Screen.Streak(100))}
+                        onItemClick = { navController.navigate(Screen.Streak(100)) }
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     FeatureBox(
@@ -197,6 +201,7 @@ fun RecentWordSetsSection(
         is UiState.Loading -> {
             WordSetCardShimmer()
         }
+
         is UiState.Success -> {
             val wordSets = uiState.data
             if (wordSets.isNullOrEmpty()) {
@@ -208,6 +213,7 @@ fun RecentWordSetsSection(
                 WordSetPager(wordSets = wordSets, onContinueClick = onContinueClick)
             }
         }
+
         is UiState.Error -> {
             Text(
                 text = uiState.message,
@@ -215,6 +221,7 @@ fun RecentWordSetsSection(
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
             )
         }
+
         else -> {}
     }
 }
@@ -320,7 +327,7 @@ private fun WordSetCard(
             if (!wordSet.description.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(13.dp))
                 Text(
-                    text = wordSet.description?:"Không có mô tả nào...",
+                    text = wordSet.description ?: "Không có mô tả nào...",
                     color = Color(0xFFF0FDF4),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier
@@ -364,6 +371,7 @@ fun RecentSentencesSection(
         is UiState.Loading -> {
             SentenceCardShimmerList()
         }
+
         is UiState.Success -> {
             val sentences = uiState.data
             if (sentences.isNullOrEmpty()) {
@@ -382,6 +390,7 @@ fun RecentSentencesSection(
                 }
             }
         }
+
         is UiState.Error -> {
             Text(
                 text = uiState.message,
@@ -389,6 +398,7 @@ fun RecentSentencesSection(
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
             )
         }
+
         else -> {}
     }
 }
@@ -465,15 +475,18 @@ private fun SentenceCard(sentence: Setence) {
         }
     }
 }
+
 @Preview
 @Composable
-fun SentenceCardShow(){
-    SentenceCard(sentence = Setence(
-        id = 1,
-        term = "Hello",
-        definition = "Xin chào",
-        termLanguageCode = "en"
-    ))
+fun SentenceCardShow() {
+    SentenceCard(
+        sentence = Setence(
+            id = 1,
+            term = "Hello",
+            definition = "Xin chào",
+            termLanguageCode = "en"
+        )
+    )
 }
 
 @Composable
@@ -482,31 +495,32 @@ fun SoundButton(onClick: () -> Unit) {
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.85f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        targetValue = if (isPressed) 0.8f else 1f,
+        animationSpec = tween(100),
         label = "scale"
     )
 
     Box(
         modifier = Modifier
+            .size(44.dp)
+            .clip(CircleShape)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
-            .size(44.dp)
-            .clip(CircleShape)
-            .background(Color(0xFFEFF6FF))
             .clickable(
                 interactionSource = interactionSource,
-                indication = null,
+                indication = ripple(),
                 onClick = onClick
-            ),
+            )
+            .background(Color(0xFFEFF6FF)),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             painter = painterResource(id = R.drawable.ic_sound_home_screen),
             contentDescription = "Play sound",
-            modifier = Modifier.size(24.dp),
+            modifier = Modifier
+                .size(24.dp),
             tint = Color(0xFF3B82F6)
         )
     }
@@ -534,12 +548,16 @@ private fun SentenceCardShimmerList() {
                 ) {
                     Column {
                         ShimmerItem(
-                            modifier = Modifier.fillMaxWidth(0.8f).height(20.dp),
+                            modifier = Modifier
+                                .fillMaxWidth(0.8f)
+                                .height(20.dp),
                             shape = RoundedCornerShape(4.dp)
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         ShimmerItem(
-                            modifier = Modifier.fillMaxWidth(0.6f).height(16.dp),
+                            modifier = Modifier
+                                .fillMaxWidth(0.6f)
+                                .height(16.dp),
                             shape = RoundedCornerShape(4.dp)
                         )
                     }
@@ -658,7 +676,7 @@ private fun TopAppBar(uiState: HomeUiState) {
             Box(
                 modifier = Modifier.weight(1f),
                 contentAlignment = Alignment.CenterStart
-            ){
+            ) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_flag_vietnam),
                     contentDescription = "Language",
@@ -678,7 +696,9 @@ private fun TopAppBar(uiState: HomeUiState) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_water_on),
                     contentDescription = "Streak",
-                    modifier = Modifier.size(24.dp).padding(end = 5.dp),
+                    modifier = Modifier
+                        .size(24.dp)
+                        .padding(end = 5.dp),
                     tint = streakColor
                 )
                 Text(
@@ -700,7 +720,9 @@ private fun TopAppBar(uiState: HomeUiState) {
                         Image(
                             painter = painterResource(id = R.drawable.ic_experience_points),
                             contentDescription = "Experience points",
-                            modifier = Modifier.size(32.dp).padding(end = 8.dp)
+                            modifier = Modifier
+                                .size(32.dp)
+                                .padding(end = 8.dp)
                         )
                         Text(
                             text = experiencePoints.toString(),
@@ -742,14 +764,24 @@ private fun MascotAndBubbleHome(
 
     val mascotTransition = updateTransition(targetState = start, label = "mascot")
     val mascotScale by mascotTransition.animateFloat(
-        transitionSpec = { spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow) },
+        transitionSpec = {
+            spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            )
+        },
         label = "scale"
     ) { if (it) 1f else 0.5f }
     val mascotAlpha by mascotTransition.animateFloat(label = "alpha") { if (it) 1f else 0f }
 
     val bubbleTransition = updateTransition(targetState = showBubble, label = "bubble")
     val bubbleScale by bubbleTransition.animateFloat(
-        transitionSpec = { spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow) },
+        transitionSpec = {
+            spring(
+                dampingRatio = Spring.DampingRatioLowBouncy,
+                stiffness = Spring.StiffnessLow
+            )
+        },
         label = "scale"
     ) { if (it) 1f else 0.4f }
     val bubbleAlpha by bubbleTransition.animateFloat(label = "alpha") { if (it) 1f else 0f }
@@ -763,8 +795,8 @@ private fun MascotAndBubbleHome(
     ) {
         Image(
             painter = painterResource(
-                id = if (isSick) R.drawable.ic_sick_mascot_home_screen 
-                     else R.drawable.ic_thinking_mascot_home_screen
+                id = if (isSick) R.drawable.ic_sick_mascot_home_screen
+                else R.drawable.ic_thinking_mascot_home_screen
             ),
             contentDescription = "Mascot",
             modifier = Modifier
@@ -784,14 +816,21 @@ private fun MascotAndBubbleHome(
                     alpha = bubbleAlpha
                     translationY = bubbleOffsetY
                 }
-                .background(Color.White, RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp, bottomStart = 16.dp))
-                .border(1.2.dp, Color(0xFFE5E7EB), RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp, bottomStart = 16.dp))
+                .background(
+                    Color.White,
+                    RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp, bottomStart = 16.dp)
+                )
+                .border(
+                    1.2.dp,
+                    Color(0xFFE5E7EB),
+                    RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp, bottomStart = 16.dp)
+                )
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .weight(1f)
         ) {
             Text(
                 text = if (isSick) "Xin chào, chủ nhân ! Tôi rất ưa tắm, hãy làm gì đó để cứu tui!"
-                       else "Xin chào, chủ nhân! Tôi rất ưa tắm, hãy nhớ tắm rửa cho tôi mỗi ngày!",
+                else "Xin chào, chủ nhân! Tôi rất ưa tắm, hãy nhớ tắm rửa cho tôi mỗi ngày!",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color(0xFF4B5563)
             )
