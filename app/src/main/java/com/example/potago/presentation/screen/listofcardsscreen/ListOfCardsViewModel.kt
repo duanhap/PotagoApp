@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.potago.domain.model.Word
 import com.example.potago.domain.model.Result
-import com.example.potago.domain.usecase.GetFlashcardsUseCase
+import com.example.potago.domain.usecase.GetWordsByWordSetIdUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,25 +26,21 @@ data class ListOfCardsUiState(
 
 @HiltViewModel
 class ListOfCardsViewModel @Inject constructor(
-    private val getFlashcardsUseCase: GetFlashcardsUseCase
+    private val getWordsByWordSetIdUseCase: GetWordsByWordSetIdUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ListOfCardsUiState())
     val uiState: StateFlow<ListOfCardsUiState> = _uiState.asStateFlow()
 
-    private var currentWordSetId: Long = 0L
-
     fun loadCards(wordSetId: Long) {
-        currentWordSetId = wordSetId
         if (_uiState.value.cards.isNotEmpty()) return // Already loaded
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            // Lấy tất cả card (có thể thay đổi endpoint/hàm nếu có getWordsByWordSetId)
-            when (val result = getFlashcardsUseCase(wordSetId, "REVIEW", size = 100)) {
+            when (val result = getWordsByWordSetIdUseCase(wordSetId)) {
                 is Result.Success -> {
                     _uiState.value = _uiState.value.copy(
-                        cards = result.data.words,
+                        cards = result.data,
                         isLoading = false
                     )
                 }
