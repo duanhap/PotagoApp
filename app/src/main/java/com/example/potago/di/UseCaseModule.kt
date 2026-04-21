@@ -110,13 +110,13 @@ object UseCaseModule {
     fun provideGetTodayStreakDateUseCase(
         repository: StreakRepository
     ): GetTodayStreakDateUseCase = GetTodayStreakDateUseCase(repository)
-    
+
     @Provides
     @Singleton
     fun provideGetWordSetByIdUseCase(
         repository: WordSetRepository
     ): GetWordSetByIdUseCase = GetWordSetByIdUseCase(repository)
-    
+
     @Provides
     @Singleton
     fun provideUpdateWordSetUseCase(
@@ -157,6 +157,17 @@ object UseCaseModule {
         @ApplicationContext context: Context
     ): UploadAvatarUseCase = UploadAvatarUseCase(userRepository, context)
 
+    @Provides
+    @Singleton
+    fun provideGetRankingTopUseCase(
+        repository: UserRepository
+    ): GetRankingTopUseCase = GetRankingTopUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideGetMyRankingUseCase(
+        repository: UserRepository
+    ): GetMyRankingUseCase = GetMyRankingUseCase(repository)
 
     @Provides
     @Singleton

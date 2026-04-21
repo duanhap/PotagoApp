@@ -1,5 +1,6 @@
 package com.example.potago.data.remote.api
 
+import com.example.potago.data.remote.dto.RankDto
 import com.example.potago.data.remote.dto.RegisterRequest
 import com.example.potago.data.remote.dto.SettingDto
 import com.example.potago.data.remote.dto.UpdateProfileRequest
@@ -41,4 +42,10 @@ interface UserApiService {
     suspend fun saveUserSettings(
         @Body request: UpdateUserSettingsRequest
     ): ApiResponse<SettingDto>
+
+    @GET("/api/users/ranking/top")
+    suspend fun getRankingTop(): ApiResponse<List<UserDto>>
+
+    @GET("/api/users/ranking/me")
+    suspend fun getMyRanking(): ApiResponse<RankDto>
 }
