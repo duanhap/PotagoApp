@@ -3,6 +3,8 @@ package com.example.potago.presentation.screen.potato
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.potago.domain.usecase.ObserveStreakUseCase
+import com.example.potago.domain.usecase.ObserveTodayStreakDateUseCase
+import com.example.potago.domain.usecase.ObserveUserSettingsUseCase
 import com.example.potago.domain.usecase.ObserveUserUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -16,13 +18,19 @@ import kotlinx.coroutines.flow.update
 data class PotatoUiState(
     val xp: Int = 0,
     val createdAtText: String = "",
-    val streakCount: Int = 0
-)
+    val streakCount: Int = 0,
+    val todayXp: Int = 0,
+    val goalXp: Int = 0
+) {
+    val progress: Float get() = if (goalXp > 0) (todayXp.toFloat() / goalXp).coerceIn(0f, 1f) else 0f
+}
 
 @HiltViewModel
 class PotatoViewModel @Inject constructor(
     private val observeUserUseCase: ObserveUserUseCase,
-    private val observeStreakUseCase: ObserveStreakUseCase
+    private val observeStreakUseCase: ObserveStreakUseCase,
+    private val observeTodayStreakDateUseCase: ObserveTodayStreakDateUseCase,
+    private val observeUserSettingsUseCase: ObserveUserSettingsUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PotatoUiState())
@@ -35,13 +43,17 @@ class PotatoViewModel @Inject constructor(
     private fun observeData() {
         combine(
             observeUserUseCase(),
-            observeStreakUseCase()
-        ) { user, streak ->
+            observeStreakUseCase(),
+            observeTodayStreakDateUseCase(),
+            observeUserSettingsUseCase()
+        ) { user, streak, todayStreak, settings ->
             _uiState.update { state ->
                 state.copy(
                     xp = user?.experiencePoints ?: 0,
                     createdAtText = formatCreatedAt(user?.createdAt),
-                    streakCount = streak?.lengthStreak ?: 0
+                    streakCount = streak?.lengthStreak ?: 0,
+                    todayXp = todayStreak?.experiencePointsEarned ?: 0,
+                    goalXp = settings?.experienceGoal ?: 0
                 )
             }
         }.launchIn(viewModelScope)

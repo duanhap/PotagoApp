@@ -37,6 +37,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.CircularProgressIndicator
+import com.example.potago.presentation.screen.setting.BackButton
 
 // ─── Dữ liệu lựa chọn XP ────────────────────────────────────────────────────
 private val xpOptions = listOf(15, 30, 60, 120, 240)
@@ -70,9 +71,11 @@ fun GoalScreen(
     GoalScreenContent(
         navController = navController,
         isSaving = uiState.isSaving,
+        isSaveButtonEnabled = uiState.isSaveButtonEnabled,
         snackbarHostState = snackbarHostState,
         selectedXpFromVm = uiState.selectedXp,
         isLoadingSettings = uiState.isLoadingSettings,
+        onXpSelected = viewModel::onXpSelected,
         onSaveGoal = { xp -> viewModel.onSaveGoal(xp) }
     )
 }
@@ -81,9 +84,11 @@ fun GoalScreen(
 private fun GoalScreenContent(
     navController: NavController,
     isSaving: Boolean,
+    isSaveButtonEnabled: Boolean,
     snackbarHostState: SnackbarHostState,
     selectedXpFromVm: Int?,
     isLoadingSettings: Boolean,
+    onXpSelected: (Int) -> Unit,
     onSaveGoal: (Int) -> Unit
 ) {
     var selectedXp by remember { mutableStateOf(selectedXpFromVm) }
@@ -132,6 +137,7 @@ private fun GoalScreenContent(
                     onToggle = { isDropdownOpen = !isDropdownOpen },
                     onSelect = { xp ->
                         selectedXp = xp
+                        onXpSelected(xp)
                         isDropdownOpen = false
                     }
                 )
@@ -149,7 +155,7 @@ private fun GoalScreenContent(
 
                 BigPotagoButton(
                     text = "LƯU",
-                    enabled = !isSaving && !isLoadingSettings && selectedXp != null,
+                    enabled = !isSaving && !isLoadingSettings && selectedXp != null && isSaveButtonEnabled,
                     isLoading = isSaving,
                     onClick = { selectedXp?.let(onSaveGoal) }
                 )
@@ -299,7 +305,7 @@ private fun MascotWithTooltip() {
         Image(
             painter = painterResource(id = R.drawable.ic_mascot_happy),
             contentDescription = "Mascot",
-            modifier = Modifier.size(100.dp)
+            modifier = Modifier.size(130.dp)
         )
 
         Spacer(modifier = Modifier.width(12.dp))
@@ -307,6 +313,7 @@ private fun MascotWithTooltip() {
         // Speech bubble tooltip
         Box(
             modifier = Modifier
+                .offset(y=-40.dp)
                 .weight(1f)
                 .border(
                     width = 1.dp,
@@ -333,7 +340,6 @@ private fun MascotWithTooltip() {
                 text = "Điểm này được xét để đạt được streak mỗi ngày. Lựa sức mình nha!",
                 style = MaterialTheme.typography.bodyLarge.copy(
                     color = Color(0xFF4B5563),
-                    fontWeight = FontWeight.Bold
                 )
             )
         }
@@ -349,42 +355,40 @@ private fun GoalTopBar(onBackClick :() -> Unit) {
         modifier = Modifier.fillMaxWidth(),
         tonalElevation = 3.dp,
         shadowElevation = 4.dp,
-        color = Color.White
+        color = Color(0xFFFFFFFF)
     ) {
-        Row(
+
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
-            GoalBackButton(onClick = onBackClick)
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = "Mục tiêu",
-                style = MaterialTheme.typography.displayMedium
-            )
-        }
-    }
-}
 
-@Composable
-private fun GoalBackButton(onClick: () -> Unit) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.85f else 1f,
-        label = "back_scale"
-    )
-    IconButton(
-        onClick = onClick,
-        interactionSource = interactionSource
-    ) {
-        Icon(
-            painter = painterResource(id = R.drawable.ic_back),
-            contentDescription = "Back",
-            modifier = Modifier.scale(scale)
-                .size(20.dp)
-        )
+            // ✅ Row chỉ còn Text → quyết định height
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(modifier = Modifier.width(60.dp)) // chừa chỗ cho back button
+                Text(
+                    text = "Mục tiêu",
+                    style = MaterialTheme.typography.displayMedium,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            // 🔥 BackButton overlay
+            Box(
+                modifier = Modifier.matchParentSize()
+            ) {
+                BackButton(
+                    onClick = onBackClick,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .wrapContentSize()
+                )
+            }
+        }
     }
 }
 
@@ -399,9 +403,11 @@ fun GoalScreenPreview() {
         GoalScreenContent(
             navController = NavController(LocalContext.current),
             isSaving = false,
+            isSaveButtonEnabled = false,
             snackbarHostState = snackbarHostState,
             selectedXpFromVm = 15,
             isLoadingSettings = false,
+            onXpSelected = {},
             onSaveGoal = {}
         )
     }

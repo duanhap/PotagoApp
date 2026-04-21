@@ -117,6 +117,10 @@ fun DetailedVideoScreen(
     val spokenTranscript by viewModel.spokenTranscript.collectAsState()
     val recordState by viewModel.recordState.collectAsState()
 
+    // Bonus XP States
+    val hackExperience by viewModel.hackExperience.collectAsState()
+    val superExperience by viewModel.superExperience.collectAsState()
+
     // Permission launcher
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -282,9 +286,9 @@ fun DetailedVideoScreen(
                             SubtitleList(
                                 subtitles = subtitles,
                                 currentTimeMs = currentTimeMs,
-                                onSubtitleClick = { 
+                                onSubtitleClick = {
                                     viewModel.disableRepeatMode()
-                                    onSeek(it) 
+                                    onSeek(it)
                                 }
                             )
                         } else {
@@ -495,7 +499,9 @@ fun DetailedVideoScreen(
             // Reward Popup
             if (showRewardPopup) {
                 RewardPopup(
-                    onDismiss = { viewModel.onRewardDismissed()}
+                    onDismiss = { viewModel.onRewardDismissed() },
+                    hackExperience = hackExperience,
+                    superExperience = superExperience
                 )
             }
         }
@@ -897,22 +903,51 @@ fun CustomPopupButton(
 
 @Composable
 fun RewardPopup(
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    hackExperience: Boolean = false,
+    superExperience: Boolean = false
 ) {
-    val infiniteTransition = rememberInfiniteTransition()
+    val infiniteTransition = rememberInfiniteTransition(label = "reward")
 
     val rotation by infiniteTransition.animateFloat(
         initialValue = -5f,
         targetValue = 5f,
         animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = 800,
-                easing = LinearEasing
-            ),
+            animation = tween(durationMillis = 800, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
-        )
+        ),
+        label = "rotation"
     )
 
+    // Tính multiplier và XP cuối
+    val multiplier = when {
+        hackExperience -> 3
+        superExperience -> 2
+        else -> 1
+    }
+    val baseXp = 15
+    val finalXp = baseXp * multiplier
+    val hasBonus = multiplier > 1
+    val multiplierLabel = "x$multiplier"
+
+    // Animation states
+    var showTag by remember { mutableStateOf(false) }
+    var showFinalXp by remember { mutableStateOf(false) }
+
+    LaunchedEffect(hasBonus) {
+        if (hasBonus) {
+            delay(800)
+            showTag = true
+            delay(300)
+            showFinalXp = true
+        }
+    }
+
+    val tagScale by animateFloatAsState(
+        targetValue = if (showTag) 1f else 0f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "tagScale"
+    )
 
     Box(
         modifier = Modifier
@@ -921,9 +956,7 @@ fun RewardPopup(
             .clickable(enabled = false) {},
         contentAlignment = Alignment.BottomCenter
     ) {
-        Box(
-            contentAlignment = Alignment.BottomCenter
-        ) {
+        Box(contentAlignment = Alignment.BottomCenter) {
             // Background Image
             Image(
                 painter = painterResource(id = R.drawable.ic_record_test_mode_reward),
@@ -940,10 +973,10 @@ fun RewardPopup(
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
                 Spacer(modifier = Modifier.width(10.dp))
+
                 // White Box Content
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth().padding(vertical = 50.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 50.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(
@@ -951,26 +984,60 @@ fun RewardPopup(
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Experience Points
+                        // Experience Points với bonus animation
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "15",
-                                style = MaterialTheme.typography.displayLarge.copy(
-                                    color = Color(0xFFA16207),
-                                    fontSize = 42.sp
-                                )
-                            )
+                            Box(contentAlignment = Alignment.TopEnd) {
+                                // Số XP với AnimatedContent
+                                AnimatedContent(
+                                    targetState = if (hasBonus && showFinalXp) finalXp else baseXp,
+                                    transitionSpec = {
+                                        (slideInVertically { it } + fadeIn()).togetherWith(
+                                            slideOutVertically { -it } + fadeOut()
+                                        )
+                                    },
+                                    label = "xpNumber"
+                                ) { xp ->
+                                    Text(
+                                        text = "$xp",
+                                        style = MaterialTheme.typography.displayLarge.copy(
+                                            color = Color(0xFFA16207),
+                                            fontSize = 42.sp
+                                        )
+                                    )
+                                }
+
+                                // Tag x2 / x3 nảy ra ở góc trên phải
+                                if (hasBonus) {
+                                    Box(
+                                        modifier = Modifier
+                                            .offset(x = 14.dp, y = (-8).dp)
+                                            .graphicsLayer { scaleX = tagScale; scaleY = tagScale }
+                                            .background(Color(0xFFEF4444), RoundedCornerShape(6.dp))
+                                            .padding(horizontal = 5.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = multiplierLabel,
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 11.sp
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+
                             Spacer(modifier = Modifier.width(8.dp))
                             Image(
                                 painter = painterResource(id = R.drawable.ic_experience_points),
                                 contentDescription = null,
                                 modifier = Modifier
                                     .size(50.dp)
-                                    .graphicsLayer { rotationZ = -45f +rotation}
+                                    .graphicsLayer { rotationZ = -45f + rotation }
                             )
                         }
 
-                        // Diamond Points
+                        // Diamond Points (giữ nguyên)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = "20",
@@ -985,7 +1052,7 @@ fun RewardPopup(
                                 contentDescription = null,
                                 modifier = Modifier
                                     .size(50.dp)
-                                    .graphicsLayer { rotationZ = 21f +rotation}
+                                    .graphicsLayer { rotationZ = 21f + rotation }
                             )
                         }
                     }
@@ -993,7 +1060,6 @@ fun RewardPopup(
 
                 Spacer(modifier = Modifier.height(60.dp))
 
-                // Action Button
                 CustomPopupButton(
                     text = "NHẬN",
                     buttonColor = Color(0xFF58CC02),
@@ -1322,5 +1388,5 @@ private fun BackButton(onClick: () -> Unit) {
 @Preview (showBackground = true)
 @Composable
 fun RewardPopupShow(){
-    RewardPopup(onDismiss = {})
+    RewardPopup(onDismiss = {}, hackExperience = false, superExperience = true)
 }

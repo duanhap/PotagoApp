@@ -1,10 +1,13 @@
 package com.example.potago.presentation.screen.createwordset
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,10 +16,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
@@ -24,12 +30,17 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.example.potago.R
+import com.example.potago.presentation.screen.myvideo.AddButton
+import com.example.potago.presentation.screen.setting.BackButton
 import com.example.potago.presentation.ui.theme.Nunito
+import com.example.potago.presentation.ui.theme.PotagoTheme
 import kotlinx.coroutines.flow.collectLatest
 
 private val GreenLight = Color(0xFFD7FFA4)
@@ -124,30 +135,42 @@ fun CreateWordSetScreen(
                         onDescriptionChange = { viewModel.onCardDescriptionChange(card.id, it) },
                         onDelete = { viewModel.deleteOrClearCard(card.id) }
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
                 }
             }
 
             // ── FAB add card ───────────────────────────────────────────
             Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 24.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .background(GreenPrimary)
-                        .clickable { viewModel.addCard() },
-                    contentAlignment = Alignment.Center
+                modifier = Modifier.align(Alignment.BottomCenter)
+            ){
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shadowElevation = 20.dp,
+                    color = Color.White
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_add),
-                        contentDescription = "Thêm thẻ",
-                        tint = Color.White,
-                        modifier = Modifier.size(28.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Divider(thickness = 1.dp, color = Color(0xFFE5E7EB), modifier = Modifier.align(Alignment.TopCenter).offset(y=-10.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(CircleShape)
+                                .background(GreenPrimary)
+                                .clickable { viewModel.addCard() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_add),
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
                 }
             }
 
@@ -187,34 +210,40 @@ private fun CreateWordSetTopBar(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = Color(0xE6FFFFFF),
-        shadowElevation = 2.dp
+        tonalElevation = 3.dp,
+        shadowElevation = 4.dp,
+        color = Color(0xFFFFFFFF)
     ) {
-        Row(
+
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(59.dp)
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
-            // Close (X) button — rotated + icon
-            IconButton(onClick = onClose) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_add),
-                    contentDescription = "Đóng",
-                    modifier = Modifier
-                        .size(24.dp)
-                        .rotate(45f),
-                    tint = Color.Black
+
+            // ✅ Row chỉ còn Text → quyết định height
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(modifier = Modifier.width(60.dp)) // chừa chỗ cho back button
+                Text(
+                    text = "Tạo học phần",
+                    style = MaterialTheme.typography.displayMedium,
+                    modifier = Modifier.weight(1f),
                 )
             }
-            Text(
-                text = "Tạo học phần",
-                fontFamily = Nunito,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 32.sp,
-                modifier = Modifier.weight(1f)
-            )
+
+            Box(
+                modifier = Modifier.matchParentSize()
+            ) {
+                BackButton(
+                    onClick = onClose,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .wrapContentSize()
+                )
+            }
             if (isSaving) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(28.dp),
@@ -222,16 +251,43 @@ private fun CreateWordSetTopBar(
                     strokeWidth = 2.dp
                 )
             } else {
-                IconButton(onClick = onSave) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_check_green_circle),
-                        contentDescription = "Lưu",
-                        modifier = Modifier.size(36.dp),
-                        tint = Color.Unspecified
+                Box(
+                    modifier = Modifier.matchParentSize()
+                ) {
+                    SaveButton(
+                        onSave,
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .wrapContentSize()
                     )
                 }
             }
+
         }
+    }
+}
+@Composable fun SaveButton(
+    onClick: () -> Unit,
+    modifier: Modifier
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.9f else 1f,
+        label = "icon_scale"
+    )
+
+    IconButton(
+        onClick = onClick,
+        interactionSource = interactionSource,
+        modifier = modifier
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.ic_check_green_circle),
+            contentDescription = "Add",
+            modifier = Modifier.scale(scale),
+        )
     }
 }
 
@@ -429,15 +485,15 @@ private fun CardField(
             ),
             cursorBrush = SolidColor(GreenPrimary),
             decorationBox = { inner ->
-                if (value.isEmpty()) {
-                    Text(
-                        text = label,
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = TextHint
-                    )
-                }
+//                if (value.isEmpty()) {
+//                    Text(
+//                        text = label,
+//                        fontFamily = Nunito,
+//                        fontWeight = FontWeight.Bold,
+//                        fontSize = 16.sp,
+//                        color = TextHint
+//                    )
+//                }
                 inner()
             },
             modifier = Modifier.fillMaxWidth()
@@ -489,41 +545,21 @@ private fun ConfirmBottomSheet(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Mascot + bubble row
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+                    .padding(horizontal = 10.dp)
             ) {
-                // Mascot with ? overlay
-                Box(
-                    modifier = Modifier.width(130.dp),
-                    contentAlignment = Alignment.TopStart
-                ) {
-                    Image(
-                        painter = painterResource(R.drawable.ic_looking_mascot),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(width = 112.dp, height = 120.dp)
-                            .padding(start = 4.dp),
-                        contentScale = ContentScale.Fit
-                    )
-                    Text(
-                        text = "?",
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 52.sp,
-                        color = Color(0xFF4B4B4B),
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(end = 4.dp)
-                    )
-                }
-
-                // Speech bubble
+                Image(
+                    painter = painterResource(R.drawable.asking_mascot_manage_video_screen),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .scale(0.8f)
+                )
                 Surface(
                     modifier = Modifier
-                        .weight(1f)
-                        .padding(top = 10.dp, start = 4.dp),
+                        .padding(top = 70.dp),
                     shape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp, bottomStart = 16.dp),
                     color = Color.White,
                     border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)),
@@ -531,17 +567,16 @@ private fun ConfirmBottomSheet(
                 ) {
                     Text(
                         text = message,
-                        fontFamily = Nunito,
+                        style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        lineHeight = 24.sp,
                         color = Color(0xFF4B5563),
-                        modifier = Modifier.padding(horizontal = 15.dp, vertical = 16.dp)
+                        lineHeight = 24.sp,
+                        modifier = Modifier.padding(horizontal = 13.dp, vertical = 14.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Buttons row
             Row(
@@ -617,4 +652,24 @@ private fun ConfirmBottomSheet(
             }
         }
     }
+}
+@Preview(showBackground = true)
+@Composable
+fun ConfirmBottomSheetPreview() {
+    ConfirmBottomSheet(
+        message = "Xác nhận hủy chứ !?",
+        confirmText = "Xác nhận",
+        cancelText = "Tiếp tục",
+        onConfirm = {  },
+        onCancel = { }
+    )
+}
+@Preview(showBackground = true)
+@Composable
+fun CardFieldPreview() {
+    CardField(
+        value = "",
+        onValueChange = {},
+        label = "Thuật ngữ"
+    )
 }

@@ -255,7 +255,7 @@ fun ShopScreen(
 
                 ShopSection("Bảo vệ chuỗi", streakItems, uiState.diamond, onShopItemClick)
                 ShopSection("Thời gian siêu cấp", superXpItems, uiState.diamond, onShopItemClick)
-                ShopSection("Hack KN", hackKnItems, uiState.diamond, onShopItemClick)
+                //ShopSection("Hack KN", hackKnItems, uiState.diamond, onShopItemClick)
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
