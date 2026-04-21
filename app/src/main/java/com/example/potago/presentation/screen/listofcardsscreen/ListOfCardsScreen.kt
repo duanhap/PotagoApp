@@ -62,7 +62,7 @@ fun ListOfCardsScreen(
         onVolumeClick = { /* Handle TTS / Audio */ },
         onEditClick = { word -> navController.navigate(Screen.EditCard(word.id)) },
         onDeleteClick = { /* Handle Delete Card */ },
-        onAddClick = { /* Handle Add Card Navigation */ }
+        onAddClick = { navController.navigate(Screen.AddCard(wordSetId)) }
     )
 }
 
