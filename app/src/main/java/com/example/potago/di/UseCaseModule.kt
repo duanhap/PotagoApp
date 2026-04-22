@@ -5,6 +5,8 @@ import com.example.potago.domain.usecase.*
 import com.example.potago.domain.repository.RewardRepository
 import com.example.potago.domain.repository.ItemRepository
 import com.example.potago.domain.repository.ItemSessionRepository
+import com.example.potago.domain.repository.SentencePatternRepository
+import com.example.potago.domain.repository.SentenceRepository
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.example.potago.domain.repository.StreakRepository
@@ -203,4 +205,16 @@ object UseCaseModule {
     fun provideDeleteWordUseCase(
         repository: WordSetRepository
     ): DeleteWordUseCase = DeleteWordUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideGetSentencePatternsUseCase(
+        repository: SentencePatternRepository
+    ): GetSentencePatternsUseCase = GetSentencePatternsUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideSaveSubtitleToPatternUseCase(
+        repository: SentenceRepository
+    ): SaveSubtitleToPatternUseCase = SaveSubtitleToPatternUseCase(repository)
 }

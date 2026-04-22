@@ -1,7 +1,10 @@
 package com.example.potago.data.remote.api
 
 import com.example.potago.data.remote.dto.SentenceDto
+import com.example.potago.data.remote.dto.CreateSingleSentenceRequest
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.POST
 import retrofit2.http.Query
 
 interface SentenceApiService {
@@ -22,4 +25,9 @@ interface SentenceApiService {
     suspend fun getRecentSentences(
         @Query("limit") limit: Int = 3
     ): ApiResponse<List<SentenceDto>>
+
+    @POST("/api/sentences")
+    suspend fun createSentence(
+        @Body request: CreateSingleSentenceRequest
+    ): ApiResponse<SentenceDto>
 }

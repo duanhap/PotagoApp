@@ -16,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -123,12 +124,38 @@ fun MatchResultScreen(
         },
         containerColor = Color.White
     ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding).fillMaxSize())
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
         ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().alpha(0f),
+                tonalElevation = 3.dp,
+                shadowElevation = 4.dp,
+                color = Color(0xFFFFFFFF)
+            ) {
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                ) {
+
+                    // ✅ Row chỉ còn Text → quyết định height
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Kết quả",
+                            style = MaterialTheme.typography.displayMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
 
             // ── Hero: mountain + mascot + time ──────────────────────────
             MountainAndMascot(completedTime)
@@ -362,7 +389,7 @@ fun MatchResultScreen(
                     }
                 )
             }
-            Spacer(modifier = Modifier.weight(0.5f))
+            Spacer(modifier = Modifier.weight(2f))
         }
     }
 }
