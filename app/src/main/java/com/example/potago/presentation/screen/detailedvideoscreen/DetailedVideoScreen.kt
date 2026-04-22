@@ -83,6 +83,7 @@ import androidx.navigation.NavController
 import com.example.potago.R
 import com.example.potago.domain.model.Subtitle
 import com.example.potago.domain.model.Video
+import com.example.potago.presentation.navigation.Screen
 import com.example.potago.presentation.screen.UiEvent
 import com.example.potago.presentation.screen.UiState
 import kotlinx.coroutines.delay
@@ -121,6 +122,15 @@ fun DetailedVideoScreen(
     val hackExperience by viewModel.hackExperience.collectAsState()
     val superExperience by viewModel.superExperience.collectAsState()
 
+    // Save Subtitle States
+    val saveSubtitleDraft by viewModel.saveSubtitleDraft.collectAsState()
+    val showPatternPicker by viewModel.showPatternPicker.collectAsState()
+    val sentencePatterns by viewModel.sentencePatterns.collectAsState()
+    val isPatternsLoading by viewModel.isPatternsLoading.collectAsState()
+    val isSavingToPattern by viewModel.isSavingToPattern.collectAsState()
+    val videoTermLangCode = (videoState as? UiState.Success)?.data?.termLanguageCode ?: ""
+    val videoDefLangCode = (videoState as? UiState.Success)?.data?.definitionLanguageCode ?: ""
+
     // Permission launcher
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -151,6 +161,8 @@ fun DetailedVideoScreen(
         }
     }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+
     // Lắng nghe sự kiện từ ViewModel (như yêu cầu pause video khi thu âm)
     LaunchedEffect(Unit) {
         launch {
@@ -159,9 +171,13 @@ fun DetailedVideoScreen(
                     event is UiEvent.ShowSnackbar && event.message == "Đang lắng nghe..." -> {
                         pauseVideo()
                     }
+                    event is UiEvent.ShowSnackbar -> {
+                        snackbarHostState.showSnackbar(event.message)
+                    }
                     event is UiEvent.Navigate -> {
                         navController.navigate(event.route)
                     }
+
                 }
             }
         }
@@ -229,7 +245,8 @@ fun DetailedVideoScreen(
             TopAppBar(
                 onBackClick = { navController.popBackStack() }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding))
 
@@ -289,7 +306,8 @@ fun DetailedVideoScreen(
                                 onSubtitleClick = {
                                     viewModel.disableRepeatMode()
                                     onSeek(it)
-                                }
+                                },
+                                onSaveClick = { index -> viewModel.onSaveSubtitleClick(index) }
                             )
                         } else {
                             SingleSubtitleView(
@@ -299,6 +317,7 @@ fun DetailedVideoScreen(
                                 isQuestionMode = isQuestionMode,
                                 onToggleRepeat = { viewModel.toggleRepeatMode() },
                                 onToggleQuestion = { viewModel.toggleQuestionMode() },
+                                onSaveClick = { index -> viewModel.onSaveSubtitleClick(index) },
                                 userInput = userInput,
                                 onUserInputChange = { viewModel.onUserInputChange(it) },
                                 writingProgress = writingProgress,
@@ -504,6 +523,40 @@ fun DetailedVideoScreen(
                     superExperience = superExperience
                 )
             }
+
+            // ── Save Subtitle Flow ──────────────────────────────────────────
+            // Bước 1: chỉnh sửa câu
+            saveSubtitleDraft?.let { draft ->
+                if (!showPatternPicker) {
+                    EditSentenceBottomSheet(
+                        term = draft.term,
+                        definition = draft.definition,
+                        onTermChange = { viewModel.onSaveDraftTermChange(it) },
+                        onDefinitionChange = { viewModel.onSaveDraftDefinitionChange(it) },
+                        onDismiss = { viewModel.dismissSaveDraft() },
+                        onContinue = { viewModel.proceedToPatternPicker() }
+                    )
+                }
+            }
+
+            // Bước 2: chọn pattern
+            if (showPatternPicker) {
+                PatternPickerBottomSheet(
+                    patterns = sentencePatterns,
+                    isLoading = isPatternsLoading,
+                    isSaving = isSavingToPattern,
+                    videoTermLangCode = videoTermLangCode,
+                    onDismiss = { viewModel.dismissPatternPicker() },
+                    onConfirm = { viewModel.saveToPatterns(it) },
+                    onCreatePattern = {
+                        viewModel.dismissSaveFlow()
+                        navController.navigate(
+                            Screen.CreateSentencePattern.route +
+                                "?termLang=${videoTermLangCode}&defLang=${videoDefLangCode}"
+                        )
+                    }
+                )
+            }
         }
     }
 }
@@ -667,6 +720,7 @@ fun SingleSubtitleView(
     onToggleRepeat: () -> Unit,
     onToggleQuestion: () -> Unit,
     onClaimReward : () -> Unit,
+    onSaveClick: (Int) -> Unit = {},
     userInput: String,
     onUserInputChange: (String) -> Unit,
     writingProgress: Int,
@@ -760,7 +814,7 @@ fun SingleSubtitleView(
                                             painter = painterResource(id = R.drawable.ic_save_detailed_video_screen),
                                             contentDescription = "Save",
                                             tint = Color.Gray,
-                                            modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFF3F4F6)).padding(8.dp).clickable { /* TODO */ }
+                                            modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFF3F4F6)).padding(8.dp).clickable { onSaveClick(targetIndex) }
                                         )
                                     }
 
@@ -1334,22 +1388,22 @@ fun TabItem(text: String, iconRes: Int, isSelected: Boolean, onClick: () -> Unit
 }
 
 @Composable
-fun SubtitleList(subtitles: List<Subtitle>, currentTimeMs: Long, onSubtitleClick: (Int) -> Unit) {
+fun SubtitleList(subtitles: List<Subtitle>, currentTimeMs: Long, onSubtitleClick: (Int) -> Unit, onSaveClick: (Int) -> Unit = {}) {
     val listState = rememberLazyListState()
     val activeIndex = remember(currentTimeMs, subtitles) { subtitles.indexOfLast { (it.startTime?.toLong() ?: 0L) <= currentTimeMs } }
     LaunchedEffect(activeIndex) { if (activeIndex != -1) listState.animateScrollToItem(activeIndex, scrollOffset = -200) }
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-        itemsIndexed(subtitles) { index, subtitle -> SubtitleItem(subtitle = subtitle, isHighlighted = index == activeIndex, onClick = { onSubtitleClick(subtitle.startTime ?: 0) }) }
+        itemsIndexed(subtitles) { index, subtitle -> SubtitleItem(subtitle = subtitle, isHighlighted = index == activeIndex, onClick = { onSubtitleClick(subtitle.startTime ?: 0) }, onSaveClick = { onSaveClick(index) }) }
     }
 }
 
 @Composable
-fun SubtitleItem(subtitle: Subtitle, isHighlighted: Boolean, onClick: () -> Unit) {
+fun SubtitleItem(subtitle: Subtitle, isHighlighted: Boolean, onClick: () -> Unit, onSaveClick: () -> Unit = {}) {
     val backgroundColor by animateColorAsState(targetValue = if (isHighlighted) Color(0xFFD6FFA3) else Color.White, label = "bgColor")
     Column(modifier = Modifier.fillMaxWidth().background(backgroundColor).clickable { onClick() }.drawBehind { val strokeWidth = 1.dp.toPx(); drawLine(color = Color(0xFFEEEEEE), start = Offset(0f, size.height - strokeWidth / 2), end = Offset(size.width, size.height - strokeWidth / 2), strokeWidth = strokeWidth) }.padding(16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFFF3F4F6)).padding(horizontal = 8.dp, vertical = 4.dp)) { Text(text = formatTime(subtitle.startTime ?: 0), style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)) }
-            Icon(painter = painterResource(id = R.drawable.ic_save_detailed_video_screen), contentDescription = "Save", tint = Color.Gray, modifier = Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFF3F4F6)).padding(6.dp))
+            Icon(painter = painterResource(id = R.drawable.ic_save_detailed_video_screen), contentDescription = "Save", tint = Color.Gray, modifier = Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFF3F4F6)).padding(6.dp).clickable { onSaveClick() })
         }
         Spacer(modifier = Modifier.height(8.dp))
         Text(text = subtitle.content ?: "", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 18.sp))

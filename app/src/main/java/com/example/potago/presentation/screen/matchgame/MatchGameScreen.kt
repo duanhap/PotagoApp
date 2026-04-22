@@ -24,6 +24,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
@@ -109,10 +110,10 @@ fun MatchGameScreen(
         },
         containerColor = Color.White
     ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding))
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
         ) {
             when {
                 uiState.isLoading -> CircularProgressIndicator(
@@ -126,6 +127,10 @@ fun MatchGameScreen(
                 )
                 else -> {
                     Column(modifier = Modifier.fillMaxSize()) {
+                        MatchGameTopBar(
+                            onBackClick = viewModel::showExitDialog,
+                            modifier = Modifier.alpha(0f)
+                        )
                         Spacer(modifier = Modifier.weight(1f))
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(3),
@@ -149,6 +154,7 @@ fun MatchGameScreen(
                                 .padding(horizontal = 16.dp),
                             elapsedSeconds = uiState.elapsedSeconds,
                         )
+                        Spacer(modifier = Modifier.weight(0.5f))
                     }
                 }
             }
@@ -165,9 +171,10 @@ fun MatchGameScreen(
 @Composable
 private fun MatchGameTopBar(
     onBackClick: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         tonalElevation = 3.dp,
         shadowElevation = 4.dp,
         color = Color(0xFFFFFFFF)

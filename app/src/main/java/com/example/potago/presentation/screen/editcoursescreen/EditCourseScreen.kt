@@ -37,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -72,12 +73,13 @@ fun EditCourseScreen(
     Scaffold(
         topBar = {
             AppTopBar(
-                title = "Chỉnh sửa học phần",
+                title = "Chỉnh sửa",
                 onBackClick = { navController.popBackStack() },
             )
         }
     ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+        Box(modifier = Modifier.padding(innerPadding))
+        Box(modifier = Modifier.fillMaxSize()) {
             EditCourseScreenContent(
                 title = uiState.title.ifEmpty { initialTitle },
                 onTitleChange = viewModel::onTitleChange,
@@ -118,6 +120,11 @@ private fun EditCourseScreenContent(
                 .padding(bottom = 74.dp)
                 .verticalScroll(rememberScrollState())
         ) {
+            AppTopBar(
+                title = "Chỉnh sửa học phần",
+                onBackClick = {  },
+                modifier = Modifier.alpha(0f)
+            )
             Spacer(modifier = Modifier.height(28.dp))
 
             UnderlinedTextFieldBlock(

@@ -6,10 +6,9 @@ import com.example.potago.domain.repository.SentencePatternRepository
 import javax.inject.Inject
 
 class GetSentencePatternsUseCase @Inject constructor(
-    private val sentencePatternRepository: SentencePatternRepository
+    private val repository: SentencePatternRepository
 ) {
     suspend operator fun invoke(): Result<List<SetencePattern>> {
-        return sentencePatternRepository.getSentencePatterns()
+        return repository.getSentencePatterns()
     }
 }
-

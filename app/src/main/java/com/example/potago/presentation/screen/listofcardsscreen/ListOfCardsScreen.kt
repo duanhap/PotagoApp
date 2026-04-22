@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -192,7 +193,8 @@ fun ListOfCardsScreenContent(
                                     top = 4.dp,
                                     bottom = 88.dp
                                 ),
-                                verticalArrangement = Arrangement.spacedBy(14.dp)
+                                verticalArrangement = Arrangement.spacedBy(14.dp),
+                                userScrollEnabled = false
                             ) {
                                 items(filteredCards, key = { it.id }) { word ->
                                     CardItemNode(
@@ -349,6 +351,8 @@ fun FilterTabs(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SearchBarField(query: String, onQueryChange: (String) -> Unit) {
+    var isFocused by remember { mutableStateOf(false) }
+
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
@@ -359,7 +363,7 @@ private fun SearchBarField(query: String, onQueryChange: (String) -> Unit) {
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = "Tìm kiếm",
-                tint = Color(0xFFB0B8C1),
+                tint = if (isFocused) Color(0xFF1CB0F6) else Color(0xFFB0B8C1),
                 modifier = Modifier.size(22.dp)
             )
         },
@@ -367,7 +371,9 @@ private fun SearchBarField(query: String, onQueryChange: (String) -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
             .padding(bottom = 10.dp)
-            .height(52.dp),
+            .height(52.dp)
+            .onFocusChanged { isFocused = it.isFocused },
+
         shape = RoundedCornerShape(26.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = Color.White,

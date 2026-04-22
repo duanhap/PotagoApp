@@ -12,4 +12,5 @@ interface SentenceRepository {
         status: String? = null
     ): Result<List<Setence>>
     suspend fun getSentenceById(id: Int): Result<Setence>
+    suspend fun createSentence(patternId: Int, term: String, definition: String): Result<Setence>
 }
