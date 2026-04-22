@@ -31,4 +31,5 @@ interface WordSetRepository {
         description: String?
     ): Result<Word>
     suspend fun deleteWord(wordId: Long): Result<Unit>
+    suspend fun deleteWordSet(wordSetId: Long): Result<Unit>
 }
