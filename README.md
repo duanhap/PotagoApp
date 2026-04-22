@@ -5,9 +5,9 @@
 <h4 align="center">Interactive Language Learning Platform for Android</h4>
 
 <p align="center">
-<a href="https://github.com/yourusername/PotagoApp/releases" alt="GitHub Releases"><img src="https://img.shields.io/github/v/release/yourusername/PotagoApp?include_prereleases&label=version" ></a>
+<a href="https://github.com/duanhap/PotagoApp/releases" alt="GitHub Releases"><img src="https://img.shields.io/github/v/release/duanhap/PotagoApp?include_prereleases&label=version" ></a>
 <a href="https://www.gnu.org/licenses/gpl-3.0" alt="License: GPLv3"><img src="https://img.shields.io/badge/License-GPL%20v3-blue.svg"></a>
-<a href="https://github.com/yourusername/PotagoApp/actions" alt="Build Status"><img src="https://img.shields.io/badge/build-passing-brightgreen.svg"></a>
+<a href="https://github.com/duanhap/PotagoApp/actions" alt="Build Status"><img src="https://img.shields.io/badge/build-passing-brightgreen.svg"></a>
 <a href="#" alt="Android Min SDK"><img src="https://img.shields.io/badge/Android-9%2B-green.svg"></a>
 </p>
 
@@ -88,7 +88,7 @@ Potago requires **Android 9 or higher** and works best on **Android 11+** for fu
 ## Installation and Updates
 
 ### 1. Download APK from GitHub Releases (Recommended)
-Visit our [GitHub Releases](https://github.com/yourusername/PotagoApp/releases) page to download the latest APK directly.
+Visit our [GitHub Releases](https://github.com/duanhap/PotagoApp/releases) page to download the latest APK directly.
 
 ```bash
 # Verify the APK signature (optional but recommended)
@@ -99,7 +99,7 @@ Visit our [GitHub Releases](https://github.com/yourusername/PotagoApp/releases) 
 Clone the repository and build using Android Studio or Gradle:
 
 ```bash
-git clone https://github.com/yourusername/PotagoApp.git
+git clone https://github.com/duanhap/PotagoApp.git
 cd PotagoApp
 ./gradlew assembleDebug  # Build debug APK
 ./gradlew assembleRelease  # Build release APK
@@ -124,7 +124,7 @@ Future updates will be available through the GitHub Releases page. Simply downlo
 > To backup your progress before updating: Settings > Backup & Restore > Export Database
 
 > [!warning]
-> **THIS APP IS IN ACTIVE DEVELOPMENT.** You may encounter bugs or incomplete features. Please report issues on our [GitHub Repository](https://github.com/yourusername/PotagoApp/issues).
+> **THIS APP IS IN ACTIVE DEVELOPMENT.** You may encounter bugs or incomplete features. Please report issues on our [GitHub Repository](https://github.com/duanhap/PotagoApp/issues).
 
 ## Usage
 
@@ -199,8 +199,8 @@ We welcome contributions from the community! Whether it's bug reports, feature s
 
 ### How to Contribute
 
-1. **Report Bugs** - [Open an issue](https://github.com/yourusername/PotagoApp/issues) with a clear description and steps to reproduce
-2. **Suggest Features** - Share your ideas on our [Discussions](https://github.com/yourusername/PotagoApp/discussions) page
+1. **Report Bugs** - [Open an issue](https://github.com/duanhap/PotagoApp/issues) with a clear description and steps to reproduce
+2. **Suggest Features** - Share your ideas on our [Discussions](https://github.com/duanhap/PotagoApp/discussions) page
 3. **Submit Code** - Fork the repo, make your changes, and submit a pull request
 4. **Improve Translations** - Help us reach global learners (coming soon!)
 
@@ -208,7 +208,7 @@ We welcome contributions from the community! Whether it's bug reports, feature s
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/PotagoApp.git
+git clone https://github.com/duanhap/PotagoApp.git
 cd PotagoApp
 
 # Open in Android Studio and sync Gradle
@@ -230,9 +230,9 @@ See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for detailed contribution guideli
 
 ## Support
 
-- **Documentation** - [Wiki](https://github.com/yourusername/PotagoApp/wiki)
-- **Issue Tracker** - [GitHub Issues](https://github.com/yourusername/PotagoApp/issues)
-- **Discussions** - [GitHub Discussions](https://github.com/yourusername/PotagoApp/discussions)
+- **Documentation** - [Wiki](https://github.com/duanhap/PotagoApp/wiki)
+- **Issue Tracker** - [GitHub Issues](https://github.com/duanhap/PotagoApp/issues)
+- **Discussions** - [GitHub Discussions](https://github.com/duanhap/PotagoApp/discussions)
 
 ## License
 

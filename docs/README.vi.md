@@ -5,9 +5,9 @@
 <h4 align="center">Nền tảng học tập ngôn ngữ tương tác cho Android</h4>
 
 <p align="center">
-<a href="https://github.com/yourusername/PotagoApp/releases" alt="GitHub Releases"><img src="https://img.shields.io/github/v/release/yourusername/PotagoApp?include_prereleases&label=version" ></a>
+<a href="https://github.com/duanhap/PotagoApp/releases" alt="GitHub Releases"><img src="https://img.shields.io/github/v/release/duanhap/PotagoApp?include_prereleases&label=version" ></a>
 <a href="https://www.gnu.org/licenses/gpl-3.0" alt="License: GPLv3"><img src="https://img.shields.io/badge/License-GPL%20v3-blue.svg"></a>
-<a href="https://github.com/yourusername/PotagoApp/actions" alt="Build Status"><img src="https://img.shields.io/badge/build-passing-brightgreen.svg"></a>
+<a href="https://github.com/duanhap/PotagoApp/actions" alt="Build Status"><img src="https://img.shields.io/badge/build-passing-brightgreen.svg"></a>
 <a href="#" alt="Android Min SDK"><img src="https://img.shields.io/badge/Android-9%2B-green.svg"></a>
 </p>
 
@@ -88,7 +88,7 @@ Potago yêu cầu **Android 9 trở lên** và hoạt động tốt nhất trên
 ## Cài đặt và cập nhật
 
 ### 1. Tải xuống APK từ GitHub Releases (Được đề xuất)
-Truy cập trang [GitHub Releases](https://github.com/yourusername/PotagoApp/releases) để tải xuống APK mới nhất trực tiếp.
+Truy cập trang [GitHub Releases](https://github.com/duanhap/PotagoApp/releases) để tải xuống APK mới nhất trực tiếp.
 
 ```bash
 # Xác minh chữ ký APK (tùy chọn nhưng được đề xuất)
@@ -99,7 +99,7 @@ Truy cập trang [GitHub Releases](https://github.com/yourusername/PotagoApp/rel
 Sao chép kho lưu trữ và xây dựng bằng Android Studio hoặc Gradle:
 
 ```bash
-git clone https://github.com/yourusername/PotagoApp.git
+git clone https://github.com/duanhap/PotagoApp.git
 cd PotagoApp
 ./gradlew assembleDebug  # Xây dựng APK gỡ lỗi
 ./gradlew assembleRelease  # Xây dựng APK phát hành
@@ -124,7 +124,7 @@ Các bản cập nhật trong tương lai sẽ có sẵn trên trang GitHub Rele
 > Để sao lưu tiến trình của bạn trước khi cập nhật: Cài đặt > Sao lưu & Khôi phục > Xuất cơ sở dữ liệu
 
 > [!warning]
-> **THIS APP IS IN ACTIVE DEVELOPMENT.** Bạn có thể gặp phải các lỗi hoặc tính năng chưa hoàn thành. Vui lòng báo cáo các vấn đề trên [GitHub Repository](https://github.com/yourusername/PotagoApp/issues).
+> **THIS APP IS IN ACTIVE DEVELOPMENT.** Bạn có thể gặp phải các lỗi hoặc tính năng chưa hoàn thành. Vui lòng báo cáo các vấn đề trên [GitHub Repository](https://github.com/duanhap/PotagoApp/issues).
 
 ## Cách sử dụng
 
@@ -197,8 +197,8 @@ Chúng tôi hoan nghênh những đóng góp từ cộng đồng! Cho dù đó l
 
 ### Cách đóng góp
 
-1. **Báo cáo lỗi** - [Mở một vấn đề](https://github.com/yourusername/PotagoApp/issues) với mô tả rõ ràng và các bước tái tạo
-2. **Đề xuất tính năng** - Chia sẻ ý tưởng của bạn trên trang [Thảo luận](https://github.com/yourusername/PotagoApp/discussions)
+1. **Báo cáo lỗi** - [Mở một vấn đề](https://github.com/duanhap/PotagoApp/issues) với mô tả rõ ràng và các bước tái tạo
+2. **Đề xuất tính năng** - Chia sẻ ý tưởng của bạn trên trang [Thảo luận](https://github.com/duanhap/PotagoApp/discussions)
 3. **Gửi mã** - Fork kho lưu trữ, thực hiện các thay đổi và gửi một yêu cầu kéo
 4. **Cải thiện bản dịch** - Giúp chúng tôi tiếp cận những người học toàn cầu (sắp tới)
 
@@ -206,7 +206,7 @@ Chúng tôi hoan nghênh những đóng góp từ cộng đồng! Cho dù đó l
 
 ```bash
 # Clone kho lưu trữ
-git clone https://github.com/yourusername/PotagoApp.git
+git clone https://github.com/duanhap/PotagoApp.git
 cd PotagoApp
 
 # Mở trong Android Studio và đồng bộ Gradle
@@ -228,9 +228,9 @@ Xem [CONTRIBUTING.md](../.github/CONTRIBUTING.md) để biết hướng dẫn đ
 
 ## Hỗ trợ
 
-- **Tài liệu** - [Wiki](https://github.com/yourusername/PotagoApp/wiki)
-- **Trình theo dõi vấn đề** - [GitHub Issues](https://github.com/yourusername/PotagoApp/issues)
-- **Thảo luận** - [GitHub Discussions](https://github.com/yourusername/PotagoApp/discussions)
+- **Tài liệu** - [Wiki](https://github.com/duanhap/PotagoApp/wiki)
+- **Trình theo dõi vấn đề** - [GitHub Issues](https://github.com/duanhap/PotagoApp/issues)
+- **Thảo luận** - [GitHub Discussions](https://github.com/duanhap/PotagoApp/discussions)
 
 ## Giấy phép
 
