@@ -101,6 +101,9 @@ fun LibraryScreen(
             onWordSetClick = { wordSet ->
                 navController.navigate(Screen.FlashCard(wordSet.id, wordSet.name))
             },
+            onSentencePatternClick = { pattern ->
+                navController.navigate(Screen.DetailSentencePattern(pattern.id, pattern.name))
+            },
             onRetry = { viewModel.refreshLibrary() },
             isAddOverlayVisible = isAddOverlayVisible,
             onToggleAddOverlay = { isAddOverlayVisible = it },
@@ -118,6 +121,7 @@ private fun LibraryScreenContent(
     recentSentencePatternsState: UiState<List<SetencePattern>>,
     allSentencePatternsState: UiState<List<SetencePattern>>,
     onWordSetClick: (WordSet) -> Unit,
+    onSentencePatternClick: (SetencePattern) -> Unit = {},
     onRetry: () -> Unit,
     isAddOverlayVisible: Boolean,
     onToggleAddOverlay: (Boolean) -> Unit,
@@ -149,6 +153,7 @@ private fun LibraryScreenContent(
                 SentenceTabContent(
                     recentState = recentSentencePatternsState,
                     allState = allSentencePatternsState,
+                    onSentencePatternClick = onSentencePatternClick,
                     onRetry = onRetry
                 )
             }
@@ -421,6 +426,7 @@ private fun CourseTabContent(
 private fun SentenceTabContent(
     recentState: UiState<List<SetencePattern>>,
     allState: UiState<List<SetencePattern>>,
+    onSentencePatternClick: (SetencePattern) -> Unit,
     onRetry: () -> Unit
 ) {
     val isLoading = allState is UiState.Loading && recentState is UiState.Loading
@@ -473,7 +479,7 @@ private fun SentenceTabContent(
                         SectionTitle(text = "Gần đây")
                     }
                     items(fallbackRecent, key = { "recent_sentence_${it.id}" }) { pattern ->
-                        SentencePatternCard(pattern = pattern)
+                        SentencePatternCard(pattern = pattern, onClick = { onSentencePatternClick(pattern) })
                     }
                     item {
                         Spacer(modifier = Modifier.height(8.dp))
@@ -485,7 +491,7 @@ private fun SentenceTabContent(
                         SectionTitle(text = "Tất cả")
                     }
                     items(allSentencePatterns, key = { "all_sentence_${it.id}" }) { pattern ->
-                        SentencePatternCard(pattern = pattern)
+                        SentencePatternCard(pattern = pattern, onClick = { onSentencePatternClick(pattern) })
                     }
                 }
             }
@@ -494,9 +500,11 @@ private fun SentenceTabContent(
 }
 
 @Composable
-private fun SentencePatternCard(pattern: SetencePattern) {
+private fun SentencePatternCard(pattern: SetencePattern, onClick: () -> Unit = {}) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -534,14 +542,11 @@ private fun SentencePatternCard(pattern: SetencePattern) {
 }
 
 private fun buildSentencePatternMeta(pattern: SetencePattern): String {
-    val termLang = pattern.termLanguageCode.uppercase()
-    val defLang = pattern.definitionLanguageCode.uppercase()
+    val termLang = pattern.termLanguageCode.uppercase().takeIf { it.isNotBlank() }
+    val defLang = pattern.definitionLanguageCode.uppercase().takeIf { it.isNotBlank() }
     val monthYearText = formatMonthYear(pattern.createdAt)
-    return if (monthYearText.isEmpty()) {
-        "$termLang - $defLang"
-    } else {
-        "$termLang - $defLang - $monthYearText"
-    }
+    val langPart = listOfNotNull(termLang, defLang).joinToString(" - ").takeIf { it.isNotBlank() }
+    return listOfNotNull(langPart, monthYearText.takeIf { it.isNotBlank() }).joinToString(" - ")
 }
 
 @Composable
@@ -598,14 +603,11 @@ private fun WordSetCard(
 }
 
 private fun buildWordSetMeta(wordSet: WordSet): String {
-    val termLang = wordSet.termLanguageCode.uppercase()
-    val defLang = wordSet.definitionLanguageCode.uppercase()
+    val termLang = wordSet.termLanguageCode.uppercase().takeIf { it.isNotBlank() }
+    val defLang = wordSet.definitionLanguageCode.uppercase().takeIf { it.isNotBlank() }
     val monthYearText = formatMonthYear(wordSet.createdAt)
-    return if (monthYearText.isEmpty()) {
-        "$termLang - $defLang"
-    } else {
-        "$termLang - $defLang - $monthYearText"
-    }
+    val langPart = listOfNotNull(termLang, defLang).joinToString(" - ").takeIf { it.isNotBlank() }
+    return listOfNotNull(langPart, monthYearText.takeIf { it.isNotBlank() }).joinToString(" - ")
 }
 
 private fun formatMonthYear(dateText: String): String {

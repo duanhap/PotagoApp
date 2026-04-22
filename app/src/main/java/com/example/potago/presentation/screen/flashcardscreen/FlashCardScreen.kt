@@ -198,7 +198,6 @@ private fun FlashCardScreenContent(
             contentDescription = "Slide up",
             modifier = Modifier
                 .fillMaxWidth()
-                .height(59.dp)
                 .clickable(onClick = onSlideUpClick)
         )
     }
