@@ -37,10 +37,10 @@ import com.example.potago.presentation.screen.ranking.RankScreen
 import com.example.potago.presentation.screen.setting.SettingScreen
 import com.example.potago.presentation.screen.matchgame.MatchGameScreen
 import com.example.potago.presentation.screen.matchgame.MatchResultScreen
-import com.example.potago.presentation.screen.detailsetencepatternscreen.DetailSentencePatternScreen
-import com.example.potago.presentation.screen.detailsetencepatternscreen.DeleteDetailScreen
-import com.example.potago.presentation.screen.detailsetencepatternscreen.EditDetailScreen
-import com.example.potago.presentation.screen.detailsetencepatternscreen.ListOfDetailScreen
+import com.example.potago.presentation.screen.detailsentencepatternscreen.DetailSentencePatternScreen
+import com.example.potago.presentation.screen.detailsentencepatternscreen.DeleteDetailScreen
+import com.example.potago.presentation.screen.detailsentencepatternscreen.EditDetailScreen
+import com.example.potago.presentation.screen.detailsentencepatternscreen.ListOfDetailScreen
 import com.example.potago.presentation.screen.shop.ShopScreen
 import com.example.potago.presentation.screen.splash.SplashScreen
 import com.example.potago.presentation.screen.video.VideoScreen
@@ -70,13 +70,17 @@ sealed class Screen(val route: String) {
     object Shop : Screen("shop")
     object Rank : Screen("rank")
     object DetailSentencePattern : Screen("detail_sentence_pattern/{sentencePatternId}/{sentencePatternName}") {
-        operator fun invoke(sentencePatternId: Long, sentencePatternName: String): String {
+        operator fun invoke(sentencePatternId: Int, sentencePatternName: String): String {
             val encodedName = android.net.Uri.encode(sentencePatternName)
             return "detail_sentence_pattern/$sentencePatternId/$encodedName"
         }
     }
-    object DeleteDetail : Screen("delete_detail")
-    object EditDetail : Screen("edit_detail")
+    object DeleteDetail : Screen("delete_detail/{sentencePatternId}") {
+        operator fun invoke(sentencePatternId: Int) = "delete_detail/$sentencePatternId"
+    }
+    object EditDetail : Screen("edit_detail/{sentencePatternId}") {
+        operator fun invoke(sentencePatternId: Int) = "edit_detail/$sentencePatternId"
+    }
     object ListOfDetail : Screen("list_of_detail")
     object MatchGame : Screen("match_game/{wordSetId}/{wordSetName}") {
         operator fun invoke(wordSetId: Long, wordSetName: String): String {
@@ -209,17 +213,26 @@ fun MainFlowContainer(rootNavController: NavController) {
             composable(
                 route = Screen.DetailSentencePattern.route,
                 arguments = listOf(
-                    navArgument("sentencePatternId") { type = NavType.LongType },
+                    navArgument("sentencePatternId") { type = NavType.IntType },
                     navArgument("sentencePatternName") { type = NavType.StringType }
                 )
-            ) {
-                DetailSentencePatternScreen(mainNavController)
+            ) { backStackEntry ->
+                val patternId = backStackEntry.arguments?.getInt("sentencePatternId") ?: 0
+                DetailSentencePatternScreen(mainNavController, patternId)
             }
-            composable(Screen.DeleteDetail.route) {
-                DeleteDetailScreen(mainNavController)
+            composable(
+                route = Screen.DeleteDetail.route,
+                arguments = listOf(navArgument("sentencePatternId") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val patternId = backStackEntry.arguments?.getInt("sentencePatternId") ?: 0
+                DeleteDetailScreen(mainNavController, patternId)
             }
-            composable(Screen.EditDetail.route) {
-                EditDetailScreen(mainNavController)
+            composable(
+                route = Screen.EditDetail.route,
+                arguments = listOf(navArgument("sentencePatternId") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val patternId = backStackEntry.arguments?.getInt("sentencePatternId") ?: 0
+                EditDetailScreen(mainNavController, patternId)
             }
             composable(Screen.ListOfDetail.route) {
                 ListOfDetailScreen(mainNavController)

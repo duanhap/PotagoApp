@@ -1,4 +1,4 @@
-package com.example.potago.presentation.screen.detailsetencepatternscreen
+package com.example.potago.presentation.screen.detailsentencepatternscreen
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
