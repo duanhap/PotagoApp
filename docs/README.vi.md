@@ -28,11 +28,13 @@
 [<img src="../assets/screenshots/flashcard_screen.png" width=160>](../assets/screenshots/flashcard_screen.png)
 [<img src="../assets/screenshots/match_game_screen.png" width=160>](../assets/screenshots/match_game_screen.png)
 [<img src="../assets/screenshots/video_screen.png" width=160>](../assets/screenshots/video_screen.png)
-
 [<img src="../assets/screenshots/library_screen.png" width=160>](../assets/screenshots/library_screen.png)
 [<img src="../assets/screenshots/profile_screen.png" width=160>](../assets/screenshots/profile_screen.png)
+
 [<img src="../assets/screenshots/streak_screen.png" width=160>](../assets/screenshots/streak_screen.png)
 [<img src="../assets/screenshots/shop_screen.png" width=160>](../assets/screenshots/shop_screen.png)
+[<img src="../assets/screenshots/speaking_screen.png" width=160>](../assets/screenshots/speaking_screen.png)
+[<img src="../assets/screenshots/video_player_screen.png" width=160>](../assets/screenshots/video_player_screen.png)
 
 ## Mô tả
 
