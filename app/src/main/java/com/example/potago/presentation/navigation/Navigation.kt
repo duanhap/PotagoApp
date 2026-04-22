@@ -62,6 +62,7 @@ import com.example.potago.presentation.screen.detailsentencepatternscreen.AddSen
 import com.example.potago.presentation.screen.detailsentencepatternscreen.DeleteDetailScreen
 import com.example.potago.presentation.screen.detailsentencepatternscreen.EditDetailScreen
 import com.example.potago.presentation.screen.detailsentencepatternscreen.EditSentenceScreen
+import com.example.potago.presentation.screen.detailsentencepatternscreen.EditSentenceScreen
 import com.example.potago.presentation.screen.wordordering.WordOrderingScreen
 import com.example.potago.presentation.screen.wordordering.WordOrderingResultScreen
 import com.example.potago.presentation.screen.detailsentencepatternscreen.ListOfDetailScreen
