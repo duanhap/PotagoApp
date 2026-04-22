@@ -69,7 +69,7 @@ fun LibraryScreen(
             navController.navigate(Screen.FlashCard(wordSet.id, wordSet.name))
         },
         onSentencePatternClick = { pattern ->
-            navController.navigate(Screen.DetailSentencePattern(pattern.id.toLong(), pattern.name))
+            navController.navigate(Screen.DetailSentencePattern(pattern.id, pattern.name))
         },
         onRetry = { viewModel.refreshLibrary() }
     )

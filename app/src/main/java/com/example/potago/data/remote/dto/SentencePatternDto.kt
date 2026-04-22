@@ -9,8 +9,8 @@ data class SentencePatternDto(
     @SerializedName("description") val description: String?,
     @SerializedName("created_at") val createdAt: String?,
     @SerializedName("is_public") val isPublic: Boolean?,
-    @SerializedName("term_lang_code") val termLangCode: String?,
-    @SerializedName("def_lang_code") val defLangCode: String?,
+    @SerializedName("term_language_code") val termLangCode: String?,
+    @SerializedName("definition_language_code") val defLangCode: String?,
     @SerializedName("updated_at") val updatedAt: String?,
     @SerializedName("last_opened") val lastOpened: String?,
     @SerializedName("user_id") val userId: Int?

@@ -9,11 +9,11 @@ data class SentenceDto(
     @SerializedName("definition") val definition: String?,
     @SerializedName("created_at") val createdAt: String?,
     @SerializedName("status") val status: String?,
-    @SerializedName("mistakes") val mistakes: Int?,
-    @SerializedName("pattern_id") val patternId: Int?,
+    @SerializedName("number_of_mistakes") val mistakes: Int?,
+    @SerializedName("sentence_pattern_id") val patternId: Int?,
     @SerializedName("last_opened") val lastOpened: String?,
-    @SerializedName("termLanguageCode") val termLanguageCode: String?,
-    @SerializedName("definitionLanguageCode") val definitionLanguageCode: String?
+    @SerializedName("term_language_code") val termLanguageCode: String?,
+    @SerializedName("definition_language_code") val definitionLanguageCode: String?
 )
 
 fun SentenceDto.toDomain(): Setence {
