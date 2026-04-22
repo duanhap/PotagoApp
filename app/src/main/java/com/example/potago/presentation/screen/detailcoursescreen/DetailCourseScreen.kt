@@ -46,6 +46,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.potago.R
 import com.example.potago.presentation.navigation.Screen
@@ -54,8 +57,23 @@ fun DetailCourseScreen(
     navController: NavController,
     wordSetId: Long,
     wordSetName: String,
-    onConfirmDeleteWordSet: () -> Unit = {}
+    viewModel: DetailCourseViewModel = hiltViewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(wordSetId) {
+        viewModel.loadWordSet(wordSetId)
+    }
+
+    // Navigate to Library after successful deletion
+    LaunchedEffect(uiState.isDeleted) {
+        if (uiState.isDeleted) {
+            navController.navigate(Screen.Library.route) {
+                popUpTo(Screen.Library.route) { inclusive = false }
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             AppTopBar(
@@ -65,7 +83,11 @@ fun DetailCourseScreen(
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding))
         DetailCourseScreenContent(
-            wordSetName = wordSetName,
+            wordSetName = uiState.wordSet?.name?.takeIf { it.isNotBlank() } ?: wordSetName,
+            wordCount = uiState.wordSet?.amountOfWords,
+            createdAt = uiState.wordSet?.createdAt?.let { viewModel.formatCreatedAt(it) },
+            description = uiState.wordSet?.description,
+            isLoading = uiState.isLoading,
             onSlideDownClick = { navController.popBackStack() },
             onMatchGameClick = {
                 navController.navigate(Screen.MatchGame(wordSetId, wordSetName))
@@ -76,15 +98,18 @@ fun DetailCourseScreen(
             onListCardsClick = {
                 navController.navigate(Screen.ListOfCards(wordSetId, wordSetName))
             },
-            onConfirmDeleteWordSet = onConfirmDeleteWordSet
+            onConfirmDeleteWordSet = { viewModel.deleteWordSet(wordSetId) }
         )
     }
-
 }
 
 @Composable
 private fun DetailCourseScreenContent(
     wordSetName: String,
+    wordCount: Int? = null,
+    createdAt: String? = null,
+    description: String? = null,
+    isLoading: Boolean = false,
     onSlideDownClick: () -> Unit,
     onMatchGameClick: () -> Unit,
     onEditCourseClick: () -> Unit,
@@ -125,21 +150,26 @@ private fun DetailCourseScreenContent(
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "200 thuật ngữ - Tháng 1 năm 2026",
+                    text = buildString {
+                        if (wordCount != null) append("$wordCount thuật ngữ") else append("-- thuật ngữ")
+                        if (!createdAt.isNullOrBlank()) append(" - $createdAt")
+                    },
                     fontSize = 12.sp,
                     lineHeight = 20.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = Color.Black
                 )
-                Spacer(modifier = Modifier.height(14.dp))
-                Text(
-                    text = "Learn how to order tacos and ask for the bill.",
-                    fontSize = 14.sp,
-                    lineHeight = 24.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontStyle = FontStyle.Italic,
-                    color = Color.Black
-                )
+                if (!description.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text(
+                        text = description,
+                        fontSize = 14.sp,
+                        lineHeight = 24.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontStyle = FontStyle.Italic,
+                        color = Color.Black
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(26.dp))
                 Text(
@@ -203,6 +233,7 @@ private fun DetailCourseScreenContent(
             exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
         ) {
             DeleteWordSetConfirmBottomSheet(
+                isLoading = isLoading,
                 onDismiss = { showDeleteConfirm = false },
                 onConfirm = {
                     showDeleteConfirm = false
@@ -215,6 +246,7 @@ private fun DetailCourseScreenContent(
 
 @Composable
 private fun DeleteWordSetConfirmBottomSheet(
+    isLoading: Boolean = false,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
@@ -292,11 +324,13 @@ private fun DeleteWordSetConfirmBottomSheet(
                 OverlayDeclineButton(
                     modifier = Modifier.weight(1f),
                     text = "Từ chối",
+                    enabled = !isLoading,
                     onClick = onDismiss
                 )
                 OverlayConfirmButton(
                     modifier = Modifier.weight(1f),
                     text = "Xác nhận",
+                    isLoading = isLoading,
                     onClick = onConfirm
                 )
             }
@@ -308,6 +342,7 @@ private fun DeleteWordSetConfirmBottomSheet(
 private fun OverlayDeclineButton(
     modifier: Modifier,
     text: String,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     Box(
@@ -321,8 +356,8 @@ private fun OverlayDeclineButton(
                 .fillMaxWidth()
                 .height(48.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color.White)
-                .clickable(onClick = onClick),
+                .background(if (enabled) Color.White else Color(0xFFF3F4F6))
+                .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -330,7 +365,7 @@ private fun OverlayDeclineButton(
                 fontSize = 14.sp,
                 lineHeight = 24.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color(0xFF374151)
+                color = if (enabled) Color(0xFF374151) else Color(0xFFB0B8C1)
             )
         }
     }
@@ -340,6 +375,7 @@ private fun OverlayDeclineButton(
 private fun OverlayConfirmButton(
     modifier: Modifier,
     text: String,
+    isLoading: Boolean = false,
     onClick: () -> Unit
 ) {
     Box(
@@ -354,16 +390,24 @@ private fun OverlayConfirmButton(
                 .height(48.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(Color(0xFF58CC02))
-                .clickable(onClick = onClick),
+                .then(if (!isLoading) Modifier.clickable(onClick = onClick) else Modifier),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = text,
-                fontSize = 14.sp,
-                lineHeight = 24.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color.White
-            )
+            if (isLoading) {
+                androidx.compose.material3.CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    color = Color.White,
+                    strokeWidth = 2.5.dp
+                )
+            } else {
+                Text(
+                    text = text,
+                    fontSize = 14.sp,
+                    lineHeight = 24.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White
+                )
+            }
         }
     }
 }

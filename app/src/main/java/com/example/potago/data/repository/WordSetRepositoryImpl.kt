@@ -114,6 +114,32 @@ class WordSetRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun deleteWordSet(wordSetId: Long): Result<Unit> {
+        return try {
+            val response = wordSetApiService.deleteWordSet(wordSetId)
+            if (response.success) {
+                Result.Success(Unit)
+            } else {
+                Result.Error(response.message ?: "Xóa học phần thất bại")
+            }
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
+    override suspend fun getWordById(wordId: Long): Result<Word> {
+        return try {
+            val response = wordSetApiService.getWordById(wordId)
+            if (response.success && response.data != null) {
+                Result.Success(response.data.toDomain())
+            } else {
+                Result.Error(response.message ?: "Không tìm thấy thẻ")
+            }
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
     override suspend fun createWordSetWithWords(
         name: String,
         description: String?,
