@@ -29,6 +29,38 @@ class SentenceRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getSentencesByPatternId(
+        patternId: Int,
+        page: Int?,
+        pageSize: Int?,
+        status: String?
+    ): Result<List<Setence>> {
+        return try {
+            val response = sentenceApiService.getSentences(patternId, page, pageSize, status)
+            if (response.success) {
+                val sentences = response.data?.map { it.toDomain() } ?: emptyList()
+                Result.Success(sentences)
+            } else {
+                Result.Error(response.message)
+            }
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
+    override suspend fun getSentenceById(id: Int): Result<Setence> {
+        return try {
+            val response = sentenceApiService.getSentenceById(id)
+            if (response.success && response.data != null) {
+                Result.Success(response.data.toDomain())
+            } else {
+                Result.Error(response.message)
+            }
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
     private fun <T> handleError(e: Exception): Result<T> {
         return if (e is HttpException) {
             try {

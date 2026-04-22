@@ -181,7 +181,7 @@ fun HomeScreen(
                         iconBgColor = Color(0xFFFEF9C3),
                         iconTint = Color(0xFFEAB308),
                         modifier = Modifier.weight(1f),
-                        onItemClick = {}
+                        onItemClick = { navController.navigate(Screen.Rank.route) }
                     )
                 }
                 Spacer(modifier = Modifier.height(30.dp))
