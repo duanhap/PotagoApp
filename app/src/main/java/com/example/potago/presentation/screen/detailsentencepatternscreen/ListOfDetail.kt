@@ -27,21 +27,39 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
+import androidx.compose.runtime.collectAsState
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.potago.presentation.navigation.Screen
 import com.example.potago.R
 
 data class SentenceItem(val sentence: String, val meaning: String)
 
 @Composable
-fun ListOfDetailScreen(navController: NavController) {
+fun ListOfDetailScreen(
+	navController: NavController,
+	patternId: Int = 0,
+	viewModel: ListOfDetailViewModel = hiltViewModel()
+) {
+	val uiState by viewModel.uiState.collectAsState()
+	
 	var selectedTab by remember { mutableStateOf(0) }
-	// index của card đang mở menu (-1 = không có)
 	var openMenuIndex by remember { mutableStateOf(-1) }
 
-	val sentences = listOf(
-		SentenceItem("Where is the nearest station?", "Ga gần nhất ở đâu?"),
-		SentenceItem("I would like to order coffee", "Tôi muốn gọi cà phê"),
-		SentenceItem("How much does this cost?", "Cái này giá bao nhiêu?"),
-	)
+	// Load sentences khi screen được tạo
+	LaunchedEffect(patternId) {
+		if (patternId > 0) {
+			viewModel.loadSentences(patternId)
+		}
+	}
+
+	// Refresh khi quay lại từ AddSentence
+	LaunchedEffect(Unit) {
+		if (patternId > 0) {
+			viewModel.refreshSentences(patternId)
+		}
+	}
+
+	val sentences = uiState.filteredSentences
 
 	Box(modifier = Modifier.fillMaxSize()) {
 		Column(
@@ -85,77 +103,100 @@ fun ListOfDetailScreen(navController: NavController) {
 					)
 				}
 
-				// Tab filter
-				Row(
-					verticalAlignment = Alignment.CenterVertically,
-					modifier = Modifier.padding(bottom = 21.dp, start = 21.dp)
-				) {
-					listOf("Tất cả", "Chưa thuộc", "Đã thuộc").forEachIndexed { index, label ->
-						val isSelected = selectedTab == index
-						val hPad = when (label) {
-							"Tất cả" -> 24.dp
-							"Chưa thuộc" -> 20.dp
-							else -> 26.dp
-						}
-						Column(
-							modifier = Modifier
-								.padding(end = if (index < 2) 9.dp else 0.dp)
-								.border(
-									width = 1.dp,
-									color = if (isSelected) Color(0xFF000000) else Color(0x1A000000),
-									shape = RoundedCornerShape(24.dp)
-								)
-								.clip(RoundedCornerShape(24.dp))
-								.background(Color(0xFFFFFFFF))
-								.clickable { selectedTab = index }
-								.padding(vertical = 11.dp, horizontal = hPad)
-						) {
-							Text(label, color = Color(0xFF000000), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+				// Loading state
+				if (uiState.isLoading) {
+					Box(modifier = Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
+						androidx.compose.material3.CircularProgressIndicator(color = Color(0xFF58CC02))
+					}
+				} else if (uiState.error != null) {
+					Box(modifier = Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
+						Text(text = uiState.error ?: "Lỗi tải dữ liệu", color = Color.Red)
+					}
+				} else {
+					// Tab filter
+					Row(
+						verticalAlignment = Alignment.CenterVertically,
+						modifier = Modifier.padding(bottom = 21.dp, start = 21.dp)
+					) {
+						listOf("Tất cả" to "all", "Chưa thuộc" to "unknown", "Đã thuộc" to "known").forEachIndexed { index, (label, status) ->
+							val isSelected = uiState.selectedFilter == status
+							val hPad = when (label) {
+								"Tất cả" -> 24.dp
+								"Chưa thuộc" -> 20.dp
+								else -> 26.dp
+							}
+							Column(
+								modifier = Modifier
+									.padding(end = if (index < 2) 9.dp else 0.dp)
+									.border(
+										width = 1.dp,
+										color = if (isSelected) Color(0xFF000000) else Color(0x1A000000),
+										shape = RoundedCornerShape(24.dp)
+									)
+									.clip(RoundedCornerShape(24.dp))
+									.background(Color(0xFFFFFFFF))
+									.clickable { viewModel.filterByStatus(status) }
+									.padding(vertical = 11.dp, horizontal = hPad)
+							) {
+								Text(label, color = Color(0xFF000000), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+							}
 						}
 					}
-				}
 
-				// Search bar
-				Row(
-					verticalAlignment = Alignment.CenterVertically,
-					modifier = Modifier
-						.padding(bottom = 27.dp, start = 21.dp, end = 21.dp)
-						.border(width = 1.dp, color = Color(0xFFE5E7EB), shape = RoundedCornerShape(30.dp))
-						.clip(RoundedCornerShape(30.dp))
-						.fillMaxWidth()
-						.background(Color(0xFFF9FAFB))
-						.padding(vertical = 11.dp)
-				) {
-					Icon(
-						painter = painterResource(id = R.drawable.ic_question),
-						contentDescription = "Search",
-						tint = Color(0xFFCCCCCC),
-						modifier = Modifier.padding(start = 15.dp, end = 10.dp).size(18.dp)
-					)
-					Text("Nhập câu tìm kiếm", color = Color(0xFFCCCCCC), fontSize = 14.sp, fontWeight = FontWeight.Bold)
-				}
-
-				// Danh sách câu
-				sentences.forEachIndexed { index, item ->
-					SentenceCard(
-						sentence = item.sentence,
-						meaning = item.meaning,
-						isMenuOpen = openMenuIndex == index,
-						onMenuToggle = {
-							openMenuIndex = if (openMenuIndex == index) -1 else index
-						},
-						onEdit = { openMenuIndex = -1 },
-						onDelete = { openMenuIndex = -1 },
-						modifier = Modifier.padding(
-							bottom = 20.dp,
-							start = 20.dp,
-							end = 20.dp
+					// Search bar
+					Row(
+						verticalAlignment = Alignment.CenterVertically,
+						modifier = Modifier
+							.padding(bottom = 27.dp, start = 21.dp, end = 21.dp)
+							.border(width = 1.dp, color = Color(0xFFE5E7EB), shape = RoundedCornerShape(30.dp))
+							.clip(RoundedCornerShape(30.dp))
+							.fillMaxWidth()
+							.background(Color(0xFFF9FAFB))
+							.padding(vertical = 11.dp)
+					) {
+						Icon(
+							painter = painterResource(id = R.drawable.ic_question),
+							contentDescription = "Search",
+							tint = Color(0xFFCCCCCC),
+							modifier = Modifier.padding(start = 15.dp, end = 10.dp).size(18.dp)
 						)
-					)
-				}
+						Text("Nhập câu tìm kiếm", color = Color(0xFFCCCCCC), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+					}
 
-				// Khoảng trống để + button không che nội dung
-				Spacer(modifier = Modifier.height(80.dp))
+					// Danh sách câu
+					if (sentences.isEmpty()) {
+						Box(modifier = Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
+							Text("Không có câu nào", color = Color.Gray)
+						}
+					} else {
+						sentences.forEachIndexed { index, sentence ->
+							SentenceCard(
+								sentence = sentence.term,
+								meaning = sentence.definition,
+								isMenuOpen = openMenuIndex == index,
+								onMenuToggle = {
+									openMenuIndex = if (openMenuIndex == index) -1 else index
+								},
+								onEdit = { 
+									openMenuIndex = -1
+									navController.navigate(Screen.EditSentence(sentence.id))
+								},
+								onDelete = { 
+									openMenuIndex = -1
+									viewModel.deleteSentence(sentence.id)
+								},
+								modifier = Modifier.padding(
+									bottom = 20.dp,
+									start = 20.dp,
+									end = 20.dp
+								)
+							)
+						}
+					}
+
+					// Khoảng trống để + button không che nội dung
+					Spacer(modifier = Modifier.height(80.dp))
+				}
 			}
 		}
 
@@ -167,7 +208,9 @@ fun ListOfDetailScreen(navController: NavController) {
 				.size(56.dp)
 				.clip(CircleShape)
 				.background(Color(0xFF58CC02))
-				.clickable { /* TODO: thêm câu mới */ },
+				.clickable { 
+					navController.navigate(Screen.AddSentence(patternId))
+				},
 			contentAlignment = Alignment.Center
 		) {
 			Text(
@@ -299,5 +342,5 @@ private fun SentenceCard(
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun ListOfDetailScreenPreview() {
-	ListOfDetailScreen(rememberNavController())
+	ListOfDetailScreen(rememberNavController(), 1)
 }
