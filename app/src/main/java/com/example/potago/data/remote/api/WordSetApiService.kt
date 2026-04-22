@@ -58,4 +58,9 @@ interface WordSetApiService {
     suspend fun deleteWord(
         @Query("word_id") wordId: Long
     ): ApiResponse<Unit>
+
+    @DELETE("/api/word-sets")
+    suspend fun deleteWordSet(
+        @Query("word_set_id") wordSetId: Long
+    ): ApiResponse<Unit>
 }
