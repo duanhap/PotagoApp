@@ -252,7 +252,7 @@ private fun TopBar(
             ) {
                 Spacer(modifier = Modifier.width(60.dp)) // chừa chỗ cho back button
                 Text(
-                    text = "Tạo học phần",
+                    text = "Tạo mẫu câu",
                     style = MaterialTheme.typography.displayMedium,
                     modifier = Modifier.weight(1f),
                 )
