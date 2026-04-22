@@ -61,6 +61,10 @@ fun DetailCourseScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    LaunchedEffect(wordSetId) {
+        viewModel.loadWordSet(wordSetId)
+    }
+
     // Navigate to Library after successful deletion
     LaunchedEffect(uiState.isDeleted) {
         if (uiState.isDeleted) {
@@ -79,7 +83,10 @@ fun DetailCourseScreen(
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding))
         DetailCourseScreenContent(
-            wordSetName = wordSetName,
+            wordSetName = uiState.wordSet?.name?.takeIf { it.isNotBlank() } ?: wordSetName,
+            wordCount = uiState.wordSet?.amountOfWords,
+            createdAt = uiState.wordSet?.createdAt?.let { viewModel.formatCreatedAt(it) },
+            description = uiState.wordSet?.description,
             isLoading = uiState.isLoading,
             onSlideDownClick = { navController.popBackStack() },
             onMatchGameClick = {
@@ -99,6 +106,9 @@ fun DetailCourseScreen(
 @Composable
 private fun DetailCourseScreenContent(
     wordSetName: String,
+    wordCount: Int? = null,
+    createdAt: String? = null,
+    description: String? = null,
     isLoading: Boolean = false,
     onSlideDownClick: () -> Unit,
     onMatchGameClick: () -> Unit,
@@ -140,21 +150,26 @@ private fun DetailCourseScreenContent(
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "200 thuật ngữ - Tháng 1 năm 2026",
+                    text = buildString {
+                        if (wordCount != null) append("$wordCount thuật ngữ") else append("-- thuật ngữ")
+                        if (!createdAt.isNullOrBlank()) append(" - $createdAt")
+                    },
                     fontSize = 12.sp,
                     lineHeight = 20.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = Color.Black
                 )
-                Spacer(modifier = Modifier.height(14.dp))
-                Text(
-                    text = "Learn how to order tacos and ask for the bill.",
-                    fontSize = 14.sp,
-                    lineHeight = 24.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontStyle = FontStyle.Italic,
-                    color = Color.Black
-                )
+                if (!description.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text(
+                        text = description,
+                        fontSize = 14.sp,
+                        lineHeight = 24.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontStyle = FontStyle.Italic,
+                        color = Color.Black
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(26.dp))
                 Text(
