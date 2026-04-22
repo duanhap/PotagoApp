@@ -217,4 +217,16 @@ object UseCaseModule {
     fun provideSaveSubtitleToPatternUseCase(
         repository: SentenceRepository
     ): SaveSubtitleToPatternUseCase = SaveSubtitleToPatternUseCase(repository)
+    
+    @Provides
+    @Singleton
+    fun provideDeleteWordSetUseCase(
+        repository: WordSetRepository
+    ): DeleteWordSetUseCase = DeleteWordSetUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideGetWordByIdUseCase(
+        repository: WordSetRepository
+    ): GetWordByIdUseCase = GetWordByIdUseCase(repository)
 }
