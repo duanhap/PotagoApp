@@ -58,8 +58,10 @@ import com.example.potago.presentation.screen.createwordset.CreateWordSetScreen
 import com.example.potago.presentation.screen.matchgame.MatchGameScreen
 import com.example.potago.presentation.screen.matchgame.MatchResultScreen
 import com.example.potago.presentation.screen.detailsentencepatternscreen.DetailSentencePatternScreen
+import com.example.potago.presentation.screen.detailsentencepatternscreen.AddSentenceScreen
 import com.example.potago.presentation.screen.detailsentencepatternscreen.DeleteDetailScreen
 import com.example.potago.presentation.screen.detailsentencepatternscreen.EditDetailScreen
+import com.example.potago.presentation.screen.detailsentencepatternscreen.EditSentenceScreen
 import com.example.potago.presentation.screen.wordordering.WordOrderingScreen
 import com.example.potago.presentation.screen.wordordering.WordOrderingResultScreen
 import com.example.potago.presentation.screen.detailsentencepatternscreen.ListOfDetailScreen
@@ -110,7 +112,6 @@ sealed class Screen(val route: String) {
         operator fun invoke(sentencePatternId: Int) = "edit_detail/$sentencePatternId"
     }
 
-    object ListOfDetail : Screen("list_of_detail")
     object WordOrdering : Screen("word_ordering/{patternId}/{patternName}") {
         operator fun invoke(patternId: Int, patternName: String): String {
             val encodedName = android.net.Uri.encode(patternName)
@@ -122,6 +123,15 @@ sealed class Screen(val route: String) {
             val timeFloat = completedTime.toFloat()
             return "word_ordering_result/$correctCount/$totalCount/$timeFloat/$xpEarned/$diamondEarned/$hackXp/$superXp"
         }
+    }
+    object ListOfDetail : Screen("list_of_detail/{patternId}") {
+        operator fun invoke(patternId: Int) = "list_of_detail/$patternId"
+    }
+    object EditSentence : Screen("edit_sentence/{sentenceId}") {
+        operator fun invoke(sentenceId: Int) = "edit_sentence/$sentenceId"
+    }
+    object AddSentence : Screen("add_sentence/{patternId}") {
+        operator fun invoke(patternId: Int) = "add_sentence/$patternId"
     }
     object MatchGame : Screen("match_game/{wordSetId}/{wordSetName}") {
         operator fun invoke(wordSetId: Long, wordSetName: String): String {
@@ -576,8 +586,26 @@ fun MainFlowContainer(rootNavController: NavController) {
                     val patternId = backStackEntry.arguments?.getInt("sentencePatternId") ?: 0
                     EditDetailScreen(mainNavController, patternId)
                 }
-                composable(Screen.ListOfDetail.route) {
-                    ListOfDetailScreen(mainNavController)
+                composable(
+                    route = Screen.ListOfDetail.route,
+                    arguments = listOf(navArgument("patternId") { type = NavType.IntType })
+                ) { backStackEntry ->
+                    val patternId = backStackEntry.arguments?.getInt("patternId") ?: 0
+                    ListOfDetailScreen(mainNavController, patternId)
+                }
+                composable(
+                    route = Screen.EditSentence.route,
+                    arguments = listOf(navArgument("sentenceId") { type = NavType.IntType })
+                ) { backStackEntry ->
+                    val sentenceId = backStackEntry.arguments?.getInt("sentenceId") ?: 0
+                    EditSentenceScreen(mainNavController, sentenceId)
+                }
+                composable(
+                    route = Screen.AddSentence.route,
+                    arguments = listOf(navArgument("patternId") { type = NavType.IntType })
+                ) { backStackEntry ->
+                    val patternId = backStackEntry.arguments?.getInt("patternId") ?: 0
+                    AddSentenceScreen(mainNavController, patternId)
                 }
                 composable(
                     route = Screen.WordOrdering.route,
