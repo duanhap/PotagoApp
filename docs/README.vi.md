@@ -24,17 +24,15 @@
 
 ## Ảnh chụp màn hình
 
-[<img src="../fastlane/metadata/android/en-US/images/phoneScreenshots/01.png" width=160>](../fastlane/metadata/android/en-US/images/phoneScreenshots/01.png)
-[<img src="../fastlane/metadata/android/en-US/images/phoneScreenshots/02.png" width=160>](../fastlane/metadata/android/en-US/images/phoneScreenshots/02.png)
-[<img src="../fastlane/metadata/android/en-US/images/phoneScreenshots/03.png" width=160>](../fastlane/metadata/android/en-US/images/phoneScreenshots/03.png)
-[<img src="../fastlane/metadata/android/en-US/images/phoneScreenshots/04.png" width=160>](../fastlane/metadata/android/en-US/images/phoneScreenshots/04.png)
-[<img src="../fastlane/metadata/android/en-US/images/phoneScreenshots/05.png" width=160>](../fastlane/metadata/android/en-US/images/phoneScreenshots/05.png)
-[<img src="../fastlane/metadata/android/en-US/images/phoneScreenshots/06.png" width=160>](../fastlane/metadata/android/en-US/images/phoneScreenshots/06.png)
+[<img src="../assets/screenshots/home_screen.png" width=160>](../assets/screenshots/home_screen.png)
+[<img src="../assets/screenshots/flashcard_screen.png" width=160>](../assets/screenshots/flashcard_screen.png)
+[<img src="../assets/screenshots/match_game_screen.png" width=160>](../assets/screenshots/match_game_screen.png)
+[<img src="../assets/screenshots/video_screen.png" width=160>](../assets/screenshots/video_screen.png)
 
-<br/>
-
-[<img src="../fastlane/metadata/android/en-US/images/tenInchScreenshots/01.png" width=405>](../fastlane/metadata/android/en-US/images/tenInchScreenshots/01.png)
-[<img src="../fastlane/metadata/android/en-US/images/tenInchScreenshots/02.png" width=405>](../fastlane/metadata/android/en-US/images/tenInchScreenshots/02.png)
+[<img src="../assets/screenshots/library_screen.png" width=160>](../assets/screenshots/library_screen.png)
+[<img src="../assets/screenshots/profile_screen.png" width=160>](../assets/screenshots/profile_screen.png)
+[<img src="../assets/screenshots/streak_screen.png" width=160>](../assets/screenshots/streak_screen.png)
+[<img src="../assets/screenshots/shop_screen.png" width=160>](../assets/screenshots/shop_screen.png)
 
 ## Mô tả
 
