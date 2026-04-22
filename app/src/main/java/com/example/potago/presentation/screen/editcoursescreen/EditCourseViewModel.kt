@@ -74,6 +74,8 @@ class EditCourseViewModel @Inject constructor(
         return when (code) {
             "en" -> "English"
             "vi" -> "Tiếng Việt"
+            "ja" -> "日本語"
+            "zh" -> "中文"
             else -> code
         }
     }
@@ -84,6 +86,20 @@ class EditCourseViewModel @Inject constructor(
 
     fun onDescriptionChange(newDesc: String) {
         _uiState.update { it.copy(description = newDesc) }
+    }
+
+    fun onTermLangChange(newCode: String) {
+        _uiState.update { it.copy(
+            termLangCode = newCode,
+            termLanguageLabel = mapCodeToLang(newCode)
+        ) }
+    }
+
+    fun onDefLangChange(newCode: String) {
+        _uiState.update { it.copy(
+            defLangCode = newCode,
+            definitionLanguageLabel = mapCodeToLang(newCode)
+        ) }
     }
 
     fun saveChanges() {
