@@ -21,6 +21,7 @@ okhttp = "4.12.0"
 datastore = "1.1.1"
 youtubePlayer = "12.1.0"
 media3 = "1.3.1"
+landscapist = "2.9.6"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -67,6 +68,9 @@ youtube-player = { module = "com.pierfrancescosoffritti.androidyoutubeplayer:cor
 media3-common = { group = "androidx.media3", name = "media3-common", version.ref = "media3" }
 media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3" }
 media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3" }
+
+landscapist-coil = { group = "com.github.skydoves", name = "landscapist-coil", version.ref = "landscapist" }
+landscapist-coil3 = { group = "com.github.skydoves", name = "landscapist-coil3", version.ref = "landscapist" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
