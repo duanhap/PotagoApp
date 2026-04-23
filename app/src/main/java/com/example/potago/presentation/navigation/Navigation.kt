@@ -60,6 +60,8 @@ import com.example.potago.presentation.screen.matchgame.MatchResultScreen
 import com.example.potago.presentation.screen.detailsentencepatternscreen.DetailSentencePatternScreen
 import com.example.potago.presentation.screen.detailsentencepatternscreen.DeleteDetailScreen
 import com.example.potago.presentation.screen.detailsentencepatternscreen.EditDetailScreen
+import com.example.potago.presentation.screen.wordordering.WordOrderingScreen
+import com.example.potago.presentation.screen.wordordering.WordOrderingResultScreen
 import com.example.potago.presentation.screen.detailsentencepatternscreen.ListOfDetailScreen
 import com.example.potago.presentation.screen.shop.ShopScreen
 import com.example.potago.presentation.screen.splash.SplashScreen
@@ -109,6 +111,16 @@ sealed class Screen(val route: String) {
     }
 
     object ListOfDetail : Screen("list_of_detail")
+    object WordOrdering : Screen("word_ordering/{patternId}/{patternName}") {
+        operator fun invoke(patternId: Int, patternName: String): String {
+            val encodedName = android.net.Uri.encode(patternName)
+            return "word_ordering/$patternId/$encodedName"
+        }
+    }
+    object WordOrderingResult : Screen("word_ordering_result/{correctCount}/{totalCount}") {
+        operator fun invoke(correctCount: Int, totalCount: Int) =
+            "word_ordering_result/$correctCount/$totalCount"
+    }
     object MatchGame : Screen("match_game/{wordSetId}/{wordSetName}") {
         operator fun invoke(wordSetId: Long, wordSetName: String): String {
             val encodedName = android.net.Uri.encode(wordSetName)
@@ -564,6 +576,41 @@ fun MainFlowContainer(rootNavController: NavController) {
                 }
                 composable(Screen.ListOfDetail.route) {
                     ListOfDetailScreen(mainNavController)
+                }
+                composable(
+                    route = Screen.WordOrdering.route,
+                    arguments = listOf(
+                        navArgument("patternId") { type = NavType.IntType },
+                        navArgument("patternName") { type = NavType.StringType }
+                    ),
+                    enterTransition = { fadeIn(tween(250)) },
+                    exitTransition = { fadeOut(tween(250)) }
+                ) { backStackEntry ->
+                    val patternId = backStackEntry.arguments?.getInt("patternId") ?: 0
+                    val patternName = backStackEntry.arguments?.getString("patternName")
+                        ?.let(Uri::decode) ?: ""
+                    WordOrderingScreen(
+                        navController = mainNavController,
+                        patternId = patternId,
+                        patternName = patternName
+                    )
+                }
+                composable(
+                    route = Screen.WordOrderingResult.route,
+                    arguments = listOf(
+                        navArgument("correctCount") { type = NavType.IntType },
+                        navArgument("totalCount") { type = NavType.IntType }
+                    ),
+                    enterTransition = { fadeIn(tween(300)) },
+                    exitTransition = { fadeOut(tween(250)) }
+                ) { backStackEntry ->
+                    val correctCount = backStackEntry.arguments?.getInt("correctCount") ?: 0
+                    val totalCount = backStackEntry.arguments?.getInt("totalCount") ?: 0
+                    WordOrderingResultScreen(
+                        navController = mainNavController,
+                        correctCount = correctCount,
+                        totalCount = totalCount
+                    )
                 }
             }
         }
