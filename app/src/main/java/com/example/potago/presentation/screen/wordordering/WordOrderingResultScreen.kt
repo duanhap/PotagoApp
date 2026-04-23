@@ -30,9 +30,10 @@ fun WordOrderingResultScreen(
     navController: NavController,
     correctCount: Int,
     totalCount: Int,
-    completedTime: Double = 0.0
+    completedTime: Double = 0.0,
+    xpEarned: Int = 0,
+    diamondEarned: Int = 0
 ) {
-    val xp = correctCount * 6
     val wrongCount = totalCount - correctCount
 
     Column(
@@ -103,7 +104,7 @@ fun WordOrderingResultScreen(
                         modifier = Modifier.size(22.dp)
                     )
                 },
-                valueText = "$xp",
+                valueText = "$xpEarned",
                 unitText = "XP",
                 valueColor = Color(0xFFA16207),
                 modifier = Modifier.weight(1f)
@@ -120,7 +121,7 @@ fun WordOrderingResultScreen(
                         modifier = Modifier.size(22.dp)
                     )
                 },
-                valueText = "$wrongCount",
+                valueText = "$diamondEarned",
                 unitText = "",
                 valueColor = Color(0xFFF44336),
                 modifier = Modifier.weight(1f)
@@ -306,17 +307,17 @@ private fun RewardCard(
 @Preview(showBackground = true, showSystemUi = true, name = "Result - All Correct")
 @Composable
 private fun PreviewResultAllCorrect() {
-    WordOrderingResultScreen(navController = rememberNavController(), correctCount = 5, totalCount = 5, completedTime = 42.3)
+    WordOrderingResultScreen(navController = rememberNavController(), correctCount = 5, totalCount = 5, completedTime = 42.3, xpEarned = 30, diamondEarned = 5)
 }
 
 @Preview(showBackground = true, showSystemUi = true, name = "Result - Partial")
 @Composable
 private fun PreviewResultPartial() {
-    WordOrderingResultScreen(navController = rememberNavController(), correctCount = 3, totalCount = 5, completedTime = 67.8)
+    WordOrderingResultScreen(navController = rememberNavController(), correctCount = 3, totalCount = 5, completedTime = 67.8, xpEarned = 18, diamondEarned = 5)
 }
 
 @Preview(showBackground = true, showSystemUi = true, name = "Result - All Wrong")
 @Composable
 private fun PreviewResultAllWrong() {
-    WordOrderingResultScreen(navController = rememberNavController(), correctCount = 0, totalCount = 5, completedTime = 120.0)
+    WordOrderingResultScreen(navController = rememberNavController(), correctCount = 0, totalCount = 5, completedTime = 120.0, xpEarned = 0, diamondEarned = 5)
 }
