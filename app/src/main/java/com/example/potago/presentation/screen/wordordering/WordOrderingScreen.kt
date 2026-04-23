@@ -18,6 +18,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -46,7 +47,6 @@ fun WordOrderingScreen(
     viewModel: WordOrderingViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var showQuitDialog by remember { mutableStateOf(false) }
 
     // Navigate to result screen when finished
     if (uiState.isFinished) {
@@ -65,7 +65,27 @@ fun WordOrderingScreen(
         return
     }
 
+    WordOrderingScreenContent(
+        uiState = uiState,
+        onBack = { navController.popBackStack() },
+        onCheck = viewModel::checkAnswer,
+        onNext = viewModel::nextSentence,
+        onPoolChipTap = viewModel::onPoolChipTap,
+        onAnswerChipTap = viewModel::onAnswerChipTap
+    )
+}
+
+@Composable
+internal fun WordOrderingScreenContent(
+    uiState: WordOrderingUiState,
+    onBack: () -> Unit,
+    onCheck: () -> Unit,
+    onNext: () -> Unit,
+    onPoolChipTap: (Int) -> Unit,
+    onAnswerChipTap: (Int) -> Unit
+) {
     val current = uiState.sentences.getOrNull(uiState.currentIndex) ?: return
+    var showQuitDialog by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
         Scaffold(
@@ -80,8 +100,8 @@ fun WordOrderingScreen(
                     hasAnswer = uiState.answerChipIds.isNotEmpty(),
                     checkResult = uiState.checkResult,
                     correctAnswer = current.term,
-                    onCheck = viewModel::checkAnswer,
-                    onNext = viewModel::nextSentence
+                    onCheck = onCheck,
+                    onNext = onNext
                 )
             },
             containerColor = Color.White
@@ -113,7 +133,7 @@ fun WordOrderingScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Image(
-                        painter = painterResource(R.drawable.normal_mascot),
+                        painter = painterResource(R.drawable.asking_mascot_manage_video_screen),
                         contentDescription = null,
                         modifier = Modifier.size(90.dp),
                         contentScale = ContentScale.Fit
@@ -146,7 +166,7 @@ fun WordOrderingScreen(
                 AnswerSlots(
                     answerWords = uiState.selectedWords,
                     answerChipIds = uiState.answerChipIds,
-                    onChipTap = viewModel::onAnswerChipTap,
+                    onChipTap = onAnswerChipTap,
                     checkResult = uiState.checkResult
                 )
 
@@ -155,7 +175,7 @@ fun WordOrderingScreen(
                 // Available chips pool
                 ChipsPool(
                     poolChips = uiState.poolChips,
-                    onChipTap = viewModel::onPoolChipTap,
+                    onChipTap = onPoolChipTap,
                     enabled = uiState.checkResult == CheckResult.NONE
                 )
 
@@ -167,7 +187,7 @@ fun WordOrderingScreen(
         if (showQuitDialog) {
             QuitDialog(
                 onDismiss = { showQuitDialog = false },
-                onConfirm = { navController.popBackStack() }
+                onConfirm = onBack
             )
         }
     }
@@ -227,7 +247,7 @@ private fun WordOrderingTopBar(progress: Float, onBack: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Icon(
-                    painter = painterResource(R.drawable.ic_octicon_goal_16),
+                    painter = painterResource(R.drawable.ic_goal_flag),
                     contentDescription = null,
                     modifier = Modifier.size(32.dp),
                     tint = Color.Unspecified
@@ -436,7 +456,7 @@ private fun BottomActionArea(
             // Green feedback bottom sheet
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = Color(0xFFD7F5A0),
+                color = Color(0xFFC7FF9D),
                 shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp)
             ) {
                 Column(modifier = Modifier
@@ -444,14 +464,23 @@ private fun BottomActionArea(
                     .padding(top = 16.dp, bottom = 16.dp)
                     .navigationBarsPadding()
                 ) {
-                    Text(
-                        text = "CHÍNH XÁC !",
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 18.sp,
-                        color = GreenBorder
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_check_green_circle),
+                            contentDescription = null,
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "CHÍNH XÁC !",
+                            fontFamily = Nunito,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 18.sp,
+                            color = GreenBorder
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -486,13 +515,22 @@ private fun BottomActionArea(
                     .padding(top = 16.dp, bottom = 16.dp)
                     .navigationBarsPadding()
                 ) {
-                    Text(
-                        text = "ĐÁP ÁN ĐÚNG LÀ :",
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 18.sp,
-                        color = RedBorder
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_close_red_circle),
+                            contentDescription = null,
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "ĐÁP ÁN ĐÚNG LÀ :",
+                            fontFamily = Nunito,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 18.sp,
+                            color = RedBorder
+                        )
+                    }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = correctAnswer,
@@ -501,7 +539,7 @@ private fun BottomActionArea(
                         fontSize = 16.sp,
                         color = RedBorder
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -569,9 +607,9 @@ private fun QuitDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
                     verticalAlignment = Alignment.Top
                 ) {
                     Image(
-                        painter = painterResource(R.drawable.normal_mascot),
+                        painter = painterResource(R.drawable.asking_mascot_manage_video_screen),
                         contentDescription = null,
-                        modifier = Modifier.size(80.dp),
+                        modifier = Modifier.size(120.dp),
                         contentScale = ContentScale.Fit
                     )
                     Spacer(modifier = Modifier.width(12.dp))
@@ -647,3 +685,71 @@ private fun QuitDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
 
 
 
+
+// ── Previews ───────────────────────────────────────────────────────────────────
+private val previewSentence = OrderingSentence(
+    id = 1,
+    term = "Where is the nearest station?",
+    definition = "Ga gần nhất ở đâu?"
+)
+
+private val previewPool = listOf(
+    PoolChip(0, "Where",   isSelected = true),
+    PoolChip(1, "is",      isSelected = true),
+    PoolChip(2, "the",     isSelected = false),
+    PoolChip(3, "nearest", isSelected = false),
+    PoolChip(4, "station", isSelected = false)
+)
+
+private val baseState = WordOrderingUiState(
+    sentences    = listOf(previewSentence),
+    currentIndex = 0,
+    poolChips    = previewPool,
+    answerChipIds = listOf(0, 1),
+    progress     = 0.4f
+)
+
+@Preview(name = "Đang làm bài", showBackground = true, showSystemUi = true)
+@Composable
+private fun PreviewWordOrdering_Idle() {
+    com.example.potago.presentation.ui.theme.PotagoTheme {
+        WordOrderingScreenContent(
+            uiState = baseState.copy(checkResult = CheckResult.NONE),
+            onBack = {},
+            onCheck = {},
+            onNext = {},
+            onPoolChipTap = {},
+            onAnswerChipTap = {}
+        )
+    }
+}
+
+@Preview(name = "Đúng", showBackground = true, showSystemUi = true)
+@Composable
+private fun PreviewWordOrdering_Correct() {
+    com.example.potago.presentation.ui.theme.PotagoTheme {
+        WordOrderingScreenContent(
+            uiState = baseState.copy(checkResult = CheckResult.CORRECT),
+            onBack = {},
+            onCheck = {},
+            onNext = {},
+            onPoolChipTap = {},
+            onAnswerChipTap = {}
+        )
+    }
+}
+
+@Preview(name = "Sai", showBackground = true, showSystemUi = true)
+@Composable
+private fun PreviewWordOrdering_Wrong() {
+    com.example.potago.presentation.ui.theme.PotagoTheme {
+        WordOrderingScreenContent(
+            uiState = baseState.copy(checkResult = CheckResult.WRONG),
+            onBack = {},
+            onCheck = {},
+            onNext = {},
+            onPoolChipTap = {},
+            onAnswerChipTap = {}
+        )
+    }
+}
