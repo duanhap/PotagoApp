@@ -21,7 +21,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-   private const val BASE_URL = "https://sonex.foo"
+   private const val BASE_URL = "http://10.0.2.2:5000"
 
 
     @Provides
@@ -132,5 +132,11 @@ object NetworkModule {
     @Singleton
     fun provideMatchGameApiService(retrofit: Retrofit): MatchGameApiService {
         return retrofit.create(MatchGameApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideWordOrderingApiService(retrofit: Retrofit): WordOrderingApiService {
+        return retrofit.create(WordOrderingApiService::class.java)
     }
 }

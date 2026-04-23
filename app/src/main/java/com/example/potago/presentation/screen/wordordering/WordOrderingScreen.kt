@@ -48,6 +48,54 @@ fun WordOrderingScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    // Handle navigation events
+    LaunchedEffect(Unit) {
+        viewModel.navEvent.collect { event ->
+            when (event) {
+                is WordOrderingNavEvent.ToStreak -> {
+                    val resultRoute = com.example.potago.presentation.navigation.Screen.WordOrderingResult(
+                        correctCount = event.correctCount,
+                        totalCount = event.totalCount,
+                        completedTime = event.completedTime
+                    )
+                    navController.navigate(
+                        com.example.potago.presentation.navigation.Screen.Streak(event.streakCount, resultRoute)
+                    ) {
+                        popUpTo(com.example.potago.presentation.navigation.Screen.WordOrdering.route) { inclusive = true }
+                    }
+                }
+                is WordOrderingNavEvent.ToResult -> {
+                    navController.navigate(
+                        com.example.potago.presentation.navigation.Screen.WordOrderingResult(
+                            correctCount = event.correctCount,
+                            totalCount = event.totalCount,
+                            completedTime = event.completedTime
+                        )
+                    ) {
+                        popUpTo(com.example.potago.presentation.navigation.Screen.WordOrdering.route) { inclusive = true }
+                    }
+                }
+            }
+        }
+    }
+
+    // Loading state
+    if (uiState.isLoading) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = GreenPrimary)
+        }
+        return
+    }
+
+    // Error state
+    val error = uiState.error
+    if (error != null && uiState.sentences.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(text = error, color = RedPrimary)
+        }
+        return
+    }
+
     // Navigate to result screen when finished
     if (uiState.isFinished) {
         androidx.compose.runtime.LaunchedEffect(Unit) {
@@ -73,8 +121,19 @@ fun WordOrderingScreen(
         onPoolChipTap = viewModel::onPoolChipTap,
         onAnswerChipTap = viewModel::onAnswerChipTap
     )
-}
 
+    // Submitting overlay
+    if (uiState.isSubmitting) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.4f)),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = GreenPrimary)
+        }
+    }
+}
 @Composable
 internal fun WordOrderingScreenContent(
     uiState: WordOrderingUiState,

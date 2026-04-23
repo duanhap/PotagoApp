@@ -1,11 +1,26 @@
 package com.example.potago.presentation.screen.wordordering
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.potago.domain.model.Result
+import com.example.potago.domain.usecase.CheckAndExpireItemSessionUseCase
+import com.example.potago.domain.usecase.ObserveActiveItemSessionUseCase
+import com.example.potago.domain.usecase.StartWordOrderingGameUseCase
+import com.example.potago.domain.usecase.SubmitWordOrderingResultUseCase
+import com.example.potago.domain.usecase.SyncUserSessionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class OrderingSentence(
@@ -16,9 +31,8 @@ data class OrderingSentence(
 
 enum class CheckResult { NONE, CORRECT, WRONG }
 
-// Each chip in the pool keeps its fixed position; isSelected = grayed out placeholder
 data class PoolChip(
-    val id: Int,        // unique index to distinguish duplicates
+    val id: Int,
     val word: String,
     val isSelected: Boolean = false
 )
@@ -26,40 +40,92 @@ data class PoolChip(
 data class WordOrderingUiState(
     val sentences: List<OrderingSentence> = emptyList(),
     val currentIndex: Int = 0,
-    // Pool: fixed positions, selected ones show as gray placeholder
     val poolChips: List<PoolChip> = emptyList(),
-    // Answer bar: ordered list of chip ids
     val answerChipIds: List<Int> = emptyList(),
     val checkResult: CheckResult = CheckResult.NONE,
     val isFinished: Boolean = false,
     val correctCount: Int = 0,
-    val progress: Float = 0f
+    val progress: Float = 0f,
+    val isLoading: Boolean = false,
+    val isSubmitting: Boolean = false,
+    val error: String? = null,
+    val gameId: Int = 0,
+    val patternId: Int = 0,
+    val hackExperience: Boolean = false,
+    val superExperience: Boolean = false,
+    val elapsedSeconds: Double = 0.0
 ) {
-    // Convenience: words in answer bar in order
     val selectedWords: List<String>
         get() = answerChipIds.mapNotNull { id -> poolChips.find { it.id == id }?.word }
 }
 
+sealed class WordOrderingNavEvent {
+    data class ToStreak(val streakCount: Int, val correctCount: Int, val totalCount: Int, val completedTime: Double) : WordOrderingNavEvent()
+    data class ToResult(val correctCount: Int, val totalCount: Int, val completedTime: Double) : WordOrderingNavEvent()
+}
+
 @HiltViewModel
-class WordOrderingViewModel @Inject constructor() : ViewModel() {
+class WordOrderingViewModel @Inject constructor(
+    private val startGameUseCase: StartWordOrderingGameUseCase,
+    private val submitResultUseCase: SubmitWordOrderingResultUseCase,
+    private val syncUserSessionUseCase: SyncUserSessionUseCase,
+    private val observeActiveItemSessionUseCase: ObserveActiveItemSessionUseCase,
+    private val checkAndExpireItemSessionUseCase: CheckAndExpireItemSessionUseCase,
+    savedStateHandle: SavedStateHandle
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WordOrderingUiState())
     val uiState: StateFlow<WordOrderingUiState> = _uiState.asStateFlow()
 
-    private val mockSentences = listOf(
-        OrderingSentence(1, "Where is the nearest station?", "Ga gần nhất ở đâu?"),
-        OrderingSentence(2, "Can you help me please?", "Bạn có thể giúp tôi không?"),
-        OrderingSentence(3, "I would like a coffee.", "Tôi muốn một ly cà phê."),
-        OrderingSentence(4, "How much does it cost?", "Cái này giá bao nhiêu?"),
-        OrderingSentence(5, "What time does it open?", "Mấy giờ thì mở cửa?")
-    )
+    private val _navEvent = Channel<WordOrderingNavEvent>()
+    val navEvent = _navEvent.receiveAsFlow()
 
-    init { loadSentences() }
+    private val patternId: Int = savedStateHandle.get<Int>("patternId") ?: 0
+    private val correctSentenceIds = mutableListOf<Int>()
+    private val wrongSentenceIds = mutableListOf<Int>()
+    private var timerJob: Job? = null
+    private var startTimeMs: Long = 0L
 
-    private fun loadSentences() {
-        val selected = mockSentences.shuffled().take(5)
-        _uiState.update { it.copy(sentences = selected) }
-        loadCurrentSentence(0, selected)
+    init {
+        observeActiveItems()
+        if (patternId > 0) loadGame(patternId)
+    }
+
+    private fun observeActiveItems() {
+        viewModelScope.launch { checkAndExpireItemSessionUseCase() }
+        observeActiveItemSessionUseCase()
+            .onEach { session ->
+                _uiState.update {
+                    it.copy(
+                        hackExperience = session?.itemType == "hack_xp" && session.isActive,
+                        superExperience = session?.itemType == "super_xp" && session.isActive
+                    )
+                }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private fun loadGame(patternId: Int) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null, patternId = patternId) }
+            when (val result = startGameUseCase(patternId)) {
+                is Result.Success -> {
+                    val (gameId, sentences) = result.data
+                    val orderingSentences = sentences.map {
+                        OrderingSentence(it.id, it.term, it.definition)
+                    }
+                    _uiState.update {
+                        it.copy(isLoading = false, gameId = gameId, sentences = orderingSentences)
+                    }
+                    loadCurrentSentence(0, orderingSentences)
+                    startTimer()
+                }
+                is Result.Error -> _uiState.update {
+                    it.copy(isLoading = false, error = result.message)
+                }
+                else -> {}
+            }
+        }
     }
 
     private fun loadCurrentSentence(
@@ -67,7 +133,7 @@ class WordOrderingViewModel @Inject constructor() : ViewModel() {
         sentences: List<OrderingSentence> = _uiState.value.sentences
     ) {
         if (index >= sentences.size) {
-            _uiState.update { it.copy(isFinished = true) }
+            submitGameResult()
             return
         }
         val words = sentences[index].term
@@ -90,32 +156,23 @@ class WordOrderingViewModel @Inject constructor() : ViewModel() {
         }
     }
 
-    // Tap a chip in the pool → move to answer bar, mark as selected (gray)
     fun onPoolChipTap(chipId: Int) {
         val state = _uiState.value
         if (state.checkResult != CheckResult.NONE) return
-        val chip = state.poolChips.find { it.id == chipId && !it.isSelected } ?: return
-
+        state.poolChips.find { it.id == chipId && !it.isSelected } ?: return
         _uiState.update {
             it.copy(
-                poolChips = it.poolChips.map { c ->
-                    if (c.id == chipId) c.copy(isSelected = true) else c
-                },
+                poolChips = it.poolChips.map { c -> if (c.id == chipId) c.copy(isSelected = true) else c },
                 answerChipIds = it.answerChipIds + chipId
             )
         }
     }
 
-    // Tap a chip in the answer bar → return to original pool position, unmark
     fun onAnswerChipTap(chipId: Int) {
-        val state = _uiState.value
-        if (state.checkResult != CheckResult.NONE) return
-
+        if (_uiState.value.checkResult != CheckResult.NONE) return
         _uiState.update {
             it.copy(
-                poolChips = it.poolChips.map { c ->
-                    if (c.id == chipId) c.copy(isSelected = false) else c
-                },
+                poolChips = it.poolChips.map { c -> if (c.id == chipId) c.copy(isSelected = false) else c },
                 answerChipIds = it.answerChipIds - chipId
             )
         }
@@ -132,6 +189,8 @@ class WordOrderingViewModel @Inject constructor() : ViewModel() {
             .joinToString(" ")
 
         val isCorrect = answer.equals(correct, ignoreCase = true)
+        if (isCorrect) correctSentenceIds.add(current.id) else wrongSentenceIds.add(current.id)
+
         _uiState.update {
             it.copy(
                 checkResult = if (isCorrect) CheckResult.CORRECT else CheckResult.WRONG,
@@ -140,7 +199,59 @@ class WordOrderingViewModel @Inject constructor() : ViewModel() {
         }
     }
 
-    fun nextSentence() {
-        loadCurrentSentence(_uiState.value.currentIndex + 1)
+    fun nextSentence() = loadCurrentSentence(_uiState.value.currentIndex + 1)
+
+    private fun startTimer() {
+        startTimeMs = System.currentTimeMillis()
+        timerJob = viewModelScope.launch {
+            while (true) {
+                delay(100)
+                val elapsed = (System.currentTimeMillis() - startTimeMs) / 1000.0
+                _uiState.update { it.copy(elapsedSeconds = elapsed) }
+            }
+        }
+    }
+
+    private fun submitGameResult() {
+        timerJob?.cancel()
+        val completedTime = (System.currentTimeMillis() - startTimeMs) / 1000.0
+
+        viewModelScope.launch {
+            val state = _uiState.value
+            _uiState.update { it.copy(isSubmitting = true) }
+
+            when (val result = submitResultUseCase(
+                gameId = state.gameId,
+                patternId = state.patternId,
+                correctSentenceIds = correctSentenceIds,
+                wrongSentenceIds = wrongSentenceIds,
+                hackExperience = state.hackExperience,
+                superExperience = state.superExperience
+            )) {
+                is Result.Success -> {
+                    syncUserSessionUseCase()
+                    val streak = result.data.streak
+                    val correctCount = result.data.correctCount
+                    val totalCount = result.data.totalCount
+                    _uiState.update { it.copy(isSubmitting = false, isFinished = true) }
+
+                    if (streak.status == "created" || streak.status == "extended") {
+                        _navEvent.send(WordOrderingNavEvent.ToStreak(streak.currentLength, correctCount, totalCount, completedTime))
+                    } else {
+                        _navEvent.send(WordOrderingNavEvent.ToResult(correctCount, totalCount, completedTime))
+                    }
+                }
+                is Result.Error -> {
+                    _uiState.update { it.copy(isSubmitting = false, isFinished = true) }
+                    _navEvent.send(WordOrderingNavEvent.ToResult(state.correctCount, state.sentences.size, completedTime))
+                }
+                else -> {}
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        timerJob?.cancel()
     }
 }

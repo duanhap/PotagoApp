@@ -5,6 +5,7 @@ import com.example.potago.domain.usecase.*
 import com.example.potago.domain.repository.RewardRepository
 import com.example.potago.domain.repository.ItemRepository
 import com.example.potago.domain.repository.ItemSessionRepository
+import com.example.potago.domain.repository.WordOrderingRepository
 import com.example.potago.domain.repository.SentencePatternRepository
 import com.example.potago.domain.repository.SentenceRepository
 import android.content.Context
@@ -217,7 +218,7 @@ object UseCaseModule {
     fun provideSaveSubtitleToPatternUseCase(
         repository: SentenceRepository
     ): SaveSubtitleToPatternUseCase = SaveSubtitleToPatternUseCase(repository)
-    
+
     @Provides
     @Singleton
     fun provideDeleteWordSetUseCase(
@@ -229,4 +230,16 @@ object UseCaseModule {
     fun provideGetWordByIdUseCase(
         repository: WordSetRepository
     ): GetWordByIdUseCase = GetWordByIdUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideStartWordOrderingGameUseCase(
+        repository: WordOrderingRepository
+    ): StartWordOrderingGameUseCase = StartWordOrderingGameUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideSubmitWordOrderingResultUseCase(
+        repository: WordOrderingRepository
+    ): SubmitWordOrderingResultUseCase = SubmitWordOrderingResultUseCase(repository)
 }

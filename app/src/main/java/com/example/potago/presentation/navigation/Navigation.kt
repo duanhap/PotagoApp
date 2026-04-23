@@ -117,9 +117,9 @@ sealed class Screen(val route: String) {
             return "word_ordering/$patternId/$encodedName"
         }
     }
-    object WordOrderingResult : Screen("word_ordering_result/{correctCount}/{totalCount}") {
-        operator fun invoke(correctCount: Int, totalCount: Int) =
-            "word_ordering_result/$correctCount/$totalCount"
+    object WordOrderingResult : Screen("word_ordering_result/{correctCount}/{totalCount}/{completedTime}") {
+        operator fun invoke(correctCount: Int, totalCount: Int, completedTime: Double = 0.0) =
+            "word_ordering_result/$correctCount/$totalCount/$completedTime"
     }
     object MatchGame : Screen("match_game/{wordSetId}/{wordSetName}") {
         operator fun invoke(wordSetId: Long, wordSetName: String): String {
@@ -599,17 +599,20 @@ fun MainFlowContainer(rootNavController: NavController) {
                     route = Screen.WordOrderingResult.route,
                     arguments = listOf(
                         navArgument("correctCount") { type = NavType.IntType },
-                        navArgument("totalCount") { type = NavType.IntType }
+                        navArgument("totalCount") { type = NavType.IntType },
+                        navArgument("completedTime") { type = NavType.FloatType; defaultValue = 0f }
                     ),
                     enterTransition = { fadeIn(tween(300)) },
                     exitTransition = { fadeOut(tween(250)) }
                 ) { backStackEntry ->
                     val correctCount = backStackEntry.arguments?.getInt("correctCount") ?: 0
                     val totalCount = backStackEntry.arguments?.getInt("totalCount") ?: 0
+                    val completedTime = backStackEntry.arguments?.getFloat("completedTime")?.toDouble() ?: 0.0
                     WordOrderingResultScreen(
                         navController = mainNavController,
                         correctCount = correctCount,
-                        totalCount = totalCount
+                        totalCount = totalCount,
+                        completedTime = completedTime
                     )
                 }
             }
