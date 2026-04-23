@@ -2,6 +2,7 @@ package com.example.potago.data.repository
 
 import com.example.potago.data.remote.api.ApiResponse
 import com.example.potago.data.remote.api.SentenceApiService
+import com.example.potago.data.remote.dto.CreateSingleSentenceRequest
 import com.example.potago.data.remote.dto.toDomain
 import com.example.potago.domain.model.Result
 import com.example.potago.domain.model.Setence
@@ -51,6 +52,21 @@ class SentenceRepositoryImpl @Inject constructor(
     override suspend fun getSentenceById(id: Int): Result<Setence> {
         return try {
             val response = sentenceApiService.getSentenceById(id)
+            if (response.success && response.data != null) {
+                Result.Success(response.data.toDomain())
+            } else {
+                Result.Error(response.message)
+            }
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
+    override suspend fun createSentence(patternId: Int, term: String, definition: String): Result<Setence> {
+        return try {
+            val response = sentenceApiService.createSentence(
+                CreateSingleSentenceRequest(patternId = patternId, term = term, definition = definition)
+            )
             if (response.success && response.data != null) {
                 Result.Success(response.data.toDomain())
             } else {
