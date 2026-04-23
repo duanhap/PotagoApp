@@ -118,8 +118,10 @@ sealed class Screen(val route: String) {
         }
     }
     object WordOrderingResult : Screen("word_ordering_result/{correctCount}/{totalCount}/{completedTime}") {
-        operator fun invoke(correctCount: Int, totalCount: Int, completedTime: Double = 0.0) =
-            "word_ordering_result/$correctCount/$totalCount/$completedTime"
+        operator fun invoke(correctCount: Int, totalCount: Int, completedTime: Double = 0.0): String {
+            val timeFloat = completedTime.toFloat()
+            return "word_ordering_result/$correctCount/$totalCount/$timeFloat"
+        }
     }
     object MatchGame : Screen("match_game/{wordSetId}/{wordSetName}") {
         operator fun invoke(wordSetId: Long, wordSetName: String): String {
