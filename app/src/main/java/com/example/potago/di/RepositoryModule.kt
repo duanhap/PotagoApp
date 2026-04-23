@@ -89,4 +89,10 @@ object RepositoryModule {
     fun provideItemSessionRepository(
         userDataStore: UserDataStore
     ): ItemSessionRepository = ItemSessionRepositoryImpl(userDataStore)
+
+    @Provides
+    @Singleton
+    fun provideWordOrderingRepository(
+        wordOrderingApiService: WordOrderingApiService
+    ): WordOrderingRepository = WordOrderingRepositoryImpl(wordOrderingApiService)
 }

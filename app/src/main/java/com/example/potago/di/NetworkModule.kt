@@ -133,4 +133,10 @@ object NetworkModule {
     fun provideMatchGameApiService(retrofit: Retrofit): MatchGameApiService {
         return retrofit.create(MatchGameApiService::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideWordOrderingApiService(retrofit: Retrofit): WordOrderingApiService {
+        return retrofit.create(WordOrderingApiService::class.java)
+    }
 }
