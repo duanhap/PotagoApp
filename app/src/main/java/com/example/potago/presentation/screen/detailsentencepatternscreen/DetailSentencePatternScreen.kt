@@ -71,6 +71,7 @@ fun DetailSentencePatternScreen(
             isLoading = uiState.isLoading || uiState.isDeleting,
             onSlideDownClick = { navController.popBackStack() },
             onWritingGameClick = { /* TODO: navigate to writing game */ },
+            onWordOrderingClick = {navController.navigate(Screen.WordOrdering(patternId, uiState.pattern?.name ?: "")) },
             onListSentencesClick = { navController.navigate(Screen.ListOfDetail.route) },
             onEditPatternClick = { navController.navigate(Screen.EditDetail(patternId)) },
             onConfirmDelete = { viewModel.deletePattern() }
@@ -90,6 +91,7 @@ private fun DetailSentencePatternContent(
     description: String? = null,
     isLoading: Boolean = false,
     onSlideDownClick: () -> Unit,
+    onWordOrderingClick:() -> Unit,
     onWritingGameClick: () -> Unit,
     onListSentencesClick: () -> Unit,
     onEditPatternClick: () -> Unit,
@@ -162,7 +164,7 @@ private fun DetailSentencePatternContent(
                     SentenceActionCard(
                         iconRes = R.drawable.ic_order_word,
                         title = "Sắp xếp chữ",
-                        onClick = onWritingGameClick
+                        onClick = onWordOrderingClick
                     )
 
                     Spacer(modifier = Modifier.height(22.dp))
@@ -465,6 +467,7 @@ private fun DetailSentencePatternScreenPreview() {
         sentenceCount = 200,
         createdAt = "Tháng 1 năm 2026",
         description = "Learn how to order tacos and ask for the bill.",
+        onWordOrderingClick = {},
         onSlideDownClick = {},
         onWritingGameClick = {},
         onListSentencesClick = {},
