@@ -66,6 +66,7 @@ import com.example.potago.presentation.screen.detailsentencepatternscreen.EditSe
 import com.example.potago.presentation.screen.wordordering.WordOrderingScreen
 import com.example.potago.presentation.screen.wordordering.WordOrderingResultScreen
 import com.example.potago.presentation.screen.detailsentencepatternscreen.ListOfDetailScreen
+import com.example.potago.presentation.screen.writingpracticescreen.WritingPracticeScreen
 import com.example.potago.presentation.screen.shop.ShopScreen
 import com.example.potago.presentation.screen.splash.SplashScreen
 import com.example.potago.presentation.screen.streak.StreakScreen
@@ -133,6 +134,9 @@ sealed class Screen(val route: String) {
     }
     object AddSentence : Screen("add_sentence/{patternId}") {
         operator fun invoke(patternId: Int) = "add_sentence/$patternId"
+    }
+    object WritingPractice : Screen("writing_practice/{patternId}") {
+        operator fun invoke(patternId: Int) = "writing_practice/$patternId"
     }
     object MatchGame : Screen("match_game/{wordSetId}/{wordSetName}") {
         operator fun invoke(wordSetId: Long, wordSetName: String): String {
@@ -607,6 +611,13 @@ fun MainFlowContainer(rootNavController: NavController) {
                 ) { backStackEntry ->
                     val patternId = backStackEntry.arguments?.getInt("patternId") ?: 0
                     AddSentenceScreen(mainNavController, patternId)
+                }
+                composable(
+                    route = Screen.WritingPractice.route,
+                    arguments = listOf(navArgument("patternId") { type = NavType.IntType })
+                ) { backStackEntry ->
+                    val patternId = backStackEntry.arguments?.getInt("patternId") ?: 0
+                    WritingPracticeScreen(mainNavController, patternId)
                 }
                 composable(
                     route = Screen.WordOrdering.route,
