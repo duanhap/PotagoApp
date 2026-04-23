@@ -1,25 +1,38 @@
 package com.example.potago.presentation.screen.ranking
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -31,188 +44,137 @@ import coil.compose.AsyncImage
 import com.example.potago.R
 import com.example.potago.domain.model.User
 
+
 @Composable
 fun RankScreen(
     navController: NavController,
     viewModel: RankViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+    ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding))
+        Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
+            Column(modifier = Modifier.fillMaxSize()) {
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Header
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .shadow(elevation = 2.dp, spotColor = Color(0x1A000000))
-                    .padding(vertical = 15.dp, horizontal = 16.dp)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_cancel),
-                    contentDescription = "Back",
-                    colorFilter = ColorFilter.tint(Color.Black),
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clickable { navController.popBackStack() }
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    "Xếp hạng",
-                    color = Color.Black,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.ExtraBold
-                )
-            }
-
-            if (uiState.isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Color(0xFF89E219))
-                }
-            } else if (uiState.error != null) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Lỗi: ${uiState.error}", color = Color.Red)
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    contentPadding = PaddingValues(bottom = 100.dp)
-                ) {
-                    // Ranking Banner with Gradient Background
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(160.dp)
-                        ) {
-                            // Bronze gradient background
+                if (uiState.isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Color(0xFF89E219))
+                    }
+                } else if (uiState.error != null) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Lỗi: ${uiState.error}", color = Color.Red)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        contentPadding = PaddingValues(bottom = 100.dp)
+                    ) {
+                        item{
+                            TopAppBar(
+                                onBackClick = { navController.popBackStack() },
+                                modifier = Modifier.alpha(0f)
+                            )
+                        }
+                        // Ranking Banner with Gradient Background
+                        item {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(157.dp)
-                                    .align(Alignment.BottomCenter)
-                                    .background(
-                                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                                            colors = listOf(
-                                                Color(0xFFDB9D44),
-                                                Color(0xFF8D7758)
-                                            ),
-                                            startY = 0f,
-                                            endY = Float.POSITIVE_INFINITY
-                                        ),
-                                        shape = RoundedCornerShape(bottomStart = 20.dp)
-                                    )
-                            )
-                            
-                            // Green gradient overlay
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(51.dp)
-                                    .align(Alignment.TopCenter)
-                                    .background(
-                                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                                            colors = listOf(
-                                                Color(0xFF398700),
-                                                Color(0xFF51BF00),
-                                                Color(0xFFB3FF7B)
-                                            ),
-                                            startY = 0f,
-                                            endY = Float.POSITIVE_INFINITY
-                                        ),
-                                        shape = RoundedCornerShape(bottomStart = 20.dp)
-                                    )
-                            )
-                            
-                            // Top 1000 Banner Image
-                            Image(
-                                painter = painterResource(id = R.drawable.top1000),
-                                contentDescription = "Top 1000 Banner",
-                                modifier = Modifier
-                                    .padding(horizontal = 14.dp, vertical = 13.dp)
-                                    .fillMaxWidth()
-                                    .height(124.dp)
-                                    .align(Alignment.Center),
-                                contentScale = ContentScale.FillWidth
+                                    .padding(bottom = 20.dp)
+                            ) {
+                                // Top 1000 Banner Image
+                                Image(
+                                    painter = painterResource(id = R.drawable.top1000),
+                                    contentDescription = "Top 1000 Banner",
+                                    modifier = Modifier
+                                        .align(Alignment.Center),
+                                )
+                            }
+                        }
+
+                        // Ranking List
+                        itemsIndexed(uiState.topUsers) { index, user ->
+                            val isCurrentUser = user.uid == uiState.currentUser?.uid
+                            RankItem(
+                                rank = index + 1,
+                                user = user,
+                                isCurrentUser = isCurrentUser,
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 7.dp)
                             )
                         }
                     }
-
-                    // Ranking List
-                    itemsIndexed(uiState.topUsers) { index, user ->
-                        val isCurrentUser = user.uid == uiState.currentUser?.uid
-                        RankItem(
-                            rank = index + 1,
-                            user = user,
-                            isCurrentUser = isCurrentUser,
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 7.dp)
-                        )
-                    }
                 }
             }
-        }
 
-        // My Rank Section (Sticky at bottom)
-        if (!uiState.isLoading && uiState.myRank != null) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 16.dp, start = 9.dp, end = 9.dp)
-                    .fillMaxWidth()
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+            // My Rank Section (Sticky at bottom)
+            if (!uiState.isLoading && uiState.myRank != null) {
+                Box(
                     modifier = Modifier
-                        .border(
-                            width = 1.dp,
-                            color = Color(0xFF89E219),
-                            shape = RoundedCornerShape(15.dp)
-                        )
-                        .clip(RoundedCornerShape(15.dp))
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 16.dp, start = 9.dp, end = 9.dp)
                         .fillMaxWidth()
-                        .background(Color(0xFFC4FF7A))
-                        .padding(horizontal = 16.dp, vertical = 18.dp)
                 ) {
-                    Text(
-                        "${uiState.myRank}",
-                        color = Color(0xCC050505),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        modifier = Modifier.padding(end = 16.dp)
-                    )
-                    
-                    AsyncImage(
-                        model = uiState.currentUser?.avatar ?: R.drawable.avataryellowhair,
-                        contentDescription = "My Avatar",
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .size(41.dp)
-                            .clip(CircleShape)
-                            .border(1.dp, Color.Black, CircleShape),
-                        contentScale = ContentScale.Crop,
-                        placeholder = painterResource(id = R.drawable.avataryellowhair)
-                    )
-                    
-                    Text(
-                        uiState.currentUser?.name ?: "Bạn",
-                        color = Color.Black,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 12.dp)
-                    )
-                    
-                    Spacer(modifier = Modifier.weight(1f))
-                    
-                    Text(
-                        "${uiState.currentUser?.experiencePoints ?: 0} xp",
-                        color = Color.Black,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                            .border(
+                                width = 1.dp,
+                                color = Color(0xFF89E219),
+                                shape = RoundedCornerShape(15.dp)
+                            )
+                            .clip(RoundedCornerShape(15.dp))
+                            .fillMaxWidth()
+                            .background(Color(0xFFC4FF7A))
+                            .padding(horizontal = 16.dp, vertical = 18.dp)
+                    ) {
+                        Text(
+                            "${uiState.myRank}",
+                            color = Color(0xCC050505),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            modifier = Modifier.padding(end = 16.dp)
+                        )
+
+                        AsyncImage(
+                            model = uiState.currentUser?.avatar ?: R.drawable.avataryellowhair,
+                            contentDescription = "My Avatar",
+                            modifier = Modifier
+                                .size(41.dp)
+                                .clip(CircleShape)
+                                .border(1.dp, Color.Black, CircleShape),
+                            contentScale = ContentScale.Crop,
+                            placeholder = painterResource(id = R.drawable.avataryellowhair)
+                        )
+
+                        Text(
+                            uiState.currentUser?.name ?: "Bạn",
+                            color = Color.Black,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 12.dp)
+                        )
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        Text(
+                            "${uiState.currentUser?.experiencePoints ?: 0} xp",
+                            color = Color.Black,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }
     }
+
+
 }
 
 @Composable
@@ -266,14 +228,14 @@ fun RankItem(
 
         // Avatar
         AsyncImage(
-            model = if (user.avatar.isNullOrEmpty()) R.drawable.pinkgirl else user.avatar,
+            model = if (user.avatar.isNullOrEmpty()) R.drawable.ic_an_danh else user.avatar,
             contentDescription = "Avatar",
             modifier = Modifier
                 .size(41.dp)
                 .clip(CircleShape)
                 .border(1.dp, Color.Black, CircleShape),
             contentScale = ContentScale.Crop,
-            placeholder = painterResource(id = R.drawable.pinkgirl)
+            placeholder = painterResource(id = R.drawable.ic_an_danh)
         )
 
         // Name
@@ -293,6 +255,84 @@ fun RankItem(
             color = Color.Black,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
+@Composable
+private fun TopAppBar(
+    onBackClick: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        tonalElevation = 3.dp,
+        shadowElevation = 4.dp,
+        color = Color(0xFFFFFFFF)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+        ) {
+
+            // ✅ Row chỉ còn Text → quyết định height
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+
+                Text(
+                    text = "Xếp hạng",
+                    style = MaterialTheme.typography.displayMedium,
+                    modifier = Modifier.padding(start = 45.dp)
+                )
+
+            }
+
+            // 🔥 BackButton overlay
+            Box(
+                modifier = Modifier.matchParentSize()
+            ) {
+                BackButtonRankScreen(
+                    onClick = onBackClick,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .wrapContentSize()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BackButtonRankScreen(
+    onClick: () -> Unit,
+    modifier: Modifier
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.9f else 1f,
+        label = "icon_scale"
+    )
+
+    IconButton(
+        onClick = onClick,
+        interactionSource = interactionSource,
+        modifier = modifier.offset(x = -10.dp)
+    ) {
+        Icon(
+            painter = painterResource(id = R.drawable.ic_library_add_button),
+            contentDescription = "Back",
+            modifier = Modifier
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .rotate(45f)
         )
     }
 }

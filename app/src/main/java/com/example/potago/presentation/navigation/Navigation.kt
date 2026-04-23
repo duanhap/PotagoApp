@@ -550,7 +550,7 @@ fun MainFlowContainer(rootNavController: NavController) {
                     )
                 }
                 composable(Screen.Rank.route) {
-                    RankScreen()
+                    RankScreen(mainNavController)
                 }
                 composable(
                     route = Screen.DetailSentencePattern.route,
