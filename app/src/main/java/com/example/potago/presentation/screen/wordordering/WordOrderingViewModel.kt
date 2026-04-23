@@ -38,13 +38,14 @@ data class PoolChip(
 )
 
 data class WordOrderingUiState(
-    val sentences: List<OrderingSentence> = emptyList(),
+    val sentences: List<OrderingSentence> = emptyList(),  // queue hiện tại (bao gồm câu bị đẩy lại)
     val currentIndex: Int = 0,
     val poolChips: List<PoolChip> = emptyList(),
     val answerChipIds: List<Int> = emptyList(),
     val checkResult: CheckResult = CheckResult.NONE,
     val isFinished: Boolean = false,
     val correctCount: Int = 0,
+    val totalOriginal: Int = 0,          // tổng câu gốc (không đổi)
     val progress: Float = 0f,
     val isLoading: Boolean = false,
     val isSubmitting: Boolean = false,
@@ -82,7 +83,8 @@ class WordOrderingViewModel @Inject constructor(
 
     private val patternId: Int = savedStateHandle.get<Int>("patternId") ?: 0
     private val correctSentenceIds = mutableListOf<Int>()
-    private val wrongSentenceIds = mutableListOf<Int>()
+    private val wrongSentenceIds = mutableListOf<Int>()   // chỉ lưu lần sai ĐẦU TIÊN của mỗi câu
+    private val alreadyWronged = mutableSetOf<Int>()      // tránh đếm sai nhiều lần cùng 1 câu
     private var timerJob: Job? = null
     private var startTimeMs: Long = 0L
 
@@ -115,7 +117,12 @@ class WordOrderingViewModel @Inject constructor(
                         OrderingSentence(it.id, it.term, it.definition)
                     }
                     _uiState.update {
-                        it.copy(isLoading = false, gameId = gameId, sentences = orderingSentences)
+                        it.copy(
+                            isLoading = false,
+                            gameId = gameId,
+                            sentences = orderingSentences,
+                            totalOriginal = orderingSentences.size
+                        )
                     }
                     loadCurrentSentence(0, orderingSentences)
                     startTimer()
@@ -143,7 +150,8 @@ class WordOrderingViewModel @Inject constructor(
             .shuffled()
 
         val pool = words.mapIndexed { i, w -> PoolChip(id = i, word = w) }
-        val prog = if (sentences.isEmpty()) 0f else index.toFloat() / sentences.size
+        // Progress dựa trên số câu đúng / tổng câu gốc
+        val prog = _uiState.value.correctCount.toFloat() / _uiState.value.totalOriginal.coerceAtLeast(1)
 
         _uiState.update {
             it.copy(
@@ -189,7 +197,15 @@ class WordOrderingViewModel @Inject constructor(
             .joinToString(" ")
 
         val isCorrect = answer.equals(correct, ignoreCase = true)
-        if (isCorrect) correctSentenceIds.add(current.id) else wrongSentenceIds.add(current.id)
+
+        if (isCorrect) {
+            correctSentenceIds.add(current.id)
+        } else {
+            // Chỉ ghi nhận sai lần đầu tiên
+            if (alreadyWronged.add(current.id)) {
+                wrongSentenceIds.add(current.id)
+            }
+        }
 
         _uiState.update {
             it.copy(
@@ -199,7 +215,22 @@ class WordOrderingViewModel @Inject constructor(
         }
     }
 
-    fun nextSentence() = loadCurrentSentence(_uiState.value.currentIndex + 1)
+    fun nextSentence() {
+        val state = _uiState.value
+        val current = state.sentences.getOrNull(state.currentIndex) ?: return
+
+        if (state.checkResult == CheckResult.WRONG) {
+            // Đẩy câu sai vào cuối queue
+            val newQueue = state.sentences.toMutableList()
+            newQueue.removeAt(state.currentIndex)
+            newQueue.add(current)
+            _uiState.update { it.copy(sentences = newQueue) }
+            // index giữ nguyên → sẽ load câu tiếp theo (vốn là câu kế)
+            loadCurrentSentence(state.currentIndex, newQueue)
+        } else {
+            loadCurrentSentence(state.currentIndex + 1)
+        }
+    }
 
     private fun startTimer() {
         startTimeMs = System.currentTimeMillis()
@@ -243,7 +274,7 @@ class WordOrderingViewModel @Inject constructor(
                 }
                 is Result.Error -> {
                     _uiState.update { it.copy(isSubmitting = false, isFinished = true) }
-                    _navEvent.send(WordOrderingNavEvent.ToResult(state.correctCount, state.sentences.size, completedTime))
+                    _navEvent.send(WordOrderingNavEvent.ToResult(state.correctCount, state.totalOriginal, completedTime))
                 }
                 else -> {}
             }
