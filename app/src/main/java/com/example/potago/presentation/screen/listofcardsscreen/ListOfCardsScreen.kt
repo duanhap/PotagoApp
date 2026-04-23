@@ -1,13 +1,22 @@
 package com.example.potago.presentation.screen.listofcardsscreen
 
+import android.speech.tts.TextToSpeech
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,12 +30,18 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,10 +53,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.potago.R
 import com.example.potago.domain.model.Word
+import com.example.potago.domain.model.WordSet
 import com.example.potago.presentation.navigation.Screen
 import com.example.potago.presentation.screen.myvideo.AddButton
 import com.example.potago.presentation.screen.recommendvideo.FilterTab
 import com.example.potago.presentation.screen.setting.BackButton
+import com.example.potago.presentation.ui.theme.Nunito
+import java.util.Locale
 
 // ────────────────────────────────────────────────────────────────────────────
 // Screen Entry Point
@@ -55,6 +73,21 @@ fun ListOfCardsScreen(
     viewModel: ListOfCardsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    var tts: TextToSpeech? by remember { mutableStateOf(null) }
+
+    DisposableEffect(Unit) {
+        val ttsInstance = TextToSpeech(context) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                // Initialized successfully
+            }
+        }
+        tts = ttsInstance
+        onDispose {
+            ttsInstance.stop()
+            ttsInstance.shutdown()
+        }
+    }
 
     LaunchedEffect(wordSetId) {
         viewModel.loadCards(wordSetId)
@@ -68,7 +101,12 @@ fun ListOfCardsScreen(
         onBackClick = { navController.popBackStack() },
         onFilterChange = viewModel::onFilterChange,
         onSearchQueryChange = viewModel::onSearchQueryChange,
-        onVolumeClick = { /* Handle TTS / Audio */ },
+        onVolumeClick = { word ->
+            tts?.let { engine ->
+                engine.language = Locale.forLanguageTag(uiState.termLanguageCode.ifBlank { "en" })
+                engine.speak(word.term, TextToSpeech.QUEUE_FLUSH, null, null)
+            }
+        },
         onEditClick = { word -> navController.navigate(Screen.EditCard(word.id)) },
         onDeleteClick = { word -> wordPendingDelete = word },
         onAddClick = { navController.navigate(Screen.AddCard(wordSetId)) }
@@ -194,7 +232,6 @@ fun ListOfCardsScreenContent(
                                     bottom = 88.dp
                                 ),
                                 verticalArrangement = Arrangement.spacedBy(14.dp),
-                                userScrollEnabled = false
                             ) {
                                 items(filteredCards, key = { it.id }) { word ->
                                     CardItemNode(
@@ -209,7 +246,10 @@ fun ListOfCardsScreenContent(
                     }
                 }
             }
-            AddCardBottomBar(onClick = onAddClick,modifier = Modifier.align(Alignment.BottomCenter))
+            AddCardBottomBar(
+                onClick = onAddClick,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
 
 
         }
@@ -304,7 +344,7 @@ private fun AddCardBottomBar(onClick: () -> Unit, modifier: Modifier = Modifier)
                     painter = painterResource(R.drawable.ic_add),
                     contentDescription = "Thêm thẻ",
                     tint = Color.White,
-                    modifier= Modifier.size(28.dp)
+                    modifier = Modifier.size(28.dp)
                 )
             }
         }
@@ -421,26 +461,38 @@ private fun WordCountBadge(count: Int) {
 @Composable
 fun CardItemNode(
     word: Word,
+    modifier: Modifier = Modifier,
     onVolumeClick: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
     var isMenuExpanded by remember { mutableStateOf(false) }
+    var isExpanded by remember { mutableStateOf(false) }
 
-    // Status indicator color
     val statusColor = if (word.status.equals("known", ignoreCase = true))
         Color(0xFF22C55E) else Color(0xFFF59E0B)
 
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(targetValue = if (isPressed) 0.85f else 1f, label = "scale")
+
+    // Rotation animation cho mũi tên
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (isExpanded) 0f else 180f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "arrow"
+    )
+
     Surface(
-        modifier = Modifier.fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = Color(0x99DEDEDE), // màu xám rất nhẹ
-                shape = RoundedCornerShape(16.dp)
-            ),
+        modifier = modifier
+            .fillMaxWidth()
+            .border(1.dp, Color(0x99DEDEDE), RoundedCornerShape(16.dp))
+            .clickable { isExpanded = !isExpanded },
         shape = RoundedCornerShape(16.dp),
         color = Color.White,
-        shadowElevation = 2.dp,
         tonalElevation = 0.dp
     ) {
         Column(
@@ -454,7 +506,6 @@ fun CardItemNode(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Speaker / audio icon
                 Box(
                     modifier = Modifier
                         .size(34.dp)
@@ -473,7 +524,6 @@ fun CardItemNode(
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                // Status chip
                 Box(
                     modifier = Modifier
                         .background(
@@ -483,8 +533,11 @@ fun CardItemNode(
                         .padding(horizontal = 10.dp, vertical = 3.dp)
                 ) {
                     Text(
-                        text = if (word.status.equals("known", ignoreCase = true))
-                            "Đã thuộc" else "Chưa thuộc",
+                        text = if (word.status.equals(
+                                "known",
+                                ignoreCase = true
+                            )
+                        ) "Đã thuộc" else "Chưa thuộc",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = statusColor
@@ -493,7 +546,6 @@ fun CardItemNode(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // More options menu
                 Box {
                     Icon(
                         imageVector = Icons.Default.MoreVert,
@@ -517,10 +569,7 @@ fun CardItemNode(
                                     fontWeight = FontWeight.Medium
                                 )
                             },
-                            onClick = {
-                                isMenuExpanded = false
-                                onEditClick()
-                            },
+                            onClick = { isMenuExpanded = false; onEditClick() },
                             leadingIcon = {
                                 Icon(
                                     Icons.Default.Edit,
@@ -538,10 +587,7 @@ fun CardItemNode(
                                     fontWeight = FontWeight.Medium
                                 )
                             },
-                            onClick = {
-                                isMenuExpanded = false
-                                onDeleteClick()
-                            },
+                            onClick = { isMenuExpanded = false; onDeleteClick() },
                             leadingIcon = {
                                 Icon(
                                     Icons.Default.Delete,
@@ -556,19 +602,18 @@ fun CardItemNode(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // ── Term ────────────────────────────────────────────────────
+            // ── Term (luôn hiện, không giới hạn khi expanded) ────────
             Text(
                 text = word.term.ifBlank { "Không có từ" },
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF111827),
-                maxLines = 2,
+                maxLines = if (isExpanded) Int.MAX_VALUE else 2,
                 overflow = TextOverflow.Ellipsis
             )
 
             Spacer(modifier = Modifier.height(2.dp))
 
-            // Divider
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = 8.dp),
                 thickness = 1.dp,
@@ -581,21 +626,61 @@ fun CardItemNode(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Normal,
                 color = Color(0xFF6B7280),
-                maxLines = 3,
+                maxLines = if (isExpanded) Int.MAX_VALUE else 3,
                 overflow = TextOverflow.Ellipsis
             )
 
-            // ── Description (optional) ───────────────────────────────────
-            if (!word.description.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = word.description,
-                    fontSize = 12.sp,
-                    color = Color(0xFFB0B8C1),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-                )
+            // ── Description — chỉ hiện khi expanded ─────────────────
+            AnimatedVisibility(
+                visible = isExpanded && !word.description.isNullOrBlank(),
+                enter = fadeIn() + expandVertically(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    )
+                ),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = word.description ?: "",
+                        fontSize = 12.sp,
+                        color = Color(0xFFB0B8C1),
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
+                }
+            }
+
+            // ── Nút thu/mở ───────────────────────────────────────────
+            if (!word.description.isNullOrBlank() && isExpanded) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    IconButton(
+                        onClick = { isExpanded = !isExpanded },
+                        interactionSource = interactionSource,
+                    ) {
+
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_back),
+                            contentDescription = if (isExpanded) "Thu lại" else "Mở rộng",
+                            tint = Color(0xFFB0B8C1),
+                            modifier = Modifier
+                                .size(20.dp)
+                                .rotate(90f)
+                                .graphicsLayer {
+                                    rotationZ = arrowRotation; scaleX = scale; scaleY = scale
+                                }
+
+
+                        )
+
+                    }
+                }
             }
         }
     }
@@ -617,118 +702,135 @@ fun DeleteConfirmBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = Color.White,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         dragHandle = {
             Box(
                 modifier = Modifier
-                    .padding(top = 12.dp, bottom = 8.dp)
+                    .padding(top = 11.dp)
                     .width(48.dp)
-                    .height(5.dp)
-                    .background(Color(0xFFE5E7EB), RoundedCornerShape(50))
+                    .height(6.dp)
+                    .background(Color(0xFFE5E7EB), RoundedCornerShape(999.dp))
             )
         }
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .padding(horizontal = 20.dp)
-                .padding(bottom = 36.dp),
+                .padding(bottom = 28.dp)
         ) {
-            // ── Mascot + speech bubble row ───────────────────────────────
+            Spacer(modifier = Modifier.height(16.dp))
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp, bottom = 32.dp),
-                verticalAlignment = Alignment.Bottom
+                    .height(180.dp)
+                    .padding(horizontal = 10.dp)
             ) {
-                // Mascot image
                 Image(
-                    painter = painterResource(id = R.drawable.ic_looking_mascot),
+                    painter = painterResource(R.drawable.asking_mascot_manage_video_screen),
                     contentDescription = null,
-                    modifier = Modifier.size(110.dp)
+                    modifier = Modifier
+                        .scale(0.8f)
                 )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // "?" label + speech bubble
-                Column(
-                    horizontalAlignment = Alignment.Start,
-                    verticalArrangement = Arrangement.Bottom
+                Surface(
+                    modifier = Modifier
+                        .padding(top = 70.dp),
+                    shape = RoundedCornerShape(
+                        topEnd = 16.dp,
+                        bottomEnd = 16.dp,
+                        bottomStart = 16.dp
+                    ),
+                    color = Color.White,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)),
+                    shadowElevation = 2.dp
                 ) {
                     Text(
-                        text = "?",
-                        fontSize = 52.sp,
+                        text = "Xác nhận xóa chứ!?",
+                        style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF4B4B4B),
-                        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+                        color = Color(0xFF4B5563),
+                        lineHeight = 24.sp,
+                        modifier = Modifier.padding(horizontal = 13.dp, vertical = 14.dp)
                     )
-                    // Speech bubble
-                    Surface(
-                        shape = RoundedCornerShape(
-                            topStart = 0.dp,
-                            topEnd = 16.dp,
-                            bottomStart = 16.dp,
-                            bottomEnd = 16.dp
-                        ),
-                        color = Color.White,
-                        border = BorderStroke(
-                            1.dp, Color(0xFFE5E7EB)
-                        ),
-                        shadowElevation = 2.dp
-                    ) {
-                        Text(
-                            text = "Xác nhận xóa chứ !?",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF4B5563),
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)
-                        )
-                    }
                 }
             }
 
-            // ── Buttons ──────────────────────────────────────────────────
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Buttons row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Từ chối (Cancel)
-                Surface(
+                // Cancel button
+                var cancelPressed by remember { mutableStateOf(false) }
+                Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(48.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color.White,
-                    border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
-                    shadowElevation = 2.dp,
-                    onClick = onDismiss
+                        .height(51.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFFE5E7EB))
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(if (cancelPressed) 51.dp else 48.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color.White)
+                            .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(16.dp))
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onPress = {
+                                        cancelPressed = true; tryAwaitRelease(); cancelPressed =
+                                        false
+                                    },
+                                    onTap = { onConfirm() }
+                                )
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
                             text = "Từ chối",
-                            fontSize = 14.sp,
+                            fontFamily = Nunito,
                             fontWeight = FontWeight.ExtraBold,
+                            fontSize = 14.sp,
                             color = Color(0xFF374151)
                         )
                     }
                 }
 
-                // Xác nhận (Confirm)
-                Surface(
+                // Confirm button
+                var confirmPressed by remember { mutableStateOf(false) }
+                Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(48.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFF58CC02),
-                    border = BorderStroke(1.dp, Color(0xFF46A302)),
-                    shadowElevation = 2.dp,
-                    onClick = onConfirm
+                        .height(51.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFF46A302))
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(if (confirmPressed) 51.dp else 48.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFF58CC02))
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onPress = {
+                                        confirmPressed = true; tryAwaitRelease(); confirmPressed =
+                                        false
+                                    },
+                                    onTap = { onConfirm() }
+                                )
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
                             text = "Xác nhận",
-                            fontSize = 14.sp,
+                            fontFamily = Nunito,
                             fontWeight = FontWeight.ExtraBold,
+                            fontSize = 14.sp,
                             color = Color.White
                         )
                     }
