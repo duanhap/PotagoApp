@@ -68,6 +68,15 @@ class EditCardViewModel @Inject constructor(
     }
 
     fun saveCard() {
+        val currentState = _uiState.value
+        if (currentState.term.isBlank()) {
+            _uiState.update { it.copy(error = "Thuật ngữ không được để trống") }
+            return
+        }
+        if (currentState.definition.isBlank()) {
+            _uiState.update { it.copy(error = "Định nghĩa không được để trống") }
+            return
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             val currentState = _uiState.value

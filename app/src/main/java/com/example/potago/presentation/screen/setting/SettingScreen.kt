@@ -218,7 +218,7 @@ private fun LanguageDropdown(value: String, onValueChange: (String) -> Unit) {
 fun BackButton(onClick: () -> Unit, modifier: Modifier) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(targetValue = if (isPressed) 0.85f else 1f, label = "scale")
+    val scale by animateFloatAsState(targetValue = if (isPressed) 0.75f else 0.85f, label = "scale")
 
     IconButton(onClick = onClick, interactionSource = interactionSource, modifier = modifier) {
         Icon(

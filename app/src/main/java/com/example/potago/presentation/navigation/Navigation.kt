@@ -92,18 +92,22 @@ sealed class Screen(val route: String) {
     object CreateWordSet : Screen("create_word_set")
     object CreateSentencePattern : Screen("create_sentence_pattern")
     object Rank : Screen("rank")
-    object DetailSentencePattern : Screen("detail_sentence_pattern/{sentencePatternId}/{sentencePatternName}") {
+    object DetailSentencePattern :
+        Screen("detail_sentence_pattern/{sentencePatternId}/{sentencePatternName}") {
         operator fun invoke(sentencePatternId: Int, sentencePatternName: String): String {
             val encodedName = android.net.Uri.encode(sentencePatternName)
             return "detail_sentence_pattern/$sentencePatternId/$encodedName"
         }
     }
+
     object DeleteDetail : Screen("delete_detail/{sentencePatternId}") {
         operator fun invoke(sentencePatternId: Int) = "delete_detail/$sentencePatternId"
     }
+
     object EditDetail : Screen("edit_detail/{sentencePatternId}") {
         operator fun invoke(sentencePatternId: Int) = "edit_detail/$sentencePatternId"
     }
+
     object ListOfDetail : Screen("list_of_detail")
     object MatchGame : Screen("match_game/{wordSetId}/{wordSetName}") {
         operator fun invoke(wordSetId: Long, wordSetName: String): String {
@@ -373,7 +377,11 @@ fun MainFlowContainer(rootNavController: NavController) {
                         fadeOut(tween(250))
                     },
                     popEnterTransition = {
-                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Down)
+                        if (initialState.destination.route == Screen.DetailCourse.route) {
+                            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Down)
+                        } else {
+                            fadeIn(tween(250))
+                        }
                     },
                     popExitTransition = {
                         slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right)
@@ -459,7 +467,9 @@ fun MainFlowContainer(rootNavController: NavController) {
                     route = Screen.Streak.route,
                     arguments = listOf(
                         navArgument("streakCount") { type = NavType.IntType },
-                        navArgument("nextRoute") { type = NavType.StringType; nullable = true; defaultValue = null }
+                        navArgument("nextRoute") {
+                            type = NavType.StringType; nullable = true; defaultValue = null
+                        }
                     )
                 ) { backStackEntry ->
                     val streakCount = backStackEntry.arguments?.getInt("streakCount") ?: 1
@@ -514,7 +524,10 @@ fun MainFlowContainer(rootNavController: NavController) {
                     route = Screen.AddCard.route,
                     arguments = listOf(
                         navArgument("wordSetId") { type = NavType.LongType }
-                    )
+                    ),
+                    popExitTransition = {
+                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right)
+                    }
                 ) { backStackEntry ->
                     val wordSetId = backStackEntry.arguments?.getLong("wordSetId") ?: 0L
                     AddCardScreen(

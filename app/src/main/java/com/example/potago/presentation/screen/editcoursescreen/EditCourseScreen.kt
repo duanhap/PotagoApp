@@ -51,6 +51,7 @@ import androidx.navigation.NavController
 import com.example.potago.R
 import com.example.potago.presentation.navigation.Screen
 import com.example.potago.presentation.screen.setting.BackButton
+import com.example.potago.presentation.ui.theme.Blue3B
 
 @Composable
 fun EditCourseScreen(
@@ -182,19 +183,20 @@ private fun EditCourseScreenContent(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                 )
+
                 Box(
                     modifier = Modifier
                         .size(52.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF3B82F6))
+                        .background(Blue3B)
                         .clickable(onClick = onSaveClick),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "✓",
-                        color = Color.White,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_check),
+                        contentDescription = "Save",
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
                     )
                 }
             }
