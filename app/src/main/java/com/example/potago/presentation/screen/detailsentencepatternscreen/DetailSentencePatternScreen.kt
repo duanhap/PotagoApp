@@ -1,25 +1,45 @@
 package com.example.potago.presentation.screen.detailsentencepatternscreen
 
-import androidx.compose.foundation.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.*
-import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.*
-import androidx.compose.ui.draw.*
-import androidx.compose.ui.graphics.*
-import androidx.compose.ui.layout.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.*
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.*
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.potago.R
 import com.example.potago.presentation.navigation.Screen
+import com.example.potago.presentation.screen.setting.BackButton
+import com.example.potago.presentation.ui.theme.Nunito
+import java.time.OffsetDateTime
+import java.time.format.DateTimeParseException
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Screen Entry Point
+// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun DetailSentencePatternScreen(
@@ -29,198 +49,426 @@ fun DetailSentencePatternScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(patternId) {
-        viewModel.loadDetail(patternId)
+    LaunchedEffect(patternId) { viewModel.loadDetail(patternId) }
+
+    LaunchedEffect(uiState.deleteSuccess) {
+        if (uiState.deleteSuccess) {
+            navController.navigate(Screen.Library.route) {
+                popUpTo(Screen.Library.route) { inclusive = false }
+            }
+        }
     }
 
-    val pattern = uiState.pattern
-    val sentencesCount = uiState.sentences.size
+    Scaffold(
+        topBar = { AppTopBar(title = "Mẫu câu", onBackClick = {navController.popBackStack()}) }
+    ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding))
+        DetailSentencePatternContent(
+            patternName = uiState.pattern?.name ?: "",
+            sentenceCount = uiState.sentences.size,
+            createdAt = uiState.pattern?.createdAt?.let { formatCreatedAt(it) },
+            description = uiState.pattern?.description,
+            isLoading = uiState.isLoading || uiState.isDeleting,
+            onSlideDownClick = { navController.popBackStack() },
+            onWritingGameClick = { /* TODO: navigate to writing game */ },
+            onListSentencesClick = { navController.navigate(Screen.ListOfDetail.route) },
+            onEditPatternClick = { navController.navigate(Screen.EditDetail(patternId)) },
+            onConfirmDelete = { viewModel.deletePattern() }
+        )
+    }
+}
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
-        Column(
-            modifier = Modifier.fillMaxSize()
+// ─────────────────────────────────────────────────────────────────────────────
+// Content
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun DetailSentencePatternContent(
+    patternName: String,
+    sentenceCount: Int,
+    createdAt: String? = null,
+    description: String? = null,
+    isLoading: Boolean = false,
+    onSlideDownClick: () -> Unit,
+    onWritingGameClick: () -> Unit,
+    onListSentencesClick: () -> Unit,
+    onEditPatternClick: () -> Unit,
+    onConfirmDelete: () -> Unit = {}
+) {
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        androidx.compose.foundation.lazy.LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)
         ) {
-            // Header
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(color = Color(0xE3FFFFFF))
-                    .shadow(elevation = 2.dp, spotColor = Color(0x1A000000))
-                    .padding(vertical = 11.dp)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_back),
-                    contentDescription = "Back",
-                    contentScale = ContentScale.Crop,
-                    colorFilter = ColorFilter.tint(Color.Black),
-                    modifier = Modifier
-                        .padding(start = 20.dp)
-                        .size(28.dp)
-                        .clickable { navController.popBackStack() }
-                )
-                Text(
-                    "Mẫu câu",
-                    color = Color(0xFF000000),
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 20.dp)
-                )
-            }
+            item {
+                AppTopBar("Mẫu câu", {},modifier = Modifier.alpha(0f))
 
-            if (uiState.isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Color(0xFF89E219))
-                }
-            } else if (uiState.error != null) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = uiState.error ?: "Lỗi tải dữ liệu", color = Color.Red)
-                }
-            } else if (pattern != null) {
+
+
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
-                        .padding(bottom = 17.dp)
-                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp)
                 ) {
-                    Spacer(modifier = Modifier.height(22.dp))
-                    
+                    Spacer(modifier = Modifier.height(20.dp))
                     Text(
-                        text = pattern.name,
-                        color = Color(0xFF000000),
+                        text = patternName.ifBlank { "Mẫu câu" },
                         fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 9.dp, start = 22.dp)
+                        lineHeight = 24.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.Black
                     )
-                    
+                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "$sentencesCount mẫu câu",
-                        color = Color(0xFF000000),
+                        text = buildString {
+                            append("$sentenceCount mẫu câu")
+                            if (!createdAt.isNullOrBlank()) append(" - $createdAt")
+                        },
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 35.dp, start = 21.dp)
+                        lineHeight = 20.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.Black
                     )
-                    
-                    Text(
-                        text = pattern.description,
-                        color = Color(0xFF000000),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 44.dp, start = 22.dp)
-                    )
+                    if (!description.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            text = description,
+                            fontSize = 14.sp,
+                            lineHeight = 24.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Italic,
+                            color = Color.Black
+                        )
+                    }
 
+                    Spacer(modifier = Modifier.height(26.dp))
                     Text(
-                        "Chế độ học",
-                        color = Color(0xFF000000),
+                        text = "Chế độ học",
                         fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 12.dp, start = 21.dp)
+                        lineHeight = 24.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.Black
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    SentenceActionCard(
+                        iconRes = R.drawable.ic_writing_game,
+                        title = "Luyện viết",
+                        onClick = onWritingGameClick
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    SentenceActionCard(
+                        iconRes = R.drawable.ic_order_word,
+                        title = "Sắp xếp chữ",
+                        onClick = onWritingGameClick
                     )
 
-                    // Study Modes
-                    StudyModeItem(iconResId = R.drawable.luyenviet, label = "Luyện viết")
-                    StudyModeItem(iconResId = R.drawable.sapxepchu, label = "Sắp xếp chữ")
-
+                    Spacer(modifier = Modifier.height(22.dp))
                     Text(
-                        "Tính năng khác",
-                        color = Color(0xFF000000),
+                        text = "Tính năng khác",
                         fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 15.dp, start = 21.dp)
+                        lineHeight = 24.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.Black
                     )
-
-                    // Other features
-                    ActionItem(
-                        iconResId = R.drawable.danhsachcau,
-                        onClick = { navController.navigate(Screen.ListOfDetail.route) }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    SentenceActionCard(
+                        iconRes = R.drawable.ic_list_sentence_card,
+                        title = "Xem danh sách câu",
+                        onClick = onListSentencesClick
                     )
-                    ActionItem(
-                        iconResId = R.drawable.suacau,
-                        onClick = { navController.navigate(Screen.EditDetail(patternId)) }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SentenceActionCard(
+                        iconRes = R.drawable.icon_edit_sentence_partten,
+                        title = "Chỉnh sửa mẫu câu",
+                        onClick = onEditPatternClick
                     )
-                    ActionItem(
-                        iconResId = R.drawable.xoacau,
-                        onClick = { navController.navigate(Screen.DeleteDetail(patternId)) }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SentenceActionCard(
+                        iconRes = R.drawable.icon_delete_setence_pattern,
+                        title = "Xóa mẫu câu",
+                        onClick = { showDeleteConfirm = true }
                     )
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
+        }
+
+        // Dim overlay
+        if (showDeleteConfirm) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0x99000000))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { showDeleteConfirm = false }
+                    )
+            )
+        }
+
+        // Delete confirm bottom sheet
+        AnimatedVisibility(
+            visible = showDeleteConfirm,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+        ) {
+            DeletePatternConfirmBottomSheet(
+                isLoading = isLoading,
+                onDismiss = { showDeleteConfirm = false },
+                onConfirm = {
+                    showDeleteConfirm = false
+                    onConfirmDelete()
+                }
+            )
         }
     }
 }
 
-@Composable
-fun StudyModeItem(iconResId: Int, label: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .padding(bottom = 14.dp, start = 19.dp, end = 19.dp)
-            .border(width = 2.dp, color = Color(0x1A000000), shape = RoundedCornerShape(15.dp))
-            .clip(shape = RoundedCornerShape(15.dp))
-            .fillMaxWidth()
-            .background(color = Color(0xFFFFFFFF))
-            .clickable { /* Handle study mode click */ }
+// ─────────────────────────────────────────────────────────────────────────────
+// Action Card (green tint)
+// ─────────────────────────────────────────────────────────────────────────────
+
+    @Composable
+    private fun SentenceActionCard(
+        iconRes: Int,
+        title: String,
+        onClick: (() -> Unit)? = null
     ) {
-        Image(
-            painter = painterResource(id = iconResId),
-            contentDescription = label,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier.fillMaxWidth().height(76.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(72.dp)
+                .background(Color.White, RoundedCornerShape(15.dp))
+                .border(2.dp, Color(0x1A000000), RoundedCornerShape(15.dp))
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                .padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Icon(
+                painter = painterResource(id = iconRes),
+                contentDescription = title,
+                modifier = Modifier.size(32.dp),
+                tint = Color.Unspecified
+            )
+            Text(
+                text = title,
+                fontSize = 16.sp,
+                lineHeight = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+        }
     }
-}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Delete Confirm Bottom Sheet
+// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-fun ActionItem(iconResId: Int, onClick: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .padding(bottom = 16.dp, start = 21.dp, end = 21.dp)
-            .border(width = 2.dp, color = Color(0x1A000000), shape = RoundedCornerShape(15.dp))
-            .clip(shape = RoundedCornerShape(15.dp))
-            .fillMaxWidth()
-            .background(color = Color(0xFFFFFFFF))
-            .clickable(onClick = onClick)
-    ) {
-        Image(
-            painter = painterResource(id = iconResId),
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier.fillMaxWidth().height(76.dp)
-        )
-    }
-}
-
-@Composable
-fun DetailSentenceTextFieldView(
-    modifier: Modifier = Modifier,
-    value: String,
-    onValueChange: (String) -> Unit,
-    placeholder: String = "",
-    textStyle: TextStyle = TextStyle.Default
+private fun DeletePatternConfirmBottomSheet(
+    isLoading: Boolean = false,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
 ) {
-    BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
-        textStyle = textStyle,
-        modifier = modifier,
-        decorationBox = { innerTextField: @Composable () -> Unit ->
-            Box {
-                if (value.isEmpty()) {
-                    Text(
-                        text = placeholder,
-                        style = textStyle,
-                        color = Color(0xB3050505)
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(16.dp, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .background(Color.White)
+                .border(1.dp, Color(0xFFF3F4F6), RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {})
+                .padding(bottom = 24.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .padding(top = 11.dp)
+                    .align(Alignment.CenterHorizontally)
+                    .width(48.dp)
+                    .height(6.dp)
+                    .background(Color(0xFFE5E7EB), RoundedCornerShape(999.dp))
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(top = 28.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.width(130.dp)
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_detail_course_screen_potago),
+                        contentDescription = null,
+                        modifier = Modifier.size(120.dp),
+                        contentScale = ContentScale.Fit
                     )
                 }
-                innerTextField()
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(Color.White, RoundedCornerShape(16.dp))
+                        .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 14.dp, vertical = 12.dp)
+                ) {
+                    Text(
+                        text = "Xác nhận xóa chứ !?",
+                        fontSize = 16.sp,
+                        lineHeight = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF4B5563)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Từ chối
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp)
+                        .background(Color(0xFFE5E7EB), RoundedCornerShape(16.dp))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(if (!isLoading) Color.White else Color(0xFFF3F4F6))
+                            .then(if (!isLoading) Modifier.clickable(onClick = onDismiss) else Modifier),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Từ chối",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = if (!isLoading) Color(0xFF374151) else Color(0xFFB0B8C1)
+                        )
+                    }
+                }
+
+                // Xác nhận
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp)
+                        .background(Color(0xFF46A302), RoundedCornerShape(16.dp))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFF58CC02))
+                            .then(if (!isLoading) Modifier.clickable(onClick = onConfirm) else Modifier),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(22.dp), color = Color.White, strokeWidth = 2.5.dp)
+                        } else {
+                            Text(text = "Xác nhận", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                        }
+                    }
+                }
             }
         }
-    )
+    }
 }
 
-@Preview(showBackground = true)
+// ─────────────────────────────────────────────────────────────────────────────
+// Top App Bar
+// ─────────────────────────────────────────────────────────────────────────────
+
 @Composable
-fun DetailSentencePatternScreenPreview() {
-    DetailSentencePatternScreen(rememberNavController(), patternId = 1)
+private fun AppTopBar(title: String,onBackClick: () -> Unit ,modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        tonalElevation = 3.dp,
+        shadowElevation = 4.dp,
+        color = Color(0xFFFFFFFF)
+    ) {
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+        ) {
+
+            // ✅ Row chỉ còn Text → quyết định height
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(modifier = Modifier.width(60.dp)) // chừa chỗ cho back button
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.displayMedium,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            // 🔥 BackButton overlay
+            Box(
+                modifier = Modifier.matchParentSize()
+            ) {
+                BackButton(
+                    onClick = onBackClick,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .wrapContentSize()
+                )
+            }
+
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+private fun formatCreatedAt(dateStr: String): String {
+    if (dateStr.isBlank()) return ""
+    return try {
+        val date = if (dateStr.contains("T")) OffsetDateTime.parse(dateStr).toLocalDate()
+        else java.time.LocalDate.parse(dateStr)
+        "Tháng ${date.monthValue} năm ${date.year}"
+    } catch (_: DateTimeParseException) { "" }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Preview
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+private fun DetailSentencePatternScreenPreview() {
+    DetailSentencePatternContent(
+        patternName = "English",
+        sentenceCount = 200,
+        createdAt = "Tháng 1 năm 2026",
+        description = "Learn how to order tacos and ask for the bill.",
+        onSlideDownClick = {},
+        onWritingGameClick = {},
+        onListSentencesClick = {},
+        onEditPatternClick = {},
+        onConfirmDelete = {}
+    )
 }

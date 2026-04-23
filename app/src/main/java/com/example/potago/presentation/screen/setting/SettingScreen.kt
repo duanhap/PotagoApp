@@ -27,6 +27,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.potago.R
 import com.example.potago.presentation.screen.UiEvent
+import com.example.potago.presentation.screen.myvideo.AddButton
 import com.example.potago.presentation.ui.theme.Nunito
 
 @Composable
@@ -134,23 +135,40 @@ private fun SettingTopBar(onBackClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth(),
         tonalElevation = 3.dp,
         shadowElevation = 4.dp,
-        color = Color.White
+        color = Color(0xFFFFFFFF)
     ) {
-        Row(
+
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
-            BackButton(onClick = onBackClick, modifier = Modifier)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Cài đặt",
-                fontFamily = Nunito,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 32.sp,
-                color = Color.Black
-            )
+
+            // ✅ Row chỉ còn Text → quyết định height
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(modifier = Modifier.width(60.dp)) // chừa chỗ cho back button
+                Text(
+                    text = "Cài đặt",
+                    style = MaterialTheme.typography.displayMedium,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            // 🔥 BackButton overlay
+            Box(
+                modifier = Modifier.matchParentSize()
+            ) {
+                BackButton(
+                    onClick = onBackClick,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .wrapContentSize()
+                )
+            }
+
         }
     }
 }
