@@ -742,7 +742,7 @@ fun DeleteConfirmBottomSheet(
                         bottomStart = 16.dp
                     ),
                     color = Color.White,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)),
+                    border =BorderStroke(1.dp, Color(0xFFE5E7EB)),
                     shadowElevation = 2.dp
                 ) {
                     Text(
@@ -785,7 +785,7 @@ fun DeleteConfirmBottomSheet(
                                         cancelPressed = true; tryAwaitRelease(); cancelPressed =
                                         false
                                     },
-                                    onTap = { onConfirm() }
+                                    onTap = { onDismiss() }
                                 )
                             },
                         contentAlignment = Alignment.Center

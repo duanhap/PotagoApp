@@ -12,13 +12,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -30,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -41,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.potago.R
+import com.example.potago.presentation.screen.setting.BackButton
 import com.example.potago.presentation.ui.theme.Blue3B
 import com.example.potago.presentation.ui.theme.Nunito
 import kotlinx.coroutines.flow.collectLatest
@@ -66,8 +73,20 @@ fun AddCardScreen(
             }
         }
     }
-
-    Box(modifier = Modifier.fillMaxSize()) {
+    Scaffold(
+        topBar = {
+            AppTopBar(
+                title = "Thêm thẻ",
+                onBackClick = { navController.popBackStack() },
+            )
+        },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState
+            )
+        }
+    ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding))
         AddCardScreenContent(
             term = uiState.term,
             onTermChange = viewModel::onTermChange,
@@ -79,11 +98,8 @@ fun AddCardScreen(
             onBackClick = { navController.popBackStack() },
             onSaveClick = { viewModel.saveCard(wordSetId) }
         )
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
     }
+
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -114,38 +130,12 @@ fun AddCardScreenContent(
                 .padding(bottom = 74.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Top Bar
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = Color(0xE6FFFFFF),
-                shadowElevation = 2.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(59.dp)
-                        .padding(horizontal = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_back),
-                        contentDescription = "Quay lại",
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clickable(onClick = onBackClick),
-                        tint = Color.Black
-                    )
-                    Text(
-                        text = "Thêm thẻ",
-                        fontFamily = Nunito,
-                        fontSize = 32.sp,
-                        lineHeight = 24.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.Black,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                }
-            }
+            // Top Bar Fake
+            AppTopBar(
+                title = "Chỉnh sửa thẻ",
+                onBackClick = { },
+                modifier = Modifier.alpha(0f)
+            )
 
             Spacer(modifier = Modifier.height(48.dp))
 
@@ -196,6 +186,12 @@ fun AddCardScreenContent(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
+                Divider(
+                    thickness = 1.dp,
+                    color = Color(0xB3E5E7EB),
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                )
                 if (isLoading) {
                     CircularProgressIndicator(
                         color = Blue3B,
@@ -297,6 +293,52 @@ private fun AddCardScreenPreview() {
         onBackClick = {},
         onSaveClick = {}
     )
+}
+@Composable
+private fun AppTopBar(
+    title: String,
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        tonalElevation = 3.dp,
+        shadowElevation = 4.dp,
+        color = Color(0xFFFFFFFF)
+    ) {
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+        ) {
+
+            // ✅ Row chỉ còn Text → quyết định height
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(modifier = Modifier.width(60.dp)) // chừa chỗ cho back button
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.displayMedium,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            // 🔥 BackButton overlay
+            Box(
+                modifier = Modifier.matchParentSize()
+            ) {
+                BackButton(
+                    onClick = onBackClick,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .wrapContentSize()
+                )
+            }
+        }
+    }
 }
 
 @Preview(showBackground = true, showSystemUi = true, name = "Filled")
