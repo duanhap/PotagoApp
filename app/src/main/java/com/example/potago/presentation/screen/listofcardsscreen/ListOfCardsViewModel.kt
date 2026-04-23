@@ -6,6 +6,7 @@ import com.example.potago.domain.model.Word
 import com.example.potago.domain.model.Result
 import com.example.potago.domain.usecase.GetWordsByWordSetIdUseCase
 import com.example.potago.domain.usecase.DeleteWordUseCase
+import com.example.potago.domain.usecase.GetWordSetByIdUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,13 +23,15 @@ data class ListOfCardsUiState(
     val filterType: FilterType = FilterType.ALL,
     val searchQuery: String = "",
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val termLanguageCode: String = ""
 )
 
 @HiltViewModel
 class ListOfCardsViewModel @Inject constructor(
     private val getWordsByWordSetIdUseCase: GetWordsByWordSetIdUseCase,
-    private val deleteWordUseCase: DeleteWordUseCase
+    private val deleteWordUseCase: DeleteWordUseCase,
+    private val getWordSetByIdUseCase: GetWordSetByIdUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ListOfCardsUiState())
@@ -38,6 +41,15 @@ class ListOfCardsViewModel @Inject constructor(
 
     fun loadCards(wordSetId: Long) {
         currentWordSetId = wordSetId
+        viewModelScope.launch {
+            // Lấy termLanguageCode từ wordset
+            when (val result = getWordSetByIdUseCase(wordSetId)) {
+                is Result.Success -> _uiState.value = _uiState.value.copy(
+                    termLanguageCode = result.data.termLanguageCode
+                )
+                else -> {}
+            }
+        }
         fetchCards(wordSetId, _uiState.value.filterType)
     }
 

@@ -76,7 +76,7 @@ fun FlashCardScreen(
             FlashCardTopBar(
                 title = "Flashcard",
                 onBackClick = { navController.popBackStack() },
-                onAddClick = {  }
+                onAddClick = { }
             )
         }
     ) { innerPadding ->
@@ -129,9 +129,9 @@ private fun FlashCardScreenContent(
             selectedFilter = uiState.filter,
             onFilterSelected = onFilterChanged
         )
-        
+
         val currentWord = uiState.words.getOrNull(uiState.currentIndex)
-        
+
         // Progress based on Word's flashcardOrder to persist position on re-entry
         val progressText = if (currentWord != null) {
             "${currentWord.flashcardOrder} / ${uiState.totalWords}"
@@ -144,11 +144,16 @@ private fun FlashCardScreenContent(
         } else 0f
 
         FlashCardProgress(progressText, progressFactor)
-        
+
         Spacer(modifier = Modifier.weight(1f))
-        
+
         if (uiState.uiState is UiState.Loading && uiState.words.isEmpty()) {
-            Box(modifier = Modifier.fillMaxWidth().height(384.dp), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(384.dp),
+                contentAlignment = Alignment.Center
+            ) {
                 CircularProgressIndicator(color = Color(0xFF58CC02))
             }
         } else if (currentWord != null) {
@@ -177,13 +182,18 @@ private fun FlashCardScreenContent(
                 )
             }
         } else {
-            Box(modifier = Modifier.fillMaxWidth().height(384.dp), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(384.dp),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(text = "Không có dữ liệu")
             }
         }
 
         Spacer(modifier = Modifier.weight(2.3f))
-        
+
         FlashCardBottomActions(
             isRandomMode = uiState.mode == "random",
             onReturn = onPrevious,
@@ -213,12 +223,14 @@ fun CustomFilterWordSpinner(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val borderColor = if (expanded || isPressed) Color(0xFF89E219) else Color(0xFFE5E7EB)
-    
+
     // Determine the display name based on the current filter string from uiState
-    val currentDisplayName = StatusFlashCard.entries.find { it.filter == selectedFilter }?.displayName ?: "Tất cả"
+    val currentDisplayName =
+        StatusFlashCard.entries.find { it.filter == selectedFilter }?.displayName ?: "Tất cả"
 
     Box(
-        modifier = Modifier.padding(horizontal = 20.dp)
+        modifier = Modifier
+            .padding(horizontal = 20.dp)
             .fillMaxWidth()
     ) {
         Box(
@@ -232,7 +244,7 @@ fun CustomFilterWordSpinner(
                     .height(35.dp)
                     .width(120.dp)
                     .background(
-                        color = if(expanded) Color.White    else Color(0xFFF9FAFB),
+                        color = if (expanded) Color.White else Color(0xFFF9FAFB),
                         RoundedCornerShape(
                             topStart = 20.dp,
                             topEnd = 5.dp,
@@ -262,7 +274,7 @@ fun CustomFilterWordSpinner(
                 Text(
                     text = currentDisplayName,
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (expanded) Color.Black else   Color.LightGray
+                    color = if (expanded) Color.Black else Color.LightGray
                 )
                 Spacer(modifier = Modifier.width(15.dp))
                 Icon(
@@ -301,7 +313,6 @@ fun CustomFilterWordSpinner(
     }
 
 }
-
 
 
 @Composable
@@ -361,7 +372,6 @@ private fun FlashCardTopBar(
         }
     }
 }
-
 
 
 @Composable
@@ -430,6 +440,11 @@ private fun FlashCardPanel(
     val isDraggingLeft = dragOffsetX.value < 0
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
 
+    // Nhún âm thanh
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(targetValue = if (isPressed) 0.85f else 1f, label = "scale")
+
     DisposableEffect(Unit) {
         val ttsInstance = TextToSpeech(context) { status ->
             if (status == TextToSpeech.SUCCESS) {
@@ -480,6 +495,7 @@ private fun FlashCardPanel(
                                     )
                                     onSwipeLeft()
                                 }
+
                                 dragOffsetX.value > swipeThreshold -> {
                                     // Bay ra phải rồi callback
                                     dragOffsetX.animateTo(
@@ -488,6 +504,7 @@ private fun FlashCardPanel(
                                     )
                                     onSwipeRight()
                                 }
+
                                 else -> {
                                     // Chưa đủ → spring về 0
                                     dragOffsetX.animateTo(
@@ -503,10 +520,12 @@ private fun FlashCardPanel(
                     },
                     onDragCancel = {
                         coroutineScope.launch {
-                            dragOffsetX.animateTo(0f, animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessMedium
-                            ))
+                            dragOffsetX.animateTo(
+                                0f, animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessMedium
+                                )
+                            )
                         }
                     },
                     onHorizontalDrag = { _, dragAmount ->
@@ -530,7 +549,10 @@ private fun FlashCardPanel(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Box(modifier = Modifier.weight(3.5f), contentAlignment = Alignment.BottomCenter) {
+                        Box(
+                            modifier = Modifier.weight(3.5f),
+                            contentAlignment = Alignment.BottomCenter
+                        ) {
                             Text(
                                 text = "DỊCH TỪ NÀY",
                                 style = MaterialTheme.typography.bodyLarge,
@@ -545,43 +567,64 @@ private fun FlashCardPanel(
                                 modifier = Modifier.padding(vertical = 20.dp)
                             )
                         }
-                        Box(modifier = Modifier.weight(1.5f), contentAlignment = Alignment.TopCenter) {
+                        Box(
+                            modifier = Modifier.weight(1.5f),
+                            contentAlignment = Alignment.TopCenter
+                        ) {
                             Image(
                                 painter = painterResource(id = R.drawable.ic_flashcard_flip_button),
                                 contentDescription = "Tap to flip",
-                                modifier = Modifier.width(87.dp).height(20.dp)
+                                modifier = Modifier
+                                    .width(87.dp)
+                                    .height(20.dp)
                             )
                         }
                     }
                 }
             )
-            Icon(
-                painter = painterResource(id = R.drawable.ic_flashcard_speaker),
-                contentDescription = "Sound",
-                tint = Color(0xFF58CC02),
+
+            IconButton(
+                onClick = {
+                    tts?.let {
+                        it.language = Locale.forLanguageTag(termLangCode)
+                        it.speak(word.term, TextToSpeech.QUEUE_FLUSH, null, null)
+                    }
+                },
+                interactionSource = interactionSource,
                 modifier = Modifier
-                    .size(52.dp)
                     .align(Alignment.TopEnd)
                     .padding(top = 20.dp, end = 20.dp)
-                    .graphicsLayer {
+                    .graphicsLayer{
                         if (rotation > 90f) rotationY = 180f
                     }
-                    .clickable {
-                        tts?.let {
-                            it.language = Locale.forLanguageTag(termLangCode)
-                            it.speak(word.term, TextToSpeech.QUEUE_FLUSH, null, null)
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_flashcard_speaker),
+                    contentDescription = "Sound",
+                    tint = Color(0xFF58CC02),
+                    modifier = Modifier
+                        .size(35.dp)
+                        .graphicsLayer {
+                            scaleX = scale; scaleY = scale
                         }
-                    }
-            )
+
+                )
+            }
+
+
         } else {
             // Back Side
-            Box(modifier = Modifier.graphicsLayer { rotationY = 180f }.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .graphicsLayer { rotationY = 180f }
+                    .fillMaxSize()) {
                 CardFace(
                     borderColor = Color(0xFFBFDBFE),
                     backgroundColor = Color(0xFFEFF6FF),
                     content = {
                         Row(
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
                                 .align(Alignment.TopStart)
                                 .padding(horizontal = 24.dp, vertical = 24.dp)
                                 .graphicsLayer { scaleX = descRowScale; scaleY = descRowScale }
@@ -612,19 +655,21 @@ private fun FlashCardPanel(
                         }
 
                         Column(
-                            modifier = Modifier.fillMaxSize().padding(20.dp),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(20.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
 
                             Spacer(modifier = Modifier.weight(1f))
-                            
+
                             Text(
                                 text = word.definition,
                                 style = MaterialTheme.typography.displayMedium,
                                 color = Color(0xFF1D4ED8),
                                 textAlign = TextAlign.Center
                             )
-                            
+
                             if (!word.description.isNullOrBlank()) {
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
@@ -636,7 +681,7 @@ private fun FlashCardPanel(
                                     overflow = TextOverflow.Ellipsis
                                 )
                             }
-                            
+
                             Spacer(modifier = Modifier.weight(1f))
                         }
                     }
@@ -751,7 +796,10 @@ private fun StatusWordButton(
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val animatedScale by animateFloatAsState(targetValue = if (isPressed) 0.96f else 1f, label = "")
-    val animatedHeight by animateDpAsState(targetValue = if (isPressed) 52.dp else 48.dp, label = "")
+    val animatedHeight by animateDpAsState(
+        targetValue = if (isPressed) 52.dp else 48.dp,
+        label = ""
+    )
 
     Box(
         modifier = modifier
@@ -779,7 +827,9 @@ private fun StatusWordButton(
                 painter = painterResource(id = iconRes),
                 contentDescription = null,
                 tint = Color.White,
-                modifier = if (iconRes == R.drawable.ic_cancel_round) Modifier.size(25.dp) else Modifier.size(43.dp)
+                modifier = if (iconRes == R.drawable.ic_cancel_round) Modifier.size(25.dp) else Modifier.size(
+                    43.dp
+                )
             )
         }
     }
@@ -792,7 +842,10 @@ private fun ReturnButton(
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val animatedScale by animateFloatAsState(targetValue = if (isPressed) 0.96f else 1f, label = "")
-    val animatedHeight by animateDpAsState(targetValue = if (isPressed) 52.dp else 48.dp, label = "")
+    val animatedHeight by animateDpAsState(
+        targetValue = if (isPressed) 52.dp else 48.dp,
+        label = ""
+    )
 
     Box(
         modifier = Modifier
@@ -835,8 +888,11 @@ private fun RandomButton(
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val animatedScale by animateFloatAsState(targetValue = if (isPressed) 0.96f else 1f, label = "")
-    val animatedHeight by animateDpAsState(targetValue = if (isPressed) 52.dp else 48.dp, label = "")
-    
+    val animatedHeight by animateDpAsState(
+        targetValue = if (isPressed) 52.dp else 48.dp,
+        label = ""
+    )
+
     val colorBorder = if (isActiveMode) Color(0xFF46A302) else Color(0xFFE5E7EB)
     val colorBg = if (isActiveMode) Color(0xFFD7FFA4) else Color.White
     val tint = if (isActiveMode) Color(0xFF58CC02) else Color(0xFF9CA3AF)
@@ -887,7 +943,7 @@ fun RandomModeBottomSheet(
     ) {
         MascotAndBubble(text = "Học lại đó chịu ko !?")
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         Text(
             text = "Với chế độ ngẫu nhiên, thứ tự các từ sẽ bị xáo trộn không như thứ tự thêm lúc ban đầu. Chủ nhân sẽ phải học lại các thẻ từ thẻ đầu tiên.",
             style = MaterialTheme.typography.bodyLarge,
@@ -895,7 +951,7 @@ fun RandomModeBottomSheet(
             color = Color(0xFF4B5563),
             lineHeight = 20.sp
         )
-        
+
         Spacer(modifier = Modifier.height(32.dp))
 
         BigPotagoButton(
@@ -903,19 +959,20 @@ fun RandomModeBottomSheet(
             enabled = true,
             onClick = onConfirm
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Text(
             text = "ĐỂ SAU",
             modifier = Modifier.clickable { onDismiss() },
             style = MaterialTheme.typography.labelLarge,
             color = Color(0xFF3B82F6),
         )
-        
+
         Spacer(modifier = Modifier.height(24.dp))
     }
 }
+
 @Composable
 fun BigPotagoButton(
     text: String = "LOG IN",
@@ -978,6 +1035,7 @@ fun BigPotagoButton(
         }
     }
 }
+
 @Composable
 private fun MascotAndBubble(text: String) {
     var start by remember { mutableStateOf(false) }
@@ -1023,7 +1081,11 @@ private fun MascotAndBubble(text: String) {
                     alpha = bubbleAlpha
                 }
                 .background(Color.White, RoundedCornerShape(12.dp))
-                .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp, bottomStart = 12.dp))
+                .border(
+                    1.dp,
+                    Color(0xFFE5E7EB),
+                    RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp, bottomStart = 12.dp)
+                )
                 .padding(horizontal = 16.dp, vertical = 12.dp)
 
         ) {
@@ -1038,16 +1100,17 @@ private fun MascotAndBubble(text: String) {
 
 @Preview
 @Composable
-fun FlashCardPanelShow(){
+fun FlashCardPanelShow() {
     FlashCardPanel(
         word = Word(
             id = 1,
             term = "term",
             definition = "definition",
-            ),
+        ),
         termLangCode = "en"
     )
 }
+
 @Preview
 @Composable
 fun RandomModeBottomSheetShow() {
