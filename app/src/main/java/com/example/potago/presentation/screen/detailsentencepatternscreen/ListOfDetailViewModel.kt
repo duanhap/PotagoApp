@@ -6,6 +6,7 @@ import com.example.potago.domain.model.Result
 import com.example.potago.domain.model.Setence
 import com.example.potago.domain.usecase.GetSentencesByPatternUseCase
 import com.example.potago.domain.usecase.DeleteSentenceUseCase
+import com.example.potago.domain.usecase.UpdateSentenceUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,7 +28,8 @@ data class ListOfDetailUiState(
 @HiltViewModel
 class ListOfDetailViewModel @Inject constructor(
     private val getSentencesByPatternUseCase: GetSentencesByPatternUseCase,
-    private val deleteSentenceUseCase: DeleteSentenceUseCase
+    private val deleteSentenceUseCase: DeleteSentenceUseCase,
+    private val updateSentenceUseCase: UpdateSentenceUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ListOfDetailUiState())
@@ -86,6 +88,40 @@ class ListOfDetailViewModel @Inject constructor(
                 is Result.Error -> {
                     _uiState.update {
                         it.copy(deleteError = result.message ?: "Xóa câu thất bại")
+                    }
+                }
+                else -> {}
+            }
+        }
+    }
+
+    fun updateSentenceStatus(sentenceId: Int, newStatus: String) {
+        viewModelScope.launch {
+            // Tìm câu cần cập nhật
+            val sentence = _uiState.value.sentences.find { it.id == sentenceId } ?: return@launch
+            
+            when (val result = updateSentenceUseCase(
+                id = sentenceId,
+                term = sentence.term,
+                definition = sentence.definition,
+                status = newStatus,
+                mistakes = sentence.numberOfMistakes ?: 0
+            )) {
+                is Result.Success -> {
+                    // Cập nhật trong list
+                    _uiState.update {
+                        val updatedSentences = it.sentences.map { s ->
+                            if (s.id == sentenceId) result.data else s
+                        }
+                        it.copy(
+                            sentences = updatedSentences,
+                            filteredSentences = filterSentences(updatedSentences, it.selectedFilter)
+                        )
+                    }
+                }
+                is Result.Error -> {
+                    _uiState.update {
+                        it.copy(error = result.message ?: "Cập nhật trạng thái thất bại")
                     }
                 }
                 else -> {}
