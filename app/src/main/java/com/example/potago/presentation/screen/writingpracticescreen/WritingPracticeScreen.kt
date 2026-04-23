@@ -10,9 +10,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,6 +71,43 @@ fun WritingPracticeScreen(
             timeFormatted = viewModel.getCompletionTimeFormatted()
         )
         return
+    }
+
+    // Hiển thị dialog xác nhận làm tiếp
+    if (uiState.showContinueDialog) {
+        AlertDialog(
+            onDismissRequest = { /* Không cho dismiss bằng cách nhấn ngoài */ },
+            title = {
+                Text(
+                    "Làm tiếp?",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    "Bạn có muốn tiếp tục từ lần trước không?",
+                    fontSize = 16.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.continueFromSaved() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF58CC02)
+                    )
+                ) {
+                    Text("Làm tiếp", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { viewModel.startNewSession(patternId) }
+                ) {
+                    Text("Làm lại từ đầu", color = Color(0xFF58CC02))
+                }
+            }
+        )
     }
 
     Box(

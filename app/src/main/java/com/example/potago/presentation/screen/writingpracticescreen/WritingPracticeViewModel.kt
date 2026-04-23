@@ -7,11 +7,14 @@ import com.example.potago.domain.model.Setence
 import com.example.potago.domain.usecase.GetSentencesByPatternUseCase
 import com.example.potago.domain.usecase.UpdateSentenceUseCase
 import com.example.potago.domain.usecase.ClaimRewardUseCase
+import com.example.potago.data.local.WritingPracticeDataStore
+import com.example.potago.data.local.WritingPracticeProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -34,14 +37,18 @@ data class WritingPracticeUiState(
     val experienceEarned: Int = 15,
     val diamondEarned: Int = 10,
     val incorrectSentences: MutableList<Setence> = mutableListOf(), // Danh sách câu sai
-    val isRetryRound: Boolean = false // Đang ở vòng làm lại câu sai
+    val isRetryRound: Boolean = false, // Đang ở vòng làm lại câu sai
+    val completedSentenceIds: MutableList<Int> = mutableListOf(), // Danh sách ID câu đã làm đúng
+    val showContinueDialog: Boolean = false, // Hiện dialog "Làm tiếp?"
+    val savedProgress: WritingPracticeProgress? = null // Progress đã lưu
 )
 
 @HiltViewModel
 class WritingPracticeViewModel @Inject constructor(
     private val getSentencesByPatternUseCase: GetSentencesByPatternUseCase,
     private val updateSentenceUseCase: UpdateSentenceUseCase,
-    private val claimRewardUseCase: ClaimRewardUseCase
+    private val claimRewardUseCase: ClaimRewardUseCase,
+    private val dataStore: WritingPracticeDataStore
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WritingPracticeUiState())
@@ -49,30 +56,61 @@ class WritingPracticeViewModel @Inject constructor(
 
     fun loadSentences(patternId: Int) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, startTime = System.currentTimeMillis()) }
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            
+            // Kiểm tra có progress đã lưu không
+            val savedProgress = dataStore.getProgress(patternId).firstOrNull()
+            
+            if (savedProgress != null && savedProgress.currentIndex > 0) {
+                // Có progress đã lưu -> hiện dialog xác nhận
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        showContinueDialog = true,
+                        savedProgress = savedProgress
+                    )
+                }
+            } else {
+                // Không có progress -> load mới
+                loadNewSession(patternId)
+            }
+        }
+    }
+    
+    fun continueFromSaved() {
+        viewModelScope.launch {
+            val savedProgress = _uiState.value.savedProgress ?: return@launch
+            val patternId = savedProgress.patternId
+            
+            _uiState.update { it.copy(isLoading = true, showContinueDialog = false) }
+            
             when (val result = getSentencesByPatternUseCase(patternId)) {
                 is Result.Success -> {
-                    // Chỉ lấy câu chưa thuộc (status = "unknown")
-                    val unknownSentences = result.data.filter { it.status == "unknown" }
+                    val allSentences = result.data.filter { it.status == "unknown" }
                     
-                    if (unknownSentences.isEmpty()) {
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                isCompleted = true,
-                                completionTime = 0L,
-                                error = "Bạn đã hoàn thành tất cả câu!"
-                            )
-                        }
+                    // Lọc ra các câu chưa làm đúng
+                    val remainingSentences = if (savedProgress.isRetryRound) {
+                        // Đang retry -> chỉ lấy câu sai
+                        allSentences.filter { it.id in savedProgress.incorrectSentenceIds }
                     } else {
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                sentences = unknownSentences,
-                                currentSentence = unknownSentences.firstOrNull(),
-                                currentIndex = 0
-                            )
-                        }
+                        // Vòng đầu -> lấy tất cả câu chưa làm
+                        allSentences
+                    }
+                    
+                    val incorrectSentences = allSentences.filter { it.id in savedProgress.incorrectSentenceIds }.toMutableList()
+                    val completedIds = savedProgress.completedSentenceIds.toMutableList()
+                    
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            sentences = remainingSentences,
+                            currentIndex = savedProgress.currentIndex,
+                            currentSentence = remainingSentences.getOrNull(savedProgress.currentIndex),
+                            incorrectSentences = incorrectSentences,
+                            completedSentenceIds = completedIds,
+                            isRetryRound = savedProgress.isRetryRound,
+                            startTime = savedProgress.startTime
+                        )
                     }
                 }
                 is Result.Error -> {
@@ -87,6 +125,55 @@ class WritingPracticeViewModel @Inject constructor(
             }
         }
     }
+    
+    fun startNewSession(patternId: Int) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(showContinueDialog = false) }
+            // Xóa progress cũ
+            dataStore.clearProgress(patternId)
+            // Load mới
+            loadNewSession(patternId)
+        }
+    }
+    
+    private suspend fun loadNewSession(patternId: Int) {
+        _uiState.update { it.copy(isLoading = true, error = null, startTime = System.currentTimeMillis()) }
+        when (val result = getSentencesByPatternUseCase(patternId)) {
+            is Result.Success -> {
+                // Chỉ lấy câu chưa thuộc (status = "unknown")
+                val unknownSentences = result.data.filter { it.status == "unknown" }
+                
+                if (unknownSentences.isEmpty()) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            isCompleted = true,
+                            completionTime = 0L,
+                            error = "Bạn đã hoàn thành tất cả câu!"
+                        )
+                    }
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            sentences = unknownSentences,
+                            currentSentence = unknownSentences.firstOrNull(),
+                            currentIndex = 0
+                        )
+                    }
+                }
+            }
+            is Result.Error -> {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = result.message ?: "Lỗi tải dữ liệu"
+                    )
+                }
+            }
+            else -> {}
+        }
+    }
 
     fun checkAnswer(userAnswer: String) {
         val currentSentence = _uiState.value.currentSentence ?: return
@@ -97,6 +184,11 @@ class WritingPracticeViewModel @Inject constructor(
         
         if (isCorrect) {
             _uiState.update { it.copy(answerResult = AnswerResult.Correct) }
+            // Thêm vào danh sách đã làm đúng
+            val completedIds = _uiState.value.completedSentenceIds
+            if (!completedIds.contains(currentSentence.id)) {
+                completedIds.add(currentSentence.id)
+            }
             // Cập nhật status thành "known"
             updateSentenceStatus(currentSentence.id, "known")
         } else {
@@ -111,6 +203,9 @@ class WritingPracticeViewModel @Inject constructor(
             // Tăng số lần sai
             incrementMistakes(currentSentence)
         }
+        
+        // Lưu progress sau mỗi câu trả lời
+        saveProgress()
     }
 
     fun moveToNextSentence() {
@@ -133,6 +228,8 @@ class WritingPracticeViewModel @Inject constructor(
                     answerResult = AnswerResult.None
                 )
             }
+            // Lưu progress
+            saveProgress()
         } else {
             // Hết câu trong danh sách hiện tại
             if (incorrectSentences.isNotEmpty()) {
@@ -146,6 +243,8 @@ class WritingPracticeViewModel @Inject constructor(
                         isRetryRound = true
                     )
                 }
+                // Lưu progress
+                saveProgress()
             } else {
                 // Không có câu sai -> Hoàn thành
                 val completionTime = System.currentTimeMillis() - _uiState.value.startTime
@@ -156,9 +255,36 @@ class WritingPracticeViewModel @Inject constructor(
                         answerResult = AnswerResult.None
                     )
                 }
+                // Xóa progress khi hoàn thành
+                clearProgress()
                 // Claim rewards
                 claimRewards()
             }
+        }
+    }
+    
+    private fun saveProgress() {
+        viewModelScope.launch {
+            val state = _uiState.value
+            val patternId = state.sentences.firstOrNull()?.setencePatternId ?: return@launch
+            
+            val progress = WritingPracticeProgress(
+                patternId = patternId,
+                currentIndex = state.currentIndex,
+                completedSentenceIds = state.completedSentenceIds.toList(),
+                incorrectSentenceIds = state.incorrectSentences.map { it.id },
+                isRetryRound = state.isRetryRound,
+                startTime = state.startTime
+            )
+            
+            dataStore.saveProgress(progress)
+        }
+    }
+    
+    private fun clearProgress() {
+        viewModelScope.launch {
+            val patternId = _uiState.value.sentences.firstOrNull()?.setencePatternId ?: return@launch
+            dataStore.clearProgress(patternId)
         }
     }
 
