@@ -76,7 +76,7 @@ fun FlashCardScreen(
             FlashCardTopBar(
                 title = "Flashcard",
                 onBackClick = { navController.popBackStack() },
-                onAddClick = { }
+                onAddClick = { navController.navigate(Screen.AddCard(wordSetId))}
             )
         }
     ) { innerPadding ->
