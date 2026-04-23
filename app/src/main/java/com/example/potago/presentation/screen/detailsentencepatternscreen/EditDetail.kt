@@ -1,45 +1,33 @@
 package com.example.potago.presentation.screen.detailsentencepatternscreen
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.potago.R
+import com.example.potago.presentation.screen.setting.BackButton
 
-private val LANGUAGE_OPTIONS = listOf(
-    "en" to "English",
-    "vi" to "Tiếng Việt",
-    "ja" to "日本語",
-    "ko" to "한국어",
-    "zh" to "中文",
-    "fr" to "Français",
-    "de" to "Deutsch"
-)
+private val GreenPrimary = Color(0xFF58CC02)
+private val GreenShadow = Color(0xFF46A302)
 
 @Composable
 fun EditDetailScreen(
@@ -50,23 +38,15 @@ fun EditDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     val pattern = uiState.pattern
 
-    // Pre-fill fields when pattern loads
     var titleValue by remember(pattern) { mutableStateOf(pattern?.name ?: "") }
     var descValue by remember(pattern) { mutableStateOf(pattern?.description ?: "") }
     var termLangCode by remember(pattern) { mutableStateOf(pattern?.termLanguageCode ?: "en") }
     var defLangCode by remember(pattern) { mutableStateOf(pattern?.definitionLanguageCode ?: "vi") }
 
-    var termLangExpanded by remember { mutableStateOf(false) }
-    var defLangExpanded by remember { mutableStateOf(false) }
-
-    // Load pattern if not already loaded
     LaunchedEffect(patternId) {
-        if (pattern == null || pattern.id != patternId) {
-            viewModel.loadDetail(patternId)
-        }
+        if (pattern == null || pattern.id != patternId) viewModel.loadDetail(patternId)
     }
 
-    // Navigate back on success
     LaunchedEffect(uiState.updateSuccess) {
         if (uiState.updateSuccess) {
             viewModel.clearUpdateSuccess()
@@ -74,270 +54,29 @@ fun EditDetailScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight()
-                .background(color = Color(0xFFFFFFFF))
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .background(color = Color(0xFFFFFFFF))
-                    .verticalScroll(rememberScrollState())
-            ) {
-                // Header
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .padding(bottom = 49.dp)
-                        .fillMaxWidth()
-                        .background(color = Color(0xE3FFFFFF))
-                        .shadow(elevation = 2.dp, spotColor = Color(0x1A000000))
-                        .padding(vertical = 11.dp)
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_back),
-                        contentDescription = "Back",
-                        colorFilter = ColorFilter.tint(Color.Black),
-                        modifier = Modifier
-                            .padding(start = 20.dp)
-                            .size(24.dp)
-                            .clickable { navController.popBackStack() }
-                    )
-                    Text(
-                        "Chỉnh sửa mẫu câu",
-                        color = Color(0xFF000000),
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 12.dp)
-                    )
-                }
-
-                if (uiState.isLoading) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = Color(0xFF58CC02))
-                    }
-                } else {
-                    // Error message
-                    if (uiState.actionError != null) {
-                        Text(
-                            text = uiState.actionError ?: "",
-                            color = Color.Red,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(horizontal = 22.dp, vertical = 8.dp)
-                        )
-                    }
-
-                    // Tiêu đề
-                    BasicTextField(
-                        value = titleValue,
-                        onValueChange = { titleValue = it },
-                        textStyle = TextStyle(
-                            color = Color(0xFF000000),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        ),
-                        modifier = Modifier
-                            .padding(start = 22.dp, end = 22.dp)
-                            .fillMaxWidth(),
-                        decorationBox = { innerTextField ->
-                            Box {
-                                if (titleValue.isEmpty()) {
-                                    Text(
-                                        "Nhập tiêu đề vô đây",
-                                        color = Color(0x80000000),
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                                innerTextField()
-                            }
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(14.dp))
-                    Box(
-                        modifier = Modifier
-                            .padding(bottom = 6.dp, start = 20.dp, end = 20.dp)
-                            .height(2.dp)
-                            .fillMaxWidth()
-                            .background(color = Color(0xFF000000))
-                    )
-                    Text(
-                        "Tiêu đề",
-                        color = Color(0xFF000000),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 36.dp, start = 20.dp)
-                    )
-
-                    // Mô tả
-                    BasicTextField(
-                        value = descValue,
-                        onValueChange = { descValue = it },
-                        textStyle = TextStyle(
-                            color = Color(0xFF000000),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        ),
-                        modifier = Modifier
-                            .padding(start = 22.dp, end = 22.dp)
-                            .fillMaxWidth(),
-                        decorationBox = { innerTextField ->
-                            Box {
-                                if (descValue.isEmpty()) {
-                                    Text(
-                                        "Nhập mô tả vô đây",
-                                        color = Color(0x80000000),
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                                innerTextField()
-                            }
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(13.dp))
-                    Box(
-                        modifier = Modifier
-                            .padding(bottom = 6.dp, start = 20.dp, end = 20.dp)
-                            .height(2.dp)
-                            .fillMaxWidth()
-                            .background(color = Color(0xFF000000))
-                    )
-                    Text(
-                        "Mô tả",
-                        color = Color(0xFF000000),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 44.dp, start = 21.dp)
-                    )
-
-                    // Ngôn ngữ của câu (term)
-                    Box(modifier = Modifier.padding(start = 23.dp, end = 23.dp, bottom = 4.dp)) {
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { termLangExpanded = true }
-                        ) {
-                            Text(
-                                LANGUAGE_OPTIONS.find { it.first == termLangCode }?.second ?: termLangCode,
-                                color = Color(0x80000000),
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Image(
-                                painter = painterResource(id = R.drawable.ic_dropdown),
-                                contentDescription = "Dropdown",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = termLangExpanded,
-                            onDismissRequest = { termLangExpanded = false }
-                        ) {
-                            LANGUAGE_OPTIONS.forEach { (code, label) ->
-                                DropdownMenuItem(
-                                    text = { Text(label) },
-                                    onClick = {
-                                        termLangCode = code
-                                        termLangExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                    Box(
-                        modifier = Modifier
-                            .padding(bottom = 7.dp, start = 22.dp, end = 22.dp)
-                            .height(2.dp)
-                            .fillMaxWidth()
-                            .background(color = Color(0xFF000000))
-                    )
-                    Text(
-                        "Ngôn ngữ của câu",
-                        color = Color(0xFF000000),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 47.dp, start = 22.dp)
-                    )
-
-                    // Ngôn ngữ của nghĩa (def)
-                    Box(modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 7.dp)) {
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { defLangExpanded = true }
-                        ) {
-                            Text(
-                                LANGUAGE_OPTIONS.find { it.first == defLangCode }?.second ?: defLangCode,
-                                color = Color(0x80000000),
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Image(
-                                painter = painterResource(id = R.drawable.ic_dropdown),
-                                contentDescription = "Dropdown",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = defLangExpanded,
-                            onDismissRequest = { defLangExpanded = false }
-                        ) {
-                            LANGUAGE_OPTIONS.forEach { (code, label) ->
-                                DropdownMenuItem(
-                                    text = { Text(label) },
-                                    onClick = {
-                                        defLangCode = code
-                                        defLangExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                    Box(
-                        modifier = Modifier
-                            .padding(bottom = 5.dp, start = 22.dp, end = 22.dp)
-                            .height(2.dp)
-                            .fillMaxWidth()
-                            .background(color = Color(0xFF000000))
-                    )
-                    Text(
-                        "Ngôn ngữ của nghĩa",
-                        color = Color(0xFF000000),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 40.dp, start = 22.dp)
-                    )
-
-                    Spacer(modifier = Modifier.height(80.dp))
-                }
-            }
+    Scaffold(
+        topBar = {
+            AppTopBar(
+                title = "Chỉnh sửa",
+                onBackClick = { navController.popBackStack() }
+            )
         }
-
-        // Nút lưu
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 24.dp)
-                .size(56.dp)
-                .clip(CircleShape)
-                .background(
-                    if (uiState.isUpdating) Color(0xFFAAAAAA) else Color(0xFF58CC02)
-                )
-                .clickable(enabled = !uiState.isUpdating && titleValue.isNotBlank() && descValue.isNotBlank()) {
+    ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding))
+        Box(modifier = Modifier.fillMaxSize()) {
+            EditDetailContent(
+                title = titleValue,
+                onTitleChange = { titleValue = it },
+                description = descValue,
+                onDescriptionChange = { descValue = it },
+                termLangCode = termLangCode,
+                defLangCode = defLangCode,
+                onTermLangChange = { termLangCode = it },
+                onDefLangChange = { defLangCode = it },
+                isLoading = uiState.isLoading,
+                isSaving = uiState.isUpdating,
+                errorMessage = uiState.actionError,
+                onSaveClick = {
                     viewModel.updatePattern(
                         name = titleValue.trim(),
                         description = descValue.trim(),
@@ -345,23 +84,265 @@ fun EditDetailScreen(
                         defLangCode = defLangCode,
                         isPublic = uiState.pattern?.isPublic ?: false
                     )
-                },
-            contentAlignment = Alignment.Center
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun EditDetailContent(
+    title: String,
+    onTitleChange: (String) -> Unit,
+    description: String,
+    onDescriptionChange: (String) -> Unit,
+    termLangCode: String,
+    defLangCode: String,
+    onTermLangChange: (String) -> Unit,
+    onDefLangChange: (String) -> Unit,
+    isLoading: Boolean = false,
+    isSaving: Boolean = false,
+    errorMessage: String? = null,
+    onSaveClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = 74.dp)
+                .verticalScroll(rememberScrollState())
         ) {
-            if (uiState.isUpdating) {
-                CircularProgressIndicator(
-                    color = Color.White,
-                    modifier = Modifier.size(28.dp),
-                    strokeWidth = 3.dp
+            AppTopBar(title = "Chỉnh sửa mẫu câu", onBackClick = {}, modifier = Modifier.alpha(0f))
+            Spacer(modifier = Modifier.height(28.dp))
+
+            if (!errorMessage.isNullOrBlank()) {
+                Text(
+                    text = errorMessage,
+                    color = Color.Red,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
                 )
-            } else {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_check_detailed_video_screen),
-                    contentDescription = "Lưu",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxWidth()
+            }
+
+            UnderlinedField(
+                value = title,
+                onValueChange = onTitleChange,
+                placeholder = "Nhập tiêu đề vô đây",
+                label = "Tiêu đề",
+                singleLine = true
+            )
+            Spacer(modifier = Modifier.height(28.dp))
+
+            UnderlinedField(
+                value = description,
+                onValueChange = onDescriptionChange,
+                placeholder = "Nhập mô tả vô đây",
+                label = "Mô tả",
+                singleLine = false
+            )
+            Spacer(modifier = Modifier.height(28.dp))
+
+            LanguageSelectBlock(
+                valueCode = termLangCode,
+                label = "Ngôn ngữ của câu",
+                onValueChange = onTermLangChange
+            )
+            Spacer(modifier = Modifier.height(28.dp))
+
+            LanguageSelectBlock(
+                valueCode = defLangCode,
+                label = "Ngôn ngữ của nghĩa",
+                onValueChange = onDefLangChange
+            )
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+
+        // Bottom save button
+        Surface(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(74.dp),
+            color = Color.White,
+            shadowElevation = 20.dp
+        ) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Divider(thickness = 1.dp, color = Color(0xB3E5E7EB), modifier = Modifier.align(Alignment.TopCenter))
+                if (isSaving || isLoading) {
+                    CircularProgressIndicator(color = GreenPrimary, modifier = Modifier.size(36.dp))
+                } else {
+
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .background(GreenPrimary)
+                        .clickable(
+                            enabled = title.isNotBlank(),
+                            onClick = onSaveClick
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_check),
+                        contentDescription = "Lưu",
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun UnderlinedField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    label: String,
+    singleLine: Boolean
+) {
+    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = singleLine,
+            textStyle = TextStyle(
+                fontSize = 16.sp,
+                lineHeight = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xCC000000)
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (!singleLine) Modifier.heightIn(min = 80.dp) else Modifier),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    if (value.isEmpty()) {
+                        Text(
+                            text = placeholder,
+                            fontSize = 16.sp,
+                            lineHeight = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0x80000000)
+                        )
+                    }
+                    innerTextField()
+                }
+            }
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        HorizontalDivider(thickness = 2.dp, color = Color.Black)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = label, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = Color.Black)
+    }
+}
+
+@Composable
+private fun LanguageSelectBlock(
+    valueCode: String,
+    label: String,
+    onValueChange: (String) -> Unit
+) {
+    val languages = listOf(
+        "en" to "English", "vi" to "Tiếng Việt",
+        "ja" to "日本語", "zh" to "中文"
+    )
+    var expanded by remember { mutableStateOf(false) }
+    val displayName = languages.find { it.first == valueCode }?.second ?: valueCode
+
+    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+        Box {
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { expanded = true },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = displayName,
+                    modifier = Modifier.weight(1f),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xCC000000)
+                )
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_back),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = 270f },
+                    tint = Color.Black
+                )
+            }
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.background(Color.White)
+            ) {
+                languages.forEach { (code, name) ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = name,
+                                fontWeight = if (code == valueCode) FontWeight.ExtraBold else FontWeight.Normal,
+                                color = if (code == valueCode) GreenPrimary else Color.Black
+                            )
+                        },
+                        onClick = { onValueChange(code); expanded = false }
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        HorizontalDivider(thickness = 2.dp, color = Color.Black)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = label, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = Color.Black)
+    }
+}
+
+@Composable
+private fun AppTopBar(title: String, onBackClick: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        tonalElevation = 3.dp,
+        shadowElevation = 4.dp,
+        color = Color.White
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+        ) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Spacer(modifier = Modifier.width(60.dp))
+                Text(text = title, style = MaterialTheme.typography.displayMedium, modifier = Modifier.weight(1f))
+            }
+            Box(modifier = Modifier.matchParentSize()) {
+                BackButton(
+                    onClick = onBackClick,
+                    modifier = Modifier.align(Alignment.CenterStart).wrapContentSize()
                 )
             }
         }
     }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+private fun EditDetailScreenPreview() {
+    EditDetailContent(
+        title = "",
+        onTitleChange = {},
+        description = "",
+        onDescriptionChange = {},
+        termLangCode = "en",
+        defLangCode = "vi",
+        onTermLangChange = {},
+        onDefLangChange = {},
+        onSaveClick = {}
+    )
 }
