@@ -29,7 +29,8 @@ import com.example.potago.presentation.ui.theme.Nunito
 fun WordOrderingResultScreen(
     navController: NavController,
     correctCount: Int,
-    totalCount: Int
+    totalCount: Int,
+    completedTime: Double = 0.0
 ) {
     val xp = correctCount * 6
     val wrongCount = totalCount - correctCount
@@ -130,8 +131,8 @@ fun WordOrderingResultScreen(
                 borderColor = Color(0x403B82F6),
                 headerText = "Time",
                 icon = null,
-                valueText = "3:10",
-                unitText = "",
+                valueText = String.format("%.1f", completedTime),
+                unitText = "s",
                 valueColor = Color(0xFF3B82F6),
                 modifier = Modifier.weight(1f)
             )
@@ -305,29 +306,17 @@ private fun RewardCard(
 @Preview(showBackground = true, showSystemUi = true, name = "Result - All Correct")
 @Composable
 private fun PreviewResultAllCorrect() {
-    WordOrderingResultScreen(
-        navController = rememberNavController(),
-        correctCount = 5,
-        totalCount = 5
-    )
+    WordOrderingResultScreen(navController = rememberNavController(), correctCount = 5, totalCount = 5, completedTime = 42.3)
 }
 
 @Preview(showBackground = true, showSystemUi = true, name = "Result - Partial")
 @Composable
 private fun PreviewResultPartial() {
-    WordOrderingResultScreen(
-        navController = rememberNavController(),
-        correctCount = 3,
-        totalCount = 5
-    )
+    WordOrderingResultScreen(navController = rememberNavController(), correctCount = 3, totalCount = 5, completedTime = 67.8)
 }
 
 @Preview(showBackground = true, showSystemUi = true, name = "Result - All Wrong")
 @Composable
 private fun PreviewResultAllWrong() {
-    WordOrderingResultScreen(
-        navController = rememberNavController(),
-        correctCount = 0,
-        totalCount = 5
-    )
+    WordOrderingResultScreen(navController = rememberNavController(), correctCount = 0, totalCount = 5, completedTime = 120.0)
 }
