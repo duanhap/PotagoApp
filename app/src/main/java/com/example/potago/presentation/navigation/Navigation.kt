@@ -117,10 +117,10 @@ sealed class Screen(val route: String) {
             return "word_ordering/$patternId/$encodedName"
         }
     }
-    object WordOrderingResult : Screen("word_ordering_result/{correctCount}/{totalCount}/{completedTime}") {
-        operator fun invoke(correctCount: Int, totalCount: Int, completedTime: Double = 0.0): String {
+    object WordOrderingResult : Screen("word_ordering_result/{correctCount}/{totalCount}/{completedTime}/{xpEarned}/{diamondEarned}") {
+        operator fun invoke(correctCount: Int, totalCount: Int, completedTime: Double = 0.0, xpEarned: Int = 0, diamondEarned: Int = 0): String {
             val timeFloat = completedTime.toFloat()
-            return "word_ordering_result/$correctCount/$totalCount/$timeFloat"
+            return "word_ordering_result/$correctCount/$totalCount/$timeFloat/$xpEarned/$diamondEarned"
         }
     }
     object MatchGame : Screen("match_game/{wordSetId}/{wordSetName}") {
@@ -602,7 +602,9 @@ fun MainFlowContainer(rootNavController: NavController) {
                     arguments = listOf(
                         navArgument("correctCount") { type = NavType.IntType },
                         navArgument("totalCount") { type = NavType.IntType },
-                        navArgument("completedTime") { type = NavType.FloatType; defaultValue = 0f }
+                        navArgument("completedTime") { type = NavType.FloatType; defaultValue = 0f },
+                        navArgument("xpEarned") { type = NavType.IntType; defaultValue = 0 },
+                        navArgument("diamondEarned") { type = NavType.IntType; defaultValue = 0 }
                     ),
                     enterTransition = { fadeIn(tween(300)) },
                     exitTransition = { fadeOut(tween(250)) }
@@ -610,11 +612,15 @@ fun MainFlowContainer(rootNavController: NavController) {
                     val correctCount = backStackEntry.arguments?.getInt("correctCount") ?: 0
                     val totalCount = backStackEntry.arguments?.getInt("totalCount") ?: 0
                     val completedTime = backStackEntry.arguments?.getFloat("completedTime")?.toDouble() ?: 0.0
+                    val xpEarned = backStackEntry.arguments?.getInt("xpEarned") ?: 0
+                    val diamondEarned = backStackEntry.arguments?.getInt("diamondEarned") ?: 0
                     WordOrderingResultScreen(
                         navController = mainNavController,
                         correctCount = correctCount,
                         totalCount = totalCount,
-                        completedTime = completedTime
+                        completedTime = completedTime,
+                        xpEarned = xpEarned,
+                        diamondEarned = diamondEarned
                     )
                 }
             }

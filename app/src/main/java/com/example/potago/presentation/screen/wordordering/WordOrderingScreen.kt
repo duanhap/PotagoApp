@@ -56,7 +56,9 @@ fun WordOrderingScreen(
                     val resultRoute = com.example.potago.presentation.navigation.Screen.WordOrderingResult(
                         correctCount = event.correctCount,
                         totalCount = event.totalCount,
-                        completedTime = event.completedTime
+                        completedTime = event.completedTime,
+                        xpEarned = event.xpEarned,
+                        diamondEarned = event.diamondEarned
                     )
                     navController.navigate(
                         com.example.potago.presentation.navigation.Screen.Streak(event.streakCount, resultRoute)
@@ -69,7 +71,9 @@ fun WordOrderingScreen(
                         com.example.potago.presentation.navigation.Screen.WordOrderingResult(
                             correctCount = event.correctCount,
                             totalCount = event.totalCount,
-                            completedTime = event.completedTime
+                            completedTime = event.completedTime,
+                            xpEarned = event.xpEarned,
+                            diamondEarned = event.diamondEarned
                         )
                     ) {
                         popUpTo(com.example.potago.presentation.navigation.Screen.WordOrdering.route) { inclusive = true }
@@ -92,23 +96,6 @@ fun WordOrderingScreen(
     if (error != null && uiState.sentences.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(text = error, color = RedPrimary)
-        }
-        return
-    }
-
-    // Navigate to result screen when finished
-    if (uiState.isFinished) {
-        androidx.compose.runtime.LaunchedEffect(Unit) {
-            navController.navigate(
-                com.example.potago.presentation.navigation.Screen.WordOrderingResult(
-                    correctCount = uiState.correctCount,
-                    totalCount = uiState.sentences.size
-                )
-            ) {
-                popUpTo(
-                    com.example.potago.presentation.navigation.Screen.WordOrdering.route
-                ) { inclusive = true }
-            }
         }
         return
     }
