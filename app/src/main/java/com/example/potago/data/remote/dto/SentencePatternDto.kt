@@ -49,3 +49,9 @@ data class CreateSentencesRequest(
     @SerializedName("pattern_id") val patternId: Int,
     @SerializedName("sentences") val sentences: List<SentenceInputDto>
 )
+
+data class CreateSingleSentenceRequest(
+    @SerializedName("pattern_id") val patternId: Int,
+    @SerializedName("term") val term: String,
+    @SerializedName("definition") val definition: String
+)

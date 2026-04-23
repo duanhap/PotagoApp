@@ -13,13 +13,16 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.potago.domain.model.Result
+import com.example.potago.domain.model.SetencePattern
 import com.example.potago.domain.model.Subtitle
 import com.example.potago.domain.model.Video
 import com.example.potago.domain.usecase.CheckAndExpireItemSessionUseCase
 import com.example.potago.domain.usecase.ClaimRewardUseCase
+import com.example.potago.domain.usecase.GetSentencePatternsUseCase
 import com.example.potago.domain.usecase.GetSubtitlesUseCase
 import com.example.potago.domain.usecase.GetVideoUseCase
 import com.example.potago.domain.usecase.ObserveActiveItemSessionUseCase
+import com.example.potago.domain.usecase.SaveSubtitleToPatternUseCase
 import com.example.potago.domain.usecase.SyncUserSessionUseCase
 import com.example.potago.presentation.navigation.Screen
 import com.example.potago.presentation.screen.UiState
@@ -53,6 +56,8 @@ class DetailedVideoViewModel @Inject constructor(
     private val syncUserSessionUseCase: SyncUserSessionUseCase,
     private val observeActiveItemSessionUseCase: ObserveActiveItemSessionUseCase,
     private val checkAndExpireItemSessionUseCase: CheckAndExpireItemSessionUseCase,
+    private val getSentencePatternsUseCase: GetSentencePatternsUseCase,
+    private val saveSubtitleToPatternUseCase: SaveSubtitleToPatternUseCase,
     private val application: Application,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -158,6 +163,25 @@ class DetailedVideoViewModel @Inject constructor(
 
     // Lưu vị trí video để restore sau khi quay lại từ StreakScreen
     var savedVideoPositionMs: Long = 0L
+
+    // ── Save Subtitle State ──────────────────────────────────────────────────
+    // Bước 1: bottom sheet chỉnh sửa câu
+    data class SaveSubtitleDraft(val term: String, val definition: String)
+    private val _saveSubtitleDraft = MutableStateFlow<SaveSubtitleDraft?>(null)
+    val saveSubtitleDraft: StateFlow<SaveSubtitleDraft?> = _saveSubtitleDraft.asStateFlow()
+
+    // Bước 2: bottom sheet chọn pattern
+    private val _showPatternPicker = MutableStateFlow(false)
+    val showPatternPicker: StateFlow<Boolean> = _showPatternPicker.asStateFlow()
+
+    private val _sentencePatterns = MutableStateFlow<List<SetencePattern>>(emptyList())
+    val sentencePatterns: StateFlow<List<SetencePattern>> = _sentencePatterns.asStateFlow()
+
+    private val _isPatternsLoading = MutableStateFlow(false)
+    val isPatternsLoading: StateFlow<Boolean> = _isPatternsLoading.asStateFlow()
+
+    private val _isSavingToPattern = MutableStateFlow(false)
+    val isSavingToPattern: StateFlow<Boolean> = _isSavingToPattern.asStateFlow()
 
     init {
         loadAllData(videoId)
@@ -694,6 +718,130 @@ class DetailedVideoViewModel @Inject constructor(
             _spokenWordIndices.value = emptySet()
             stopAudioPlayback()
         }
+    }
+
+    // ── Save Subtitle Functions ──────────────────────────────────────────────
+
+    /** Gộp câu hoàn chỉnh từ subtitle tại index, mở rộng sang trước/sau nếu câu chưa đủ */
+    fun onSaveSubtitleClick(subtitleIndex: Int) {
+        val subs = (_subtitlesState.value as? UiState.Success<List<Subtitle>>)?.data ?: return
+        val mergedContent = buildCompleteSentence(subs, subtitleIndex)
+        val mergedTranslation = buildCompleteTranslation(subs, subtitleIndex)
+        _saveSubtitleDraft.value = SaveSubtitleDraft(
+            term = mergedContent,
+            definition = mergedTranslation
+        )
+    }
+
+    fun onSaveDraftTermChange(term: String) {
+        _saveSubtitleDraft.value = _saveSubtitleDraft.value?.copy(term = term)
+    }
+
+    fun onSaveDraftDefinitionChange(definition: String) {
+        _saveSubtitleDraft.value = _saveSubtitleDraft.value?.copy(definition = definition)
+    }
+
+    fun dismissSaveDraft() {
+        _saveSubtitleDraft.value = null
+    }
+
+    fun proceedToPatternPicker() {
+        _showPatternPicker.value = true
+        loadSentencePatterns()
+    }
+
+    fun dismissPatternPicker() {
+        _showPatternPicker.value = false
+    }
+
+    fun dismissSaveFlow() {
+        _saveSubtitleDraft.value = null
+        _showPatternPicker.value = false
+    }
+
+    private fun loadSentencePatterns() {
+        viewModelScope.launch {
+            _isPatternsLoading.value = true
+            when (val result = getSentencePatternsUseCase()) {
+                is Result.Success -> _sentencePatterns.value = result.data ?: emptyList()
+                is Result.Error -> _uiEvent.send(UiEvent.ShowSnackbar(result.message))
+                else -> {}
+            }
+            _isPatternsLoading.value = false
+        }
+    }
+
+    fun saveToPatterns(selectedPatternIds: List<Int>) {
+        val draft = _saveSubtitleDraft.value ?: return
+        if (selectedPatternIds.isEmpty()) return
+        viewModelScope.launch {
+            _isSavingToPattern.value = true
+            var successCount = 0
+            selectedPatternIds.forEach { patternId ->
+                when (saveSubtitleToPatternUseCase(patternId, draft.term, draft.definition)) {
+                    is Result.Success -> successCount++
+                    is Result.Error -> {} // tiếp tục với pattern khác
+                    else -> {}
+                }
+            }
+            _isSavingToPattern.value = false
+            dismissSaveFlow()
+            if (successCount > 0) {
+                _uiEvent.send(UiEvent.ShowSnackbar("Đã lưu vào $successCount mẫu câu"))
+            }
+        }
+    }
+
+    /** Kiểm tra chuỗi có kết thúc câu hoàn chỉnh không */
+    private fun isCompleteSentence(text: String?): Boolean {
+        if (text.isNullOrBlank()) return false
+        return text.trimEnd().last() in listOf('.', '!', '?', '。', '！', '？', '…')
+    }
+
+    /** Gộp content từ các subtitle liên tiếp tạo thành câu hoàn chỉnh */
+    private fun buildCompleteSentence(subs: List<Subtitle>, index: Int): String {
+        val range = findSentenceRange(subs, index)
+        return subs.subList(range.first, range.last + 1)
+            .mapNotNull { it.content?.trim() }
+            .joinToString(" ")
+    }
+
+    private fun buildCompleteTranslation(subs: List<Subtitle>, index: Int): String {
+        val range = findSentenceRange(subs, index)
+        return subs.subList(range.first, range.last + 1)
+            .mapNotNull { it.translation?.trim() }
+            .filter { it.isNotBlank() }
+            .joinToString(" ")
+    }
+
+    /**
+     * Tìm range [start, end] của câu hoàn chỉnh bao quanh index:
+     * - Mở rộng về trước nếu subtitle trước chưa kết thúc câu (tối đa 2 bước)
+     * - Mở rộng về sau nếu subtitle hiện tại chưa kết thúc câu (tối đa 2 bước)
+     */
+    private fun findSentenceRange(subs: List<Subtitle>, index: Int): IntRange {
+        var start = index
+        var end = index
+
+        // Mở rộng về trước: nếu subtitle trước chưa kết thúc câu thì subtitle hiện tại là phần tiếp
+        var steps = 0
+        while (start > 0 && steps < 2) {
+            if (!isCompleteSentence(subs[start - 1].content)) {
+                start--
+                steps++
+            } else break
+        }
+
+        // Mở rộng về sau: nếu subtitle hiện tại chưa kết thúc câu
+        steps = 0
+        while (end < subs.size - 1 && steps < 2) {
+            if (!isCompleteSentence(subs[end].content)) {
+                end++
+                steps++
+            } else break
+        }
+
+        return start..end
     }
 
     override fun onCleared() {
