@@ -32,7 +32,9 @@ data class WritingPracticeUiState(
     val startTime: Long = 0L,
     val completionTime: Long = 0L,
     val experienceEarned: Int = 15,
-    val diamondEarned: Int = 10
+    val diamondEarned: Int = 10,
+    val incorrectSentences: MutableList<Setence> = mutableListOf(), // Danh sách câu sai
+    val isRetryRound: Boolean = false // Đang ở vòng làm lại câu sai
 )
 
 @HiltViewModel
@@ -101,6 +103,11 @@ class WritingPracticeViewModel @Inject constructor(
             _uiState.update { 
                 it.copy(answerResult = AnswerResult.Incorrect(correctAnswer)) 
             }
+            // Thêm câu sai vào danh sách (nếu chưa có)
+            val incorrectList = _uiState.value.incorrectSentences
+            if (!incorrectList.any { it.id == currentSentence.id }) {
+                incorrectList.add(currentSentence)
+            }
             // Tăng số lần sai
             incrementMistakes(currentSentence)
         }
@@ -109,8 +116,16 @@ class WritingPracticeViewModel @Inject constructor(
     fun moveToNextSentence() {
         val currentIndex = _uiState.value.currentIndex
         val sentences = _uiState.value.sentences
+        val incorrectSentences = _uiState.value.incorrectSentences
+        val currentSentence = _uiState.value.currentSentence
+        
+        // Nếu câu hiện tại đúng và đang ở vòng retry, xóa khỏi danh sách câu sai
+        if (_uiState.value.answerResult is AnswerResult.Correct && _uiState.value.isRetryRound) {
+            incorrectSentences.removeAll { it.id == currentSentence?.id }
+        }
         
         if (currentIndex + 1 < sentences.size) {
+            // Còn câu tiếp theo trong danh sách hiện tại
             _uiState.update {
                 it.copy(
                     currentIndex = currentIndex + 1,
@@ -119,17 +134,31 @@ class WritingPracticeViewModel @Inject constructor(
                 )
             }
         } else {
-            // Hoàn thành tất cả câu - tính thời gian
-            val completionTime = System.currentTimeMillis() - _uiState.value.startTime
-            _uiState.update {
-                it.copy(
-                    isCompleted = true,
-                    completionTime = completionTime,
-                    answerResult = AnswerResult.None
-                )
+            // Hết câu trong danh sách hiện tại
+            if (incorrectSentences.isNotEmpty()) {
+                // Có câu sai -> Bắt đầu vòng làm lại
+                _uiState.update {
+                    it.copy(
+                        sentences = incorrectSentences.toList(),
+                        currentIndex = 0,
+                        currentSentence = incorrectSentences.firstOrNull(),
+                        answerResult = AnswerResult.None,
+                        isRetryRound = true
+                    )
+                }
+            } else {
+                // Không có câu sai -> Hoàn thành
+                val completionTime = System.currentTimeMillis() - _uiState.value.startTime
+                _uiState.update {
+                    it.copy(
+                        isCompleted = true,
+                        completionTime = completionTime,
+                        answerResult = AnswerResult.None
+                    )
+                }
+                // Claim rewards
+                claimRewards()
             }
-            // Claim rewards
-            claimRewards()
         }
     }
 
@@ -203,6 +232,12 @@ class WritingPracticeViewModel @Inject constructor(
         val total = _uiState.value.sentences.size
         val current = _uiState.value.currentIndex + 1
         return if (total > 0) current.toFloat() / total.toFloat() else 0f
+    }
+    
+    fun getTotalProgress(): String {
+        val current = _uiState.value.currentIndex + 1
+        val total = _uiState.value.sentences.size
+        return "$current/$total"
     }
 
     fun resetState() {
