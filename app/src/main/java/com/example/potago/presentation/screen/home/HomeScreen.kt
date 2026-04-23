@@ -367,60 +367,49 @@ private fun WordSetCard(
 fun RecentSentencesSection(
     uiState: UiState<List<Setence>>
 ) {
-    when (uiState) {
-        is UiState.Loading -> {
-            SentenceCardShimmerList()
-        }
+    val context = LocalContext.current
+    var tts: TextToSpeech? by remember { mutableStateOf(null) }
 
+    DisposableEffect(Unit) {
+        val instance = TextToSpeech(context) {}
+        tts = instance
+        onDispose { instance.stop(); instance.shutdown() }
+    }
+
+    when (uiState) {
+        is UiState.Loading -> SentenceCardShimmerList()
         is UiState.Success -> {
             val sentences = uiState.data
             if (sentences.isNullOrEmpty()) {
-                EmptyBoxView(
-                    text = "Chưa có câu nào",
-                    modifier = Modifier.padding(horizontal = 20.dp)
-                )
+                EmptyBoxView(text = "Chưa có câu nào", modifier = Modifier.padding(horizontal = 20.dp))
             } else {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 20.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(sentences) { sentence ->
-                        SentenceCard(sentence = sentence)
+                        SentenceCard(
+                            sentence = sentence,
+                            onSpeak = {
+                                tts?.let { engine ->
+                                    engine.language = Locale.forLanguageTag(
+                                        sentence.termLanguageCode.ifBlank { "en" }
+                                    )
+                                    engine.speak(sentence.term, TextToSpeech.QUEUE_FLUSH, null, null)
+                                }
+                            }
+                        )
                     }
                 }
             }
         }
-
-        is UiState.Error -> {
-            Text(
-                text = uiState.message,
-                color = Color.Red,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-            )
-        }
-
+        is UiState.Error -> Text(text = uiState.message, color = Color.Red, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
         else -> {}
     }
 }
 
 @Composable
-private fun SentenceCard(sentence: Setence) {
-    val context = LocalContext.current
-    var tts: TextToSpeech? by remember { mutableStateOf(null) }
-
-    DisposableEffect(Unit) {
-        val ttsInstance = TextToSpeech(context) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                // Initialized successfully
-            }
-        }
-        tts = ttsInstance
-        onDispose {
-            ttsInstance.stop()
-            ttsInstance.shutdown()
-        }
-    }
-
+private fun SentenceCard(sentence: Setence, onSpeak: () -> Unit = {}) {
     Box(
         modifier = Modifier
             .wrapContentWidth()
@@ -445,7 +434,7 @@ private fun SentenceCard(sentence: Setence) {
                     overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Row() {
+                Row {
                     Text(
                         text = sentence.definition,
                         style = MaterialTheme.typography.labelSmall,
@@ -454,39 +443,13 @@ private fun SentenceCard(sentence: Setence) {
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
-                    Box(
-                        contentAlignment = Alignment.BottomEnd
-                    ) {
-                        SoundButton(
-                            onClick = {
-                                tts?.let {
-                                    it.language = Locale.forLanguageTag(sentence.termLanguageCode)
-                                    it.speak(sentence.term, TextToSpeech.QUEUE_FLUSH, null, null)
-                                }
-                            }
-                        )
+                    Box(contentAlignment = Alignment.BottomEnd) {
+                        SoundButton(onClick = onSpeak)
                     }
-
                 }
-
             }
-
-
         }
     }
-}
-
-@Preview
-@Composable
-fun SentenceCardShow() {
-    SentenceCard(
-        sentence = Setence(
-            id = 1,
-            term = "Hello",
-            definition = "Xin chào",
-            termLanguageCode = "en"
-        )
-    )
 }
 
 @Composable
