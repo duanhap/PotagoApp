@@ -173,6 +173,7 @@ fun ListOfDetailScreen(
 							SentenceCard(
 								sentence = sentence.term,
 								meaning = sentence.definition,
+								status = sentence.status,
 								isMenuOpen = openMenuIndex == index,
 								onMenuToggle = {
 									openMenuIndex = if (openMenuIndex == index) -1 else index
@@ -184,6 +185,11 @@ fun ListOfDetailScreen(
 								onDelete = { 
 									openMenuIndex = -1
 									viewModel.deleteSentence(sentence.id)
+								},
+								onToggleStatus = {
+									openMenuIndex = -1
+									val newStatus = if (sentence.status == "known") "unknown" else "known"
+									viewModel.updateSentenceStatus(sentence.id, newStatus)
 								},
 								modifier = Modifier.padding(
 									bottom = 20.dp,
@@ -228,10 +234,12 @@ fun ListOfDetailScreen(
 private fun SentenceCard(
 	sentence: String,
 	meaning: String,
+	status: String,
 	isMenuOpen: Boolean,
 	onMenuToggle: () -> Unit,
 	onEdit: () -> Unit,
 	onDelete: () -> Unit,
+	onToggleStatus: () -> Unit,
 	modifier: Modifier = Modifier
 ) {
 	Column(
@@ -275,8 +283,30 @@ private fun SentenceCard(
 							.background(Color(0xFFFFFFFF))
 							.border(width = 1.dp, color = Color(0xFFE5E7EB), shape = RoundedCornerShape(12.dp))
 							.padding(horizontal = 16.dp, vertical = 8.dp)
-							.width(120.dp)
+							.width(140.dp)
 					) {
+						// Tùy chọn thay đổi status (Đã thuộc/Chưa thuộc)
+						Row(
+							verticalAlignment = Alignment.CenterVertically,
+							modifier = Modifier
+								.padding(vertical = 8.dp)
+								.clickable { onToggleStatus() }
+						) {
+							Icon(
+								painter = painterResource(id = R.drawable.ic_check_detailed_video_screen),
+								contentDescription = if (status == "unknown") "Mark as known" else "Mark as unknown",
+								tint = Color(0xFF58CC02),
+								modifier = Modifier.padding(end = 10.dp).size(16.dp)
+							)
+							Text(
+								if (status == "unknown") "Đã thuộc" else "Chưa thuộc",
+								color = Color(0xFF4B5563),
+								fontSize = 13.sp,
+								fontWeight = FontWeight.Bold
+							)
+						}
+						
+						// Chỉnh sửa
 						Row(
 							verticalAlignment = Alignment.CenterVertically,
 							modifier = Modifier
@@ -291,6 +321,8 @@ private fun SentenceCard(
 							)
 							Text("Chỉnh sửa", color = Color(0xFF4B5563), fontSize = 13.sp, fontWeight = FontWeight.Bold)
 						}
+						
+						// Xóa
 						Row(
 							verticalAlignment = Alignment.CenterVertically,
 							modifier = Modifier
