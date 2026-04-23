@@ -117,10 +117,10 @@ sealed class Screen(val route: String) {
             return "word_ordering/$patternId/$encodedName"
         }
     }
-    object WordOrderingResult : Screen("word_ordering_result/{correctCount}/{totalCount}/{completedTime}/{xpEarned}/{diamondEarned}") {
-        operator fun invoke(correctCount: Int, totalCount: Int, completedTime: Double = 0.0, xpEarned: Int = 0, diamondEarned: Int = 0): String {
+    object WordOrderingResult : Screen("word_ordering_result/{correctCount}/{totalCount}/{completedTime}/{xpEarned}/{diamondEarned}/{hackXp}/{superXp}") {
+        operator fun invoke(correctCount: Int, totalCount: Int, completedTime: Double = 0.0, xpEarned: Int = 0, diamondEarned: Int = 0, hackXp: Boolean = false, superXp: Boolean = false): String {
             val timeFloat = completedTime.toFloat()
-            return "word_ordering_result/$correctCount/$totalCount/$timeFloat/$xpEarned/$diamondEarned"
+            return "word_ordering_result/$correctCount/$totalCount/$timeFloat/$xpEarned/$diamondEarned/$hackXp/$superXp"
         }
     }
     object MatchGame : Screen("match_game/{wordSetId}/{wordSetName}") {
@@ -604,7 +604,9 @@ fun MainFlowContainer(rootNavController: NavController) {
                         navArgument("totalCount") { type = NavType.IntType },
                         navArgument("completedTime") { type = NavType.FloatType; defaultValue = 0f },
                         navArgument("xpEarned") { type = NavType.IntType; defaultValue = 0 },
-                        navArgument("diamondEarned") { type = NavType.IntType; defaultValue = 0 }
+                        navArgument("diamondEarned") { type = NavType.IntType; defaultValue = 0 },
+                        navArgument("hackXp") { type = NavType.BoolType; defaultValue = false },
+                        navArgument("superXp") { type = NavType.BoolType; defaultValue = false }
                     ),
                     enterTransition = { fadeIn(tween(300)) },
                     exitTransition = { fadeOut(tween(250)) }
@@ -614,13 +616,17 @@ fun MainFlowContainer(rootNavController: NavController) {
                     val completedTime = backStackEntry.arguments?.getFloat("completedTime")?.toDouble() ?: 0.0
                     val xpEarned = backStackEntry.arguments?.getInt("xpEarned") ?: 0
                     val diamondEarned = backStackEntry.arguments?.getInt("diamondEarned") ?: 0
+                    val hackXp = backStackEntry.arguments?.getBoolean("hackXp") ?: false
+                    val superXp = backStackEntry.arguments?.getBoolean("superXp") ?: false
                     WordOrderingResultScreen(
                         navController = mainNavController,
                         correctCount = correctCount,
                         totalCount = totalCount,
                         completedTime = completedTime,
                         xpEarned = xpEarned,
-                        diamondEarned = diamondEarned
+                        diamondEarned = diamondEarned,
+                        hackExperience = hackXp,
+                        superExperience = superXp
                     )
                 }
             }

@@ -61,8 +61,8 @@ data class WordOrderingUiState(
 }
 
 sealed class WordOrderingNavEvent {
-    data class ToStreak(val streakCount: Int, val correctCount: Int, val totalCount: Int, val completedTime: Double, val xpEarned: Int, val diamondEarned: Int) : WordOrderingNavEvent()
-    data class ToResult(val correctCount: Int, val totalCount: Int, val completedTime: Double, val xpEarned: Int, val diamondEarned: Int) : WordOrderingNavEvent()
+    data class ToStreak(val streakCount: Int, val correctCount: Int, val totalCount: Int, val completedTime: Double, val xpEarned: Int, val diamondEarned: Int, val hackXp: Boolean = false, val superXp: Boolean = false) : WordOrderingNavEvent()
+    data class ToResult(val correctCount: Int, val totalCount: Int, val completedTime: Double, val xpEarned: Int, val diamondEarned: Int, val hackXp: Boolean = false, val superXp: Boolean = false) : WordOrderingNavEvent()
 }
 
 @HiltViewModel
@@ -208,9 +208,11 @@ class WordOrderingViewModel @Inject constructor(
         }
 
         _uiState.update {
+            val newCorrectCount = if (isCorrect) it.correctCount + 1 else it.correctCount
             it.copy(
                 checkResult = if (isCorrect) CheckResult.CORRECT else CheckResult.WRONG,
-                correctCount = if (isCorrect) it.correctCount + 1 else it.correctCount
+                correctCount = newCorrectCount,
+                progress = newCorrectCount.toFloat() / it.totalOriginal.coerceAtLeast(1)
             )
         }
     }
@@ -269,9 +271,9 @@ class WordOrderingViewModel @Inject constructor(
                     _uiState.update { it.copy(isSubmitting = false, isFinished = true) }
 
                     if (streak.status == "created" || streak.status == "extended") {
-                        _navEvent.send(WordOrderingNavEvent.ToStreak(streak.currentLength, correctCount, totalCount, completedTime, xpEarned, diamondEarned))
+                        _navEvent.send(WordOrderingNavEvent.ToStreak(streak.currentLength, correctCount, totalCount, completedTime, xpEarned, diamondEarned, state.hackExperience, state.superExperience))
                     } else {
-                        _navEvent.send(WordOrderingNavEvent.ToResult(correctCount, totalCount, completedTime, xpEarned, diamondEarned))
+                        _navEvent.send(WordOrderingNavEvent.ToResult(correctCount, totalCount, completedTime, xpEarned, diamondEarned, state.hackExperience, state.superExperience))
                     }
                 }
                 is Result.Error -> {
