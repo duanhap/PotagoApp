@@ -7,6 +7,7 @@ import com.example.potago.domain.model.Result
 import com.example.potago.domain.usecase.GetWordsByWordSetIdUseCase
 import com.example.potago.domain.usecase.DeleteWordUseCase
 import com.example.potago.domain.usecase.GetWordSetByIdUseCase
+import com.example.potago.domain.usecase.UpdateWordStatusUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,7 +32,8 @@ data class ListOfCardsUiState(
 class ListOfCardsViewModel @Inject constructor(
     private val getWordsByWordSetIdUseCase: GetWordsByWordSetIdUseCase,
     private val deleteWordUseCase: DeleteWordUseCase,
-    private val getWordSetByIdUseCase: GetWordSetByIdUseCase
+    private val getWordSetByIdUseCase: GetWordSetByIdUseCase,
+    private val updateWordStatusUseCase: UpdateWordStatusUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ListOfCardsUiState())
@@ -72,6 +74,16 @@ class ListOfCardsViewModel @Inject constructor(
                     isLoading = false,
                     error = result.message
                 )
+                else -> {}
+            }
+        }
+    }
+
+    fun toggleWordStatus(wordId: Long, currentStatus: String) {
+        val newStatus = if (currentStatus.equals("known", ignoreCase = true)) "unknown" else "known"
+        viewModelScope.launch {
+            when (updateWordStatusUseCase(wordId, newStatus)) {
+                is Result.Success -> fetchCards(currentWordSetId, _uiState.value.filterType)
                 else -> {}
             }
         }

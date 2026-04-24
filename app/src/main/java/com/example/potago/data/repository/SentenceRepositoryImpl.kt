@@ -2,6 +2,8 @@ package com.example.potago.data.repository
 
 import com.example.potago.data.remote.api.ApiResponse
 import com.example.potago.data.remote.api.SentenceApiService
+import com.example.potago.data.remote.dto.CreateSentenceRequest
+import com.example.potago.data.remote.dto.UpdateSentenceRequest
 import com.example.potago.data.remote.dto.CreateSingleSentenceRequest
 import com.example.potago.data.remote.dto.toDomain
 import com.example.potago.domain.model.Result
@@ -61,14 +63,77 @@ class SentenceRepositoryImpl @Inject constructor(
             handleError(e)
         }
     }
-
-    override suspend fun createSentence(patternId: Int, term: String, definition: String): Result<Setence> {
+    override suspend fun createSentenceduan(patternId: Int, term: String, definition: String): Result<Setence> {
         return try {
-            val response = sentenceApiService.createSentence(
+            val response = sentenceApiService.createSentenceduan(
                 CreateSingleSentenceRequest(patternId = patternId, term = term, definition = definition)
             )
             if (response.success && response.data != null) {
                 Result.Success(response.data.toDomain())
+            } else {
+                Result.Error(response.message)
+            }
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
+    override suspend fun createSentence(
+        patternId: Int,
+        term: String,
+        definition: String,
+        status: String,
+        mistakes: Int
+    ): Result<Setence> {
+        return try {
+            val request = CreateSentenceRequest(
+                patternId = patternId,
+                term = term,
+                definition = definition,
+                status = status,
+                mistakes = mistakes
+            )
+            val response = sentenceApiService.createSentence(request)
+            if (response.success && response.data != null) {
+                Result.Success(response.data.toDomain())
+            } else {
+                Result.Error(response.message)
+            }
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
+    override suspend fun updateSentence(
+        id: Int,
+        term: String,
+        definition: String,
+        status: String,
+        mistakes: Int
+    ): Result<Setence> {
+        return try {
+            val request = UpdateSentenceRequest(
+                term = term,
+                definition = definition,
+                status = status,
+                mistakes = mistakes
+            )
+            val response = sentenceApiService.updateSentence(id, request)
+            if (response.success && response.data != null) {
+                Result.Success(response.data.toDomain())
+            } else {
+                Result.Error(response.message)
+            }
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
+    override suspend fun deleteSentence(id: Int): Result<Unit> {
+        return try {
+            val response = sentenceApiService.deleteSentence(id)
+            if (response.success) {
+                Result.Success(Unit)
             } else {
                 Result.Error(response.message)
             }
