@@ -40,7 +40,9 @@ import com.example.potago.R
 import com.example.potago.presentation.navigation.Screen
 import com.example.potago.presentation.screen.setting.BackButton
 import java.util.Locale
+
 private val CheckCircle = Icons.Default.CheckCircle
+
 @Composable
 fun ListOfDetailScreen(
     navController: NavController,
@@ -100,7 +102,7 @@ fun ListOfDetailScreen(
                     if (searchQuery.isBlank()) uiState.filteredSentences
                     else uiState.filteredSentences.filter {
                         it.term.contains(searchQuery, ignoreCase = true) ||
-                        it.definition.contains(searchQuery, ignoreCase = true)
+                                it.definition.contains(searchQuery, ignoreCase = true)
                     }
                 }
 
@@ -156,7 +158,9 @@ fun ListOfDetailScreen(
                             ),
                             verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
-                            itemsIndexed(displayedSentences, key = { _, s -> s.id }) { _, sentence ->
+                            itemsIndexed(
+                                displayedSentences,
+                                key = { _, s -> s.id }) { _, sentence ->
                                 SentenceCardItem(
                                     term = sentence.term,
                                     definition = sentence.definition,
@@ -164,13 +168,25 @@ fun ListOfDetailScreen(
                                     onSpeakClick = {
                                         tts?.let { engine ->
                                             engine.language = Locale.forLanguageTag("en")
-                                            engine.speak(sentence.term, TextToSpeech.QUEUE_FLUSH, null, null)
+                                            engine.speak(
+                                                sentence.term,
+                                                TextToSpeech.QUEUE_FLUSH,
+                                                null,
+                                                null
+                                            )
                                         }
                                     },
-                                    onEditClick = { navController.navigate(Screen.EditSentence(sentence.id)) },
+                                    onEditClick = {
+                                        navController.navigate(
+                                            Screen.EditSentence(
+                                                sentence.id
+                                            )
+                                        )
+                                    },
                                     onDeleteClick = { viewModel.deleteSentence(sentence.id) },
                                     onToggleStatus = {
-                                        val newStatus = if (sentence.status == "known") "unknown" else "known"
+                                        val newStatus =
+                                            if (sentence.status == "known") "unknown" else "known"
                                         viewModel.updateSentenceStatus(sentence.id, newStatus)
                                     }
                                 )
@@ -204,7 +220,8 @@ private fun SentenceCardItem(
     onToggleStatus: () -> Unit
 ) {
     var isMenuExpanded by remember { mutableStateOf(false) }
-    val statusColor = if (status.equals("known", ignoreCase = true)) Color(0xFF22C55E) else Color(0xFFF59E0B)
+    val statusColor =
+        if (status.equals("known", ignoreCase = true)) Color(0xFF22C55E) else Color(0xFFF59E0B)
 
     Surface(
         modifier = Modifier
@@ -249,7 +266,11 @@ private fun SentenceCardItem(
                         .padding(horizontal = 10.dp, vertical = 3.dp)
                 ) {
                     Text(
-                        text = if (status.equals("known", ignoreCase = true)) "Đã thuộc" else "Chưa thuộc",
+                        text = if (status.equals(
+                                "known",
+                                ignoreCase = true
+                            )
+                        ) "Đã thuộc" else "Chưa thuộc",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = statusColor
@@ -262,7 +283,9 @@ private fun SentenceCardItem(
                     Icon(
                         imageVector = Icons.Default.MoreVert,
                         contentDescription = "Tùy chọn",
-                        modifier = Modifier.size(22.dp).clickable { isMenuExpanded = true },
+                        modifier = Modifier
+                            .size(22.dp)
+                            .clickable { isMenuExpanded = true },
                         tint = Color(0xFFB0B8C1)
                     )
                     DropdownMenu(
@@ -276,21 +299,64 @@ private fun SentenceCardItem(
                         tonalElevation = 0.dp
                     ) {
                         DropdownMenuItem(
-                            text = { Text(if (status == "unknown") "Đã thuộc" else "Chưa thuộc", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF111827)) },
+                            text = {
+                                Text(
+                                    if (status == "unknown") "Đã thuộc" else "Chưa thuộc",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF111827)
+                                )
+                            },
                             onClick = { isMenuExpanded = false; onToggleStatus() },
-                            leadingIcon = { Icon(CheckCircle, contentDescription = null, tint = Color(0xFF46A302), modifier = Modifier.size(18.dp)) }
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(id = if (status == "unknown")
+                                     R.drawable.ic_sentence_da_thuoc else R.drawable.ic_setence_chua_thuoc),
+                                    contentDescription = null,
+                                    tint = Color.Unspecified,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         )
                         HorizontalDivider(color = Color(0xFFE5E7EB))
                         DropdownMenuItem(
-                            text = { Text("Chỉnh sửa", color = Color(0xFF111827), fontSize = 14.sp, fontWeight = FontWeight.Medium) },
+                            text = {
+                                Text(
+                                    "Chỉnh sửa",
+                                    color = Color(0xFF111827),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            },
                             onClick = { isMenuExpanded = false; onEditClick() },
-                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFF6B7280)) }
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.icon_edit_sentence_partten),
+                                    contentDescription = null,
+                                    tint = Color.Unspecified,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         )
                         HorizontalDivider(color = Color(0xFFE5E7EB))
                         DropdownMenuItem(
-                            text = { Text("Xóa", color = Color(0xFFE53935), fontSize = 14.sp, fontWeight = FontWeight.Medium) },
+                            text = {
+                                Text(
+                                    "Xóa",
+                                    color = Color(0xFF111827),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            },
                             onClick = { isMenuExpanded = false; onDeleteClick() },
-                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFE53935)) }
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.icon_delete_setence_pattern),
+                                    contentDescription = null,
+                                    tint = Color.Unspecified,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         )
                     }
                 }
@@ -307,7 +373,11 @@ private fun SentenceCardItem(
                 overflow = TextOverflow.Ellipsis
             )
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 1.dp, color = Color(0xFFF3F4F6))
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 8.dp),
+                thickness = 1.dp,
+                color = Color(0xFFF3F4F6)
+            )
 
             Text(
                 text = definition.ifBlank { "Không có nghĩa" },
@@ -333,7 +403,11 @@ private fun FilterTabsRow(selectedFilter: String, onFilterSelect: (String) -> Un
             .padding(horizontal = 20.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        listOf("all" to "Tất cả", "unknown" to "Chưa thuộc", "known" to "Đã thuộc").forEach { (status, label) ->
+        listOf(
+            "all" to "Tất cả",
+            "unknown" to "Chưa thuộc",
+            "known" to "Đã thuộc"
+        ).forEach { (status, label) ->
             val isSelected = selectedFilter == status
             Surface(
                 onClick = { onFilterSelect(status) },
@@ -401,12 +475,18 @@ private fun SearchBarField(query: String, onQueryChange: (String) -> Unit) {
 @Composable
 private fun AddSentenceBottomBar(onClick: () -> Unit, modifier: Modifier = Modifier) {
     Surface(
-        modifier = modifier.fillMaxWidth().height(74.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(74.dp),
         color = Color.White,
         shadowElevation = 20.dp
     ) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Divider(thickness = 1.dp, color = Color(0xB3E5E7EB), modifier = Modifier.align(Alignment.TopCenter))
+            Divider(
+                thickness = 1.dp,
+                color = Color(0xB3E5E7EB),
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
             Box(
                 modifier = Modifier
                     .size(52.dp)
@@ -443,14 +523,23 @@ private fun TopBarSection(title: String, onBackClick: () -> Unit, modifier: Modi
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Spacer(modifier = Modifier.width(60.dp))
-                Text(text = title, style = MaterialTheme.typography.displayMedium, modifier = Modifier.weight(1f))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.displayMedium,
+                    modifier = Modifier.weight(1f)
+                )
             }
             Box(modifier = Modifier.matchParentSize()) {
                 BackButton(
                     onClick = onBackClick,
-                    modifier = Modifier.align(Alignment.CenterStart).wrapContentSize()
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .wrapContentSize()
                 )
             }
         }

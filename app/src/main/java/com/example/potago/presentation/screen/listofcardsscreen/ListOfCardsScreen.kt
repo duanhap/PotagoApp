@@ -582,9 +582,14 @@ fun CardItemNode(
                             onClick = { isMenuExpanded = false; onToggleStatus() },
                             leadingIcon = {
                                 Icon(
-                                    Icons.Default.CheckCircle,
+                                    painter = painterResource(id = if (word.status.equals(
+                                            "known",
+                                            ignoreCase = true
+                                        )
+                                    ) R.drawable.ic_word_chua_thuoc else R.drawable.ic_word_da_thuoc),
                                     contentDescription = null,
-                                    tint = Color(0xFF1CB0F6)
+                                    tint = Color.Unspecified,
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                         )
@@ -601,9 +606,12 @@ fun CardItemNode(
                             onClick = { isMenuExpanded = false; onEditClick() },
                             leadingIcon = {
                                 Icon(
-                                    Icons.Default.Edit,
+                                    painter = painterResource(id = R.drawable.ic_detail_course_screen_edit),
                                     contentDescription = null,
-                                    tint = Color(0xFF6B7280)
+                                    tint = Color.Unspecified,
+                                    modifier = Modifier.size(20.dp)
+
+
                                 )
                             }
                         )
@@ -612,7 +620,7 @@ fun CardItemNode(
                             text = {
                                 Text(
                                     "Xóa",
-                                    color = Color(0xFFE53935),
+                                    color = Color(0xFF111827),
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Medium
                                 )
@@ -620,9 +628,11 @@ fun CardItemNode(
                             onClick = { isMenuExpanded = false; onDeleteClick() },
                             leadingIcon = {
                                 Icon(
-                                    Icons.Default.Delete,
+                                    painter = painterResource(id = R.drawable.ic_detail_course_screen_delete),
                                     contentDescription = null,
-                                    tint = Color(0xFFE53935)
+                                    tint = Color.Unspecified,
+                                    modifier = Modifier.size(20.dp)
+
                                 )
                             }
                         )

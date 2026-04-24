@@ -62,9 +62,11 @@ import com.example.potago.presentation.screen.detailsentencepatternscreen.AddSen
 import com.example.potago.presentation.screen.detailsentencepatternscreen.DeleteDetailScreen
 import com.example.potago.presentation.screen.detailsentencepatternscreen.EditDetailScreen
 import com.example.potago.presentation.screen.detailsentencepatternscreen.EditSentenceScreen
+import com.example.potago.presentation.screen.detailsentencepatternscreen.EditSentenceScreen
 import com.example.potago.presentation.screen.wordordering.WordOrderingScreen
 import com.example.potago.presentation.screen.wordordering.WordOrderingResultScreen
 import com.example.potago.presentation.screen.detailsentencepatternscreen.ListOfDetailScreen
+import com.example.potago.presentation.screen.writingpracticescreen.WritingPracticeScreen
 import com.example.potago.presentation.screen.shop.ShopScreen
 import com.example.potago.presentation.screen.splash.SplashScreen
 import com.example.potago.presentation.screen.streak.StreakScreen
@@ -116,6 +118,12 @@ sealed class Screen(val route: String) {
         operator fun invoke(patternId: Int, patternName: String): String {
             val encodedName = android.net.Uri.encode(patternName)
             return "word_ordering/$patternId/$encodedName"
+        }
+    }
+    object WritingPractice : Screen("writing_practice/{patternId}/{patternName}") {
+        operator fun invoke(patternId: Int, patternName: String): String {
+            val encodedName = android.net.Uri.encode(patternName)
+            return "writing_practice/$patternId/$encodedName"
         }
     }
     object WordOrderingResult : Screen("word_ordering_result/{correctCount}/{totalCount}/{completedTime}/{xpEarned}/{diamondEarned}/{hackXp}/{superXp}") {
@@ -608,6 +616,13 @@ fun MainFlowContainer(rootNavController: NavController) {
                     AddSentenceScreen(mainNavController, patternId)
                 }
                 composable(
+                    route = Screen.WritingPractice.route,
+                    arguments = listOf(navArgument("patternId") { type = NavType.IntType })
+                ) { backStackEntry ->
+                    val patternId = backStackEntry.arguments?.getInt("patternId") ?: 0
+                    WritingPracticeScreen(mainNavController, patternId)
+                }
+                composable(
                     route = Screen.WordOrdering.route,
                     arguments = listOf(
                         navArgument("patternId") { type = NavType.IntType },
@@ -623,6 +638,21 @@ fun MainFlowContainer(rootNavController: NavController) {
                         navController = mainNavController,
                         patternId = patternId,
                         patternName = patternName
+                    )
+                }
+                composable(
+                    route = Screen.WritingPractice.route,
+                    arguments = listOf(
+                        navArgument("patternId") { type = NavType.IntType },
+                        navArgument("patternName") { type = NavType.StringType }
+                    ),
+                    enterTransition = { fadeIn(tween(250)) },
+                    exitTransition = { fadeOut(tween(250)) }
+                ) { backStackEntry ->
+                    val patternId = backStackEntry.arguments?.getInt("patternId") ?: 0
+                    WritingPracticeScreen(
+                        navController = mainNavController,
+                        patternId = patternId
                     )
                 }
                 composable(
