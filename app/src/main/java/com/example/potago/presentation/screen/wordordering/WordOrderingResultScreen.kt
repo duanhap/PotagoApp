@@ -403,6 +403,7 @@ private fun RewardCard(
                             text = unitText,
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                             color = valueColor,
+                            modifier = Modifier.offset(y=2.dp)
                         )
                     }
                 }
