@@ -72,7 +72,7 @@ fun DetailSentencePatternScreen(
             onSlideDownClick = { navController.popBackStack() },
             onWritingGameClick = { /* TODO: navigate to writing game */ },
             onWordOrderingClick = {navController.navigate(Screen.WordOrdering(patternId, uiState.pattern?.name ?: "")) },
-            onListSentencesClick = { navController.navigate(Screen.ListOfDetail.route) },
+            onListSentencesClick = { navController.navigate(Screen.ListOfDetail(patternId)) },
             onEditPatternClick = { navController.navigate(Screen.EditDetail(patternId)) },
             onConfirmDelete = { viewModel.deletePattern() }
         )
