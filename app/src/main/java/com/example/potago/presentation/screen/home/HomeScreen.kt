@@ -369,9 +369,12 @@ fun RecentSentencesSection(
 ) {
     val context = LocalContext.current
     var tts: TextToSpeech? by remember { mutableStateOf(null) }
+    var ttsReady by remember { mutableStateOf(false) }
 
     DisposableEffect(Unit) {
-        val instance = TextToSpeech(context) {}
+        val instance = TextToSpeech(context) { status ->
+            ttsReady = status == TextToSpeech.SUCCESS
+        }
         tts = instance
         onDispose { instance.stop(); instance.shutdown() }
     }
@@ -391,11 +394,13 @@ fun RecentSentencesSection(
                         SentenceCard(
                             sentence = sentence,
                             onSpeak = {
-                                tts?.let { engine ->
-                                    engine.language = Locale.forLanguageTag(
-                                        sentence.termLanguageCode.ifBlank { "en" }
-                                    )
-                                    engine.speak(sentence.term, TextToSpeech.QUEUE_FLUSH, null, null)
+                                if (ttsReady) {
+                                    tts?.let { engine ->
+                                        engine.language = Locale.forLanguageTag(
+                                            sentence.termLanguageCode.ifBlank { "en" }
+                                        )
+                                        engine.speak(sentence.term, TextToSpeech.QUEUE_FLUSH, null, null)
+                                    }
                                 }
                             }
                         )
