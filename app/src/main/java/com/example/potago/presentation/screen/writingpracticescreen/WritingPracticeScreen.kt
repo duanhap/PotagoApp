@@ -168,7 +168,7 @@ private fun WritingPracticeContent(
         R.drawable.ic_phan_van_mascot,
         R.drawable.ic_thinking_mascot_flashcard
     )
-    val randomImage = remember { images.random() }
+    val randomImage = remember(uiState.currentIndex) { images.random() }
 
     Box(
         modifier = Modifier

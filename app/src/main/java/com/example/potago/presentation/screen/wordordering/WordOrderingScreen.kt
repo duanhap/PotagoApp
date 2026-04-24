@@ -172,7 +172,7 @@ internal fun WordOrderingScreenContent(
 
 
         )
-    val randomImage = remember {
+    val randomImage = remember(uiState.currentIndex) {
         images.random()
     }
 
