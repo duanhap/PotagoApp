@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
@@ -109,6 +110,7 @@ fun ListOfCardsScreen(
         },
         onEditClick = { word -> navController.navigate(Screen.EditCard(word.id)) },
         onDeleteClick = { word -> wordPendingDelete = word },
+        onToggleStatus = { word -> viewModel.toggleWordStatus(word.id, word.status) },
         onAddClick = { navController.navigate(Screen.AddCard(wordSetId)) }
     )
 
@@ -138,6 +140,7 @@ fun ListOfCardsScreenContent(
     onVolumeClick: (Word) -> Unit,
     onEditClick: (Word) -> Unit,
     onDeleteClick: (Word) -> Unit,
+    onToggleStatus: (Word) -> Unit = {},
     onAddClick: () -> Unit
 ) {
     Scaffold(
@@ -238,7 +241,8 @@ fun ListOfCardsScreenContent(
                                         word = word,
                                         onVolumeClick = { onVolumeClick(word) },
                                         onEditClick = { onEditClick(word) },
-                                        onDeleteClick = { onDeleteClick(word) }
+                                        onDeleteClick = { onDeleteClick(word) },
+                                        onToggleStatus = { onToggleStatus(word) }
                                     )
                                 }
                             }
@@ -464,7 +468,8 @@ fun CardItemNode(
     modifier: Modifier = Modifier,
     onVolumeClick: () -> Unit,
     onEditClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    onDeleteClick: () -> Unit,
+    onToggleStatus: () -> Unit = {}
 ) {
     var isMenuExpanded by remember { mutableStateOf(false) }
     var isExpanded by remember { mutableStateOf(false) }
@@ -558,8 +563,32 @@ fun CardItemNode(
                     DropdownMenu(
                         expanded = isMenuExpanded,
                         onDismissRequest = { isMenuExpanded = false },
-                        offset = DpOffset(0.dp, (-4).dp)
+                        offset = DpOffset(0.dp, (-4).dp),
+                        containerColor = Color.White,
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
+                        shadowElevation = 4.dp,
+                        tonalElevation = 0.dp
                     ) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    if (word.status.equals("known", ignoreCase = true)) "Chưa thuộc" else "Đã thuộc",
+                                    color = Color(0xFF111827),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            },
+                            onClick = { isMenuExpanded = false; onToggleStatus() },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = Color(0xFF1CB0F6)
+                                )
+                            }
+                        )
+                        HorizontalDivider(color = Color(0xFFE5E7EB))
                         DropdownMenuItem(
                             text = {
                                 Text(
@@ -578,6 +607,7 @@ fun CardItemNode(
                                 )
                             }
                         )
+                        HorizontalDivider(color = Color(0xFFE5E7EB))
                         DropdownMenuItem(
                             text = {
                                 Text(
