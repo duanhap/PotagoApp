@@ -70,7 +70,7 @@ fun DetailSentencePatternScreen(
             description = uiState.pattern?.description,
             isLoading = uiState.isLoading || uiState.isDeleting,
             onSlideDownClick = { navController.popBackStack() },
-            onWritingGameClick = { /* TODO: navigate to writing game */ },
+            onWritingGameClick = { navController.navigate(Screen.WritingPractice(patternId, uiState.pattern?.name ?: "")) },
             onWordOrderingClick = {navController.navigate(Screen.WordOrdering(patternId, uiState.pattern?.name ?: "")) },
             onListSentencesClick = { navController.navigate(Screen.ListOfDetail(patternId)) },
             onEditPatternClick = { navController.navigate(Screen.EditDetail(patternId)) },

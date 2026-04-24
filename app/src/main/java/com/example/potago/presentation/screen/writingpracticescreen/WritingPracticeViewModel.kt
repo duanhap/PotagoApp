@@ -7,16 +7,29 @@ import com.example.potago.domain.model.Setence
 import com.example.potago.domain.usecase.GetSentencesByPatternUseCase
 import com.example.potago.domain.usecase.UpdateSentenceUseCase
 import com.example.potago.domain.usecase.ClaimRewardUseCase
+import com.example.potago.domain.usecase.CheckAndExpireItemSessionUseCase
+import com.example.potago.domain.usecase.ObserveActiveItemSessionUseCase
+import com.example.potago.domain.usecase.SyncUserSessionUseCase
 import com.example.potago.data.local.WritingPracticeDataStore
 import com.example.potago.data.local.WritingPracticeProgress
+import com.example.potago.presentation.navigation.Screen
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+sealed class WritingNavEvent {
+    data class ToStreak(val streakCount: Int, val xpEarned: Int, val diamondEarned: Int, val timeFormatted: String, val hackXp: Boolean = false, val superXp: Boolean = false) : WritingNavEvent()
+    data class ToResult(val xpEarned: Int, val diamondEarned: Int, val timeFormatted: String, val hackXp: Boolean = false, val superXp: Boolean = false) : WritingNavEvent()
+}
 
 sealed class AnswerResult {
     object None : AnswerResult()
@@ -36,23 +49,54 @@ data class WritingPracticeUiState(
     val completionTime: Long = 0L,
     val experienceEarned: Int = 15,
     val diamondEarned: Int = 10,
-    val incorrectSentences: MutableList<Setence> = mutableListOf(), // Danh sách câu sai
-    val isRetryRound: Boolean = false, // Đang ở vòng làm lại câu sai
-    val completedSentenceIds: MutableList<Int> = mutableListOf(), // Danh sách ID câu đã làm đúng
-    val showContinueDialog: Boolean = false, // Hiện dialog "Làm tiếp?"
-    val savedProgress: WritingPracticeProgress? = null // Progress đã lưu
-)
+    val incorrectSentences: MutableList<Setence> = mutableListOf(),
+    val isRetryRound: Boolean = false,
+    val completedSentenceIds: MutableList<Int> = mutableListOf(),
+    val correctCount: Int = 0, // số câu đã trả lời đúng (không tăng khi sai)
+    val totalOriginal: Int = 0, // tổng câu gốc (không đổi)
+    val showContinueDialog: Boolean = false,
+    val savedProgress: WritingPracticeProgress? = null,
+    val hackExperience: Boolean = false,
+    val superExperience: Boolean = false,
+    val isSubmitting: Boolean = false
+) {
+    val progress: Float get() = if (totalOriginal > 0) correctCount.toFloat() / totalOriginal else 0f
+}
 
 @HiltViewModel
 class WritingPracticeViewModel @Inject constructor(
     private val getSentencesByPatternUseCase: GetSentencesByPatternUseCase,
     private val updateSentenceUseCase: UpdateSentenceUseCase,
     private val claimRewardUseCase: ClaimRewardUseCase,
+    private val syncUserSessionUseCase: SyncUserSessionUseCase,
+    private val observeActiveItemSessionUseCase: ObserveActiveItemSessionUseCase,
+    private val checkAndExpireItemSessionUseCase: CheckAndExpireItemSessionUseCase,
     private val dataStore: WritingPracticeDataStore
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WritingPracticeUiState())
     val uiState: StateFlow<WritingPracticeUiState> = _uiState.asStateFlow()
+
+    private val _navEvent = Channel<WritingNavEvent>()
+    val navEvent = _navEvent.receiveAsFlow()
+
+    init {
+        observeActiveItems()
+    }
+
+    private fun observeActiveItems() {
+        viewModelScope.launch { checkAndExpireItemSessionUseCase() }
+        observeActiveItemSessionUseCase()
+            .onEach { session ->
+                _uiState.update {
+                    it.copy(
+                        hackExperience = session?.itemType == "hack_xp" && session.isActive,
+                        superExperience = session?.itemType == "super_xp" && session.isActive
+                    )
+                }
+            }
+            .launchIn(viewModelScope)
+    }
 
     fun loadSentences(patternId: Int) {
         viewModelScope.launch {
@@ -140,25 +184,25 @@ class WritingPracticeViewModel @Inject constructor(
         _uiState.update { it.copy(isLoading = true, error = null, startTime = System.currentTimeMillis()) }
         when (val result = getSentencesByPatternUseCase(patternId)) {
             is Result.Success -> {
-                // Chỉ lấy câu chưa thuộc (status = "unknown")
-                val unknownSentences = result.data.filter { it.status == "unknown" }
+                // Lấy tất cả câu rồi random 5 câu
+                val allSentences = result.data.shuffled().take(5)
                 
-                if (unknownSentences.isEmpty()) {
+                if (allSentences.isEmpty()) {
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            isCompleted = true,
-                            completionTime = 0L,
-                            error = "Bạn đã hoàn thành tất cả câu!"
+                            error = "Chưa có câu nào trong mẫu câu này"
                         )
                     }
                 } else {
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            sentences = unknownSentences,
-                            currentSentence = unknownSentences.firstOrNull(),
-                            currentIndex = 0
+                            sentences = allSentences,
+                            currentSentence = allSentences.firstOrNull(),
+                            currentIndex = 0,
+                            totalOriginal = allSentences.size,
+                            correctCount = 0
                         )
                     }
                 }
@@ -183,11 +227,17 @@ class WritingPracticeViewModel @Inject constructor(
         val isCorrect = normalizeAnswer(userAnswer) == normalizeAnswer(correctAnswer)
         
         if (isCorrect) {
-            _uiState.update { it.copy(answerResult = AnswerResult.Correct) }
             // Thêm vào danh sách đã làm đúng
             val completedIds = _uiState.value.completedSentenceIds
-            if (!completedIds.contains(currentSentence.id)) {
+            val isNewCorrect = !completedIds.contains(currentSentence.id)
+            if (isNewCorrect) {
                 completedIds.add(currentSentence.id)
+            }
+            _uiState.update {
+                it.copy(
+                    answerResult = AnswerResult.Correct,
+                    correctCount = if (isNewCorrect) it.correctCount + 1 else it.correctCount
+                )
             }
             // Cập nhật status thành "known"
             updateSentenceStatus(currentSentence.id, "known")
@@ -290,20 +340,35 @@ class WritingPracticeViewModel @Inject constructor(
 
     private fun claimRewards() {
         viewModelScope.launch {
-            when (val result = claimRewardUseCase("playing-writing-game", false, false)) {
-                is Result.Success -> {
-                    _uiState.update {
-                        it.copy(
-                            experienceEarned = result.data.experienceEarned,
-                            diamondEarned = result.data.diamondEarned
-                        )
+            _uiState.update { it.copy(isSubmitting = true) }
+            val timeFormatted = getCompletionTimeFormatted()
+            try {
+                checkAndExpireItemSessionUseCase()
+                when (val result = claimRewardUseCase(
+                    "playing-writing-game",
+                    _uiState.value.hackExperience,
+                    _uiState.value.superExperience
+                )) {
+                    is Result.Success -> {
+                        syncUserSessionUseCase()
+                        val xp = result.data.experienceEarned
+                        val diamond = result.data.diamondEarned
+                        _uiState.update { it.copy(isSubmitting = false, experienceEarned = xp, diamondEarned = diamond) }
+                        val streak = result.data.streak
+                        if (streak.status == "created" || streak.status == "extended") {
+                            _navEvent.send(WritingNavEvent.ToStreak(streak.currentLength, xp, diamond, timeFormatted, _uiState.value.hackExperience, _uiState.value.superExperience))
+                        } else {
+                            _navEvent.send(WritingNavEvent.ToResult(xp, diamond, timeFormatted, _uiState.value.hackExperience, _uiState.value.superExperience))
+                        }
+                    }
+                    else -> {
+                        _uiState.update { it.copy(isSubmitting = false) }
+                        _navEvent.send(WritingNavEvent.ToResult(15, 10, timeFormatted))
                     }
                 }
-                is Result.Error -> {
-                    // Nếu API lỗi, giữ giá trị mặc định (15 XP, 10 Diamond)
-                    // Không cần thông báo lỗi vì người dùng vẫn thấy phần thưởng
-                }
-                else -> {}
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isSubmitting = false) }
+                _navEvent.send(WritingNavEvent.ToResult(15, 10, timeFormatted))
             }
         }
     }

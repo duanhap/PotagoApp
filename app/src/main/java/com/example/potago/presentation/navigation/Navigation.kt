@@ -120,6 +120,12 @@ sealed class Screen(val route: String) {
             return "word_ordering/$patternId/$encodedName"
         }
     }
+    object WritingPractice : Screen("writing_practice/{patternId}/{patternName}") {
+        operator fun invoke(patternId: Int, patternName: String): String {
+            val encodedName = android.net.Uri.encode(patternName)
+            return "writing_practice/$patternId/$encodedName"
+        }
+    }
     object WordOrderingResult : Screen("word_ordering_result/{correctCount}/{totalCount}/{completedTime}/{xpEarned}/{diamondEarned}/{hackXp}/{superXp}") {
         operator fun invoke(correctCount: Int, totalCount: Int, completedTime: Double = 0.0, xpEarned: Int = 0, diamondEarned: Int = 0, hackXp: Boolean = false, superXp: Boolean = false): String {
             val timeFloat = completedTime.toFloat()
@@ -134,9 +140,6 @@ sealed class Screen(val route: String) {
     }
     object AddSentence : Screen("add_sentence/{patternId}") {
         operator fun invoke(patternId: Int) = "add_sentence/$patternId"
-    }
-    object WritingPractice : Screen("writing_practice/{patternId}") {
-        operator fun invoke(patternId: Int) = "writing_practice/$patternId"
     }
     object MatchGame : Screen("match_game/{wordSetId}/{wordSetName}") {
         operator fun invoke(wordSetId: Long, wordSetName: String): String {
@@ -635,6 +638,21 @@ fun MainFlowContainer(rootNavController: NavController) {
                         navController = mainNavController,
                         patternId = patternId,
                         patternName = patternName
+                    )
+                }
+                composable(
+                    route = Screen.WritingPractice.route,
+                    arguments = listOf(
+                        navArgument("patternId") { type = NavType.IntType },
+                        navArgument("patternName") { type = NavType.StringType }
+                    ),
+                    enterTransition = { fadeIn(tween(250)) },
+                    exitTransition = { fadeOut(tween(250)) }
+                ) { backStackEntry ->
+                    val patternId = backStackEntry.arguments?.getInt("patternId") ?: 0
+                    WritingPracticeScreen(
+                        navController = mainNavController,
+                        patternId = patternId
                     )
                 }
                 composable(
