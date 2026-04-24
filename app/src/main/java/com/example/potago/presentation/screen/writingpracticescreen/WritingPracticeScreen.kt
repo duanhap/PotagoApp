@@ -1,29 +1,31 @@
 package com.example.potago.presentation.screen.writingpracticescreen
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -32,10 +34,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.potago.R
+import com.example.potago.presentation.navigation.Screen
+import com.example.potago.presentation.screen.setting.BackButton
+import com.example.potago.presentation.screen.wordordering.GreenButton
+import com.example.potago.presentation.screen.wordordering.RedButton
+import com.example.potago.presentation.ui.theme.Nunito
 
 @Composable
 fun WritingPracticeScreen(
@@ -44,9 +51,8 @@ fun WritingPracticeScreen(
     viewModel: WritingPracticeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val (userAnswer, setUserAnswer) = remember { mutableStateOf("") }
+    var showQuitDialog by remember { mutableStateOf(false) }
 
-    // Load sentences khi screen được tạo và reset state khi quay lại
     LaunchedEffect(patternId) {
         if (patternId > 0) {
             viewModel.resetState()
@@ -54,148 +60,148 @@ fun WritingPracticeScreen(
         }
     }
 
-    // Reset user answer khi chuyển câu mới
-    LaunchedEffect(uiState.currentIndex) {
-        setUserAnswer("")
-    }
-
-    val currentSentence = uiState.currentSentence
-    val progress = viewModel.getProgress()
-
-    // Hiển thị màn hình completion nếu đã hoàn thành
-    if (uiState.isCompleted) {
-        CompletionScreen(
-            navController = navController,
-            experienceEarned = uiState.experienceEarned,
-            diamondEarned = uiState.diamondEarned,
-            timeFormatted = viewModel.getCompletionTimeFormatted()
-        )
-        return
-    }
-
-    // Hiển thị dialog xác nhận làm tiếp
-    if (uiState.showContinueDialog) {
-        AlertDialog(
-            onDismissRequest = { /* Không cho dismiss bằng cách nhấn ngoài */ },
-            title = {
-                Text(
-                    "Làm tiếp?",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Text(
-                    "Bạn có muốn tiếp tục từ lần trước không?",
-                    fontSize = 16.sp
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = { viewModel.continueFromSaved() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF58CC02)
+    // Collect navEvent để navigate
+    LaunchedEffect(Unit) {
+        viewModel.navEvent.collect { event ->
+            when (event) {
+                is WritingNavEvent.ToStreak -> {
+                    val resultRoute = Screen.WordOrderingResult(
+                        correctCount = 0,
+                        totalCount = 0,
+                        completedTime = parseTimeToSeconds(event.timeFormatted),
+                        xpEarned = event.xpEarned,
+                        diamondEarned = event.diamondEarned,
+                        hackXp = event.hackXp,
+                        superXp = event.superXp
                     )
-                ) {
-                    Text("Làm tiếp", color = Color.White)
+                    navController.navigate(Screen.Streak(event.streakCount, resultRoute)) {
+                        popUpTo(Screen.WritingPractice.route) { inclusive = true }
+                    }
                 }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { viewModel.startNewSession(patternId) }
-                ) {
-                    Text("Làm lại từ đầu", color = Color(0xFF58CC02))
+                is WritingNavEvent.ToResult -> {
+                    navController.navigate(
+                        Screen.WordOrderingResult(
+                            correctCount = 0,
+                            totalCount = 0,
+                            completedTime = parseTimeToSeconds(event.timeFormatted),
+                            xpEarned = event.xpEarned,
+                            diamondEarned = event.diamondEarned,
+                            hackXp = event.hackXp,
+                            superXp = event.superXp
+                        )
+                    ) {
+                        popUpTo(Screen.WritingPractice.route) { inclusive = true }
+                    }
                 }
             }
+        }
+    }
+
+    // Dialog xác nhận làm tiếp
+    if (uiState.showContinueDialog) {
+        ContinueDialog(
+            onContinue = { viewModel.continueFromSaved() },
+            onRestart = { viewModel.startNewSession(patternId) }
         )
     }
+
+    Scaffold(
+        topBar = {
+            AppTopBar(
+                title = "Luyện viết",
+                onBackClick = { showQuitDialog = true }
+            )
+        },
+        containerColor = Color.White
+    ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding))
+
+        if (uiState.isLoading) {
+            LoadingOverlay()
+            return@Scaffold
+        }
+
+        val error = uiState.error
+        if (error != null && uiState.sentences.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(text = error, color = Color(0xFFFF6063))
+            }
+            return@Scaffold
+        }
+
+        WritingPracticeContent(
+            uiState = uiState,
+            onCheck = { answer -> viewModel.checkAnswer(answer) },
+            onNext = { viewModel.moveToNextSentence() }
+        )
+
+        // Submitting overlay
+        if (uiState.isSubmitting) {
+            SubmittingOverlay()
+        }
+
+        if (showQuitDialog) {
+            QuitDialog(
+                onDismiss = { showQuitDialog = false },
+                onConfirm = { navController.popBackStack() }
+            )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Content
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun WritingPracticeContent(
+    uiState: WritingPracticeUiState,
+    onCheck: (String) -> Unit,
+    onNext: () -> Unit
+) {
+    val currentSentence = uiState.sentences.getOrNull(uiState.currentIndex) ?: return
+    var userAnswer by remember(uiState.currentIndex) { mutableStateOf("") }
+
+    val images = listOf(
+        R.drawable.ic_mascot_happy,
+        R.drawable.ic_teaching_mascot,
+        R.drawable.ic_phan_van_mascot,
+        R.drawable.ic_thinking_mascot_flashcard
+    )
+    val randomImage = remember { images.random() }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
     ) {
-        if (uiState.isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Color(0xFF58CC02))
-            }
-        } else if (currentSentence != null) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            AppTopBar(title = "Luyện viết", onBackClick = {}, modifier = Modifier.alpha(0f))
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Progress bar
+            ProgressBar(progress = uiState.progress)
+
+            Spacer(modifier = Modifier.height(15.dp))
+
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .weight(1f)
                     .verticalScroll(rememberScrollState())
             ) {
-                // Header
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(color = Color(0xE3FFFFFF))
-                        .shadow(elevation = 2.dp, spotColor = Color(0x1A000000))
-                        .padding(vertical = 11.dp)
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_back),
-                        contentDescription = "Back",
-                        colorFilter = ColorFilter.tint(Color.Black),
-                        modifier = Modifier
-                            .padding(start = 21.dp)
-                            .size(36.dp)
-                            .clickable { navController.popBackStack() }
-                    )
-                    Text(
-                        "Luyện viết",
-                        color = Color(0xFF000000),
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        lineHeight = 24.sp,
-                        modifier = Modifier.padding(start = 10.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Progress bar
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(13.dp)
-                            .clip(RoundedCornerShape(9999.dp))
-                            .background(Color(0xFFE5E7EB))
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(progress)
-                                .clip(RoundedCornerShape(9999.dp))
-                                .background(Color(0xFF58CC02))
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(59.dp))
-
-                // Tiêu đề
+                // Instruction
                 Text(
-                    "Viết lại câu có nghĩa như sau",
-                    color = Color(0xCC000000),
-                    fontSize = 18.sp,
+                    text = "Viết lại câu có nghĩa như sau",
+                    fontFamily = Nunito,
                     fontWeight = FontWeight.ExtraBold,
-                    lineHeight = 24.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp)
+                    fontSize = 18.sp,
+                    color = Color.Black.copy(alpha = 0.8f),
+                    modifier = Modifier.padding(horizontal = 20.dp)
                 )
 
-                Spacer(modifier = Modifier.height(30.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                // Mascot và speech bubble
+                // Mascot + definition bubble
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -203,82 +209,56 @@ fun WritingPracticeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Image(
-                        painter = painterResource(id = R.drawable.ic_teaching_mascot),
-                        contentDescription = "Duo mascot",
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.size(86.dp, 121.dp)
+                        painter = painterResource(randomImage),
+                        contentDescription = null,
+                        modifier = Modifier.size(110.dp),
+                        contentScale = ContentScale.Fit
                     )
-
-                    Spacer(modifier = Modifier.width(22.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .shadow(
-                                elevation = 2.dp,
-                                shape = RoundedCornerShape(
-                                    topStart = 0.dp,
-                                    topEnd = 16.dp,
-                                    bottomEnd = 16.dp,
-                                    bottomStart = 16.dp
-                                )
-                            )
-                            .background(
-                                Color.White,
-                                RoundedCornerShape(
-                                    topStart = 0.dp,
-                                    topEnd = 16.dp,
-                                    bottomEnd = 16.dp,
-                                    bottomStart = 16.dp
-                                )
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = Color(0xFFE5E7EB),
-                                shape = RoundedCornerShape(
-                                    topStart = 0.dp,
-                                    topEnd = 16.dp,
-                                    bottomEnd = 16.dp,
-                                    bottomStart = 16.dp
-                                )
-                            )
-                            .padding(13.dp)
+                    Spacer(modifier = Modifier.width(20.dp))
+                    Surface(
+                        shape = RoundedCornerShape(topStart = 0.dp, topEnd = 16.dp, bottomEnd = 16.dp, bottomStart = 16.dp),
+                        color = Color.White,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB))
                     ) {
                         Text(
-                            currentSentence.definition,
-                            color = Color(0xFF696969),
-                            fontSize = 16.sp,
+                            text = currentSentence.definition,
+                            fontFamily = Nunito,
                             fontWeight = FontWeight.Bold,
-                            lineHeight = 24.sp
+                            fontSize = 16.sp,
+                            color = Color(0xFF696969),
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(75.dp))
+                Spacer(modifier = Modifier.height(28.dp))
 
-                // Text input area
+                // Text input
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp)
-                        .height(246.dp)
-                        .border(
-                            width = 2.dp,
-                            color = Color(0x1A000000),
-                            shape = RoundedCornerShape(15.dp)
-                        )
+                        .height(200.dp)
+                        .border(2.dp, Color(0x1A000000), RoundedCornerShape(15.dp))
                         .clip(RoundedCornerShape(15.dp))
-                        .background(Color.White)
+                        .background(
+                            when (uiState.answerResult) {
+                                is AnswerResult.Correct -> Color(0xFFE8F5E9)
+                                is AnswerResult.Incorrect -> Color(0xFFFFEBEE)
+                                else -> Color.White
+                            }
+                        )
                         .padding(13.dp)
                 ) {
                     BasicTextField(
                         value = userAnswer,
-                        onValueChange = setUserAnswer,
+                        onValueChange = { if (uiState.answerResult == AnswerResult.None) userAnswer = it },
                         textStyle = TextStyle(
-                            color = Color(0xFF000000),
+                            color = Color.Black,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            lineHeight = 24.sp
+                            lineHeight = 24.sp,
+                            fontFamily = Nunito
                         ),
                         modifier = Modifier.fillMaxSize(),
                         decorationBox = { innerTextField ->
@@ -289,7 +269,7 @@ fun WritingPracticeScreen(
                                         color = Color(0x33000000),
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.Bold,
-                                        lineHeight = 24.sp
+                                        fontFamily = Nunito
                                     )
                                 }
                                 innerTextField()
@@ -298,513 +278,272 @@ fun WritingPracticeScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(230.dp))
+                Spacer(modifier = Modifier.height(120.dp))
             }
         }
 
-        // Hiển thị feedback dựa trên answerResult - positioned at bottom
+        // Bottom action area
         when (val result = uiState.answerResult) {
             is AnswerResult.Correct -> {
-                Box(modifier = Modifier.align(Alignment.BottomCenter)) {
-                    CorrectAnswerFeedback(
-                        onContinue = { viewModel.moveToNextSentence() }
-                    )
+                Surface(
+                    modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+                    color = Color(0xFFC7FF9D)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(horizontal = 20.dp)
+                            .padding(top = 16.dp, bottom = 16.dp)
+                            .navigationBarsPadding()
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_check_green_circle),
+                                contentDescription = null,
+                                tint = Color.Unspecified,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "CHÍNH XÁC !",
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 18.sp,
+                                color = Color(0xFF46A302)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        GreenButton("TIẾP TỤC", enabled = true, isLoading = false, onClick = onNext)
+                    }
                 }
             }
             is AnswerResult.Incorrect -> {
-                Box(modifier = Modifier.align(Alignment.BottomCenter)) {
-                    IncorrectAnswerFeedback(
-                        correctAnswer = result.correctAnswer,
-                        onUnderstood = { viewModel.moveToNextSentence() }
-                    )
+                Surface(
+                    modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+                    color = Color(0xFFFFE5E5)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(horizontal = 20.dp)
+                            .padding(top = 16.dp, bottom = 16.dp)
+                            .navigationBarsPadding()
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_close_red_circle),
+                                contentDescription = null,
+                                tint = Color.Unspecified,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "ĐÁP ÁN ĐÚNG LÀ :",
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 18.sp,
+                                color = Color(0xFFFF383C)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = result.correctAnswer,
+                            fontFamily = Nunito,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = Color(0xFFFF383C)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        RedButton("ĐÃ HIỂU", enabled = true, isLoading = false, onClick = onNext)
+                    }
                 }
             }
             AnswerResult.None -> {
-                // Nút KIỂM TRA ở dưới cùng
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 56.dp)
-                        .height(56.dp)
-                        .shadow(elevation = 0.dp, shape = RoundedCornerShape(16.dp))
-                        .background(
-                            if (userAnswer.isBlank()) Color(0x8058CC02) else Color(0xFF58CC02),
-                            RoundedCornerShape(16.dp)
-                        )
-                        .border(
-                            width = 3.dp,
-                            color = if (userAnswer.isBlank()) Color(0x8046A302) else Color(0xFF46A302),
-                            shape = RoundedCornerShape(16.dp)
-                        )
-                        .clickable(enabled = userAnswer.isNotBlank()) {
-                            viewModel.checkAnswer(userAnswer)
-                        },
-                    contentAlignment = Alignment.Center
+                        .padding(horizontal = 20.dp)
+                        .padding(top = 12.dp, bottom = 16.dp)
+                        .navigationBarsPadding()
                 ) {
-                    Text(
-                        "KIỂM TRA",
-                        color = Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        lineHeight = 24.sp,
-                        textAlign = TextAlign.Center
-                    )
+                    GreenButton("KIỂM TRA", enabled = userAnswer.isNotBlank(), isLoading = false, onClick = { onCheck(userAnswer) })
                 }
             }
         }
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Progress Bar
+// ─────────────────────────────────────────────────────────────────────────────
+
 @Composable
-fun CorrectAnswerFeedback(onContinue: () -> Unit) {
-    Box(
+private fun ProgressBar(progress: Float) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(145.dp)
-            .background(Color(0xFFA4E86C))
+            .padding(start = 20.dp, end = 16.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.Center
+                .weight(1f)
+                .height(13.dp)
+                .clip(RoundedCornerShape(9999.dp))
+                .background(Color(0xFFE5E7EB))
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 16.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(33.dp)
-                        .clip(CircleShape)
-                        .background(Color.White),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_check),
-                        contentDescription = "Correct",
-                        tint = Color(0xFF58CC02),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                
-                Spacer(modifier = Modifier.width(17.dp))
-                
-                Text(
-                    "CHÍNH XÁC !",
-                    color = Color(0xFF46A302),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    lineHeight = 24.sp
-                )
-            }
-            
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .background(Color(0xFF58CC02), RoundedCornerShape(16.dp))
-                    .border(
-                        width = 3.dp,
-                        color = Color(0xFF46A302),
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                    .clickable { onContinue() },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "TIẾP TỤC",
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    lineHeight = 24.sp,
-                    textAlign = TextAlign.Center
-                )
-            }
+                    .fillMaxHeight()
+                    .fillMaxWidth(progress)
+                    .background(Color(0xFF58CC02))
+            )
         }
+        Spacer(modifier = Modifier.width(10.dp))
+        Icon(
+            painter = painterResource(R.drawable.ic_goal_flag),
+            contentDescription = null,
+            modifier = Modifier.size(32.dp).offset(y = (-8).dp),
+            tint = Color.Unspecified
+        )
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Continue Dialog
+// ─────────────────────────────────────────────────────────────────────────────
+
 @Composable
-fun IncorrectAnswerFeedback(correctAnswer: String, onUnderstood: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(222.dp)
-            .background(Color(0xFFFFD7D8))
+private fun ContinueDialog(onContinue: () -> Unit, onRestart: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = {},
+        containerColor = Color.White,
+        title = { Text("Làm tiếp?", fontSize = 20.sp, fontWeight = FontWeight.Bold) },
+        text = { Text("Bạn có muốn tiếp tục từ lần trước không?", fontSize = 16.sp) },
+        confirmButton = {
+            Button(
+                onClick = onContinue,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF58CC02))
+            ) { Text("Làm tiếp", color = Color.White) }
+        },
+        dismissButton = {
+            TextButton(onClick = onRestart) {
+                Text("Làm lại từ đầu", color = Color(0xFF58CC02))
+            }
+        }
+    )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Quit Dialog
+// ─────────────────────────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun QuitDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Color.White,
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(top = 11.dp)
+                    .width(48.dp)
+                    .height(6.dp)
+                    .background(Color(0xFFE5E7EB), RoundedCornerShape(999.dp))
+            )
+        }
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp)
         ) {
-            Column {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 12.dp)
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().height(180.dp).padding(horizontal = 5.dp)
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.ic_crying_mascot),
+                    contentDescription = null,
+                    modifier = Modifier.graphicsLayer { scaleX = 0.7f; scaleY = 0.7f }
+                )
+                Surface(
+                    modifier = Modifier.padding(top = 30.dp),
+                    shape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp, bottomStart = 16.dp),
+                    color = Color.White,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)),
+                    shadowElevation = 2.dp
                 ) {
+                    Text(
+                        text = "Thoát bài học giữa chừng sẽ không có điểm. Xác nhận thoát chứ!?",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF4B5563),
+                        lineHeight = 24.sp,
+                        modifier = Modifier.padding(horizontal = 13.dp, vertical = 14.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(15.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                var cancelPressed by remember { mutableStateOf(false) }
+                Box(modifier = Modifier.weight(1f).height(51.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFFE5E7EB))) {
                     Box(
-                        modifier = Modifier
-                            .size(20.dp)
-                            .background(Color(0xFFFF6063)),
+                        modifier = Modifier.fillMaxWidth().height(if (cancelPressed) 51.dp else 48.dp)
+                            .clip(RoundedCornerShape(16.dp)).background(Color.White)
+                            .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(16.dp))
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onPress = { cancelPressed = true; tryAwaitRelease(); cancelPressed = false },
+                                    onTap = { onDismiss() }
+                                )
+                            },
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_cancel),
-                            contentDescription = "Incorrect",
-                            tint = Color.White,
-                            modifier = Modifier.size(14.dp)
-                        )
+                        Text("Từ chối", fontFamily = Nunito, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = Color(0xFF374151))
                     }
-                    
-                    Spacer(modifier = Modifier.width(17.dp))
-                    
-                    Text(
-                        "ĐÁP ÁN ĐÚNG LÀ :",
-                        color = Color(0xFFFF383C),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        lineHeight = 24.sp
-                    )
                 }
-                
-                Text(
-                    correctAnswer,
-                    color = Color(0xFFFF383C),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 24.sp,
-                    modifier = Modifier.padding(start = 4.dp)
-                )
-            }
-            
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .background(Color(0xFFFF6063), RoundedCornerShape(16.dp))
-                    .border(
-                        width = 3.dp,
-                        color = Color(0xFFFF383C),
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                    .clickable { onUnderstood() },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "ĐÃ HIỂU",
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    lineHeight = 24.sp,
-                    textAlign = TextAlign.Center
-                )
+                var confirmPressed by remember { mutableStateOf(false) }
+                Box(modifier = Modifier.weight(1f).height(51.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF46A302))) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(if (confirmPressed) 51.dp else 48.dp)
+                            .clip(RoundedCornerShape(16.dp)).background(Color(0xFF58CC02))
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onPress = { confirmPressed = true; tryAwaitRelease(); confirmPressed = false },
+                                    onTap = { onConfirm() }
+                                )
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Xác nhận", fontFamily = Nunito, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = Color.White)
+                    }
+                }
             }
         }
     }
 }
 
-@Composable
-fun CompletionScreen(
-    navController: NavController,
-    experienceEarned: Int = 15,
-    diamondEarned: Int = 10,
-    timeFormatted: String = "0:00"
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-            .verticalScroll(rememberScrollState())
-    ) {
-        // Header
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(59.dp)
-                .background(Color(0xE3FFFFFF))
-                .shadow(elevation = 2.dp, spotColor = Color(0x1A000000))
-                .padding(horizontal = 18.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            Text(
-                "Kết quả",
-                color = Color(0xFF000000),
-                fontSize = 32.sp,
-                fontWeight = FontWeight.ExtraBold,
-                lineHeight = 24.sp
-            )
-        }
-
-        // Potato in ground illustration
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(329.dp)
-                .padding(horizontal = 20.dp)
-        ) {
-            // Sử dụng mascot có sẵn thay vì illustration phức tạp
-            Image(
-                painter = painterResource(id = R.drawable.ic_teaching_mascot),
-                contentDescription = "Completion mascot",
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .size(200.dp)
-                    .align(Alignment.Center)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Phần thưởng title
-        Text(
-            "Phần thưởng",
-            color = Color(0xFF000000),
-            fontSize = 18.sp,
-            fontWeight = FontWeight.ExtraBold,
-            lineHeight = 24.sp,
-            modifier = Modifier.padding(horizontal = 20.dp)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Reward cards
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // XP Card
-            RewardCard(
-                title = "Kinh nghiệm",
-                value = experienceEarned.toString(),
-                unit = "XP",
-                backgroundColor = Color(0x80FEF9C3),
-                borderColor = Color(0x80FEF08A),
-                headerColor = Color(0xFFFFD600),
-                textColor = Color(0xFFA16207),
-                modifier = Modifier.weight(1f)
-            )
-
-            // Diamond Card
-            RewardCard(
-                title = "Diamond",
-                value = diamondEarned.toString(),
-                unit = "",
-                backgroundColor = Color(0x80FFA9A3),
-                borderColor = Color(0x40F44336),
-                headerColor = Color(0xFFF44336),
-                textColor = Color(0xFFF44336),
-                modifier = Modifier.weight(1f)
-            )
-
-            // Time Card
-            RewardCard(
-                title = "Time",
-                value = timeFormatted,
-                unit = "",
-                backgroundColor = Color(0xFFD9E7FF),
-                borderColor = Color(0x403B82F6),
-                headerColor = Color(0xFF3B82F6),
-                textColor = Color(0xFF3B82F6),
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(80.dp))
-
-        // Mascot with speech bubble
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_teaching_mascot),
-                contentDescription = "Mascot",
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.size(86.dp, 121.dp)
-            )
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .shadow(
-                        elevation = 2.dp,
-                        shape = RoundedCornerShape(
-                            topStart = 0.dp,
-                            topEnd = 16.dp,
-                            bottomEnd = 16.dp,
-                            bottomStart = 16.dp
-                        )
-                    )
-                    .background(
-                        Color.White,
-                        RoundedCornerShape(
-                            topStart = 0.dp,
-                            topEnd = 16.dp,
-                            bottomEnd = 16.dp,
-                            bottomStart = 16.dp
-                        )
-                    )
-                    .border(
-                        width = 1.dp,
-                        color = Color(0xFFE5E7EB),
-                        shape = RoundedCornerShape(
-                            topStart = 0.dp,
-                            topEnd = 16.dp,
-                            bottomEnd = 16.dp,
-                            bottomStart = 16.dp
-                        )
-                    )
-                    .padding(12.dp)
-            ) {
-                Text(
-                    "Kết quả rất tốt đó <3\nTiếp tục chứ chủ nhân !?",
-                    color = Color(0xFF4B5563),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 24.sp
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Buttons
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 32.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Từ chối button
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp)
-                    .background(Color.White, RoundedCornerShape(16.dp))
-                    .border(
-                        width = 1.dp,
-                        color = Color(0xFFE5E7EB),
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                    .clickable { navController.popBackStack() },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "Từ chối",
-                    color = Color(0xFF374151),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    lineHeight = 24.sp,
-                    textAlign = TextAlign.Center
-                )
-            }
-
-            // Học tiếp button
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp)
-                    .background(Color(0xFF58CC02), RoundedCornerShape(16.dp))
-                    .border(
-                        width = 3.dp,
-                        color = Color(0xFF46A302),
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                    .clickable { navController.popBackStack() },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "Học tiếp",
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    lineHeight = 24.sp,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-    }
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Top Bar
+// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-fun RewardCard(
-    title: String,
-    value: String,
-    unit: String,
-    backgroundColor: Color,
-    borderColor: Color,
-    headerColor: Color,
-    textColor: Color,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .height(101.dp)
-            .background(backgroundColor, RoundedCornerShape(12.dp))
-            .border(
-                width = 3.dp,
-                color = borderColor,
-                shape = RoundedCornerShape(12.dp)
-            )
+private fun AppTopBar(title: String, onBackClick: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        tonalElevation = 3.dp,
+        shadowElevation = 4.dp,
+        color = Color.White
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Header
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(36.dp)
-                    .background(
-                        headerColor,
-                        RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    title,
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    lineHeight = 24.sp
-                )
+        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Spacer(modifier = Modifier.width(60.dp))
+                Text(text = title, style = MaterialTheme.typography.displayMedium, modifier = Modifier.weight(1f))
             }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Value
-            Row(
-                verticalAlignment = Alignment.Bottom,
-                modifier = Modifier.padding(bottom = 16.dp)
-            ) {
-                Text(
-                    value,
-                    color = textColor,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    lineHeight = 24.sp
-                )
-                if (unit.isNotEmpty()) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        unit,
-                        color = textColor,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        lineHeight = 24.sp
-                    )
-                }
+            Box(modifier = Modifier.matchParentSize()) {
+                BackButton(onClick = onBackClick, modifier = Modifier.align(Alignment.CenterStart).wrapContentSize())
             }
         }
     }
@@ -814,4 +553,108 @@ fun RewardCard(
 @Composable
 fun WritingPracticeScreenPreview() {
     WritingPracticeScreen(rememberNavController())
+}
+
+// "1:23" → 83.0 seconds
+private fun parseTimeToSeconds(timeFormatted: String): Double {
+    return try {
+        val parts = timeFormatted.split(":")
+        if (parts.size == 2) {
+            parts[0].toInt() * 60.0 + parts[1].toInt()
+        } else {
+            timeFormatted.toDoubleOrNull() ?: 0.0
+        }
+    } catch (_: Exception) { 0.0 }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Loading Overlay (initial load)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun LoadingOverlay() {
+    val infiniteTransition = rememberInfiniteTransition(label = "loading")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(animation = tween(1200, easing = LinearEasing), repeatMode = RepeatMode.Restart),
+        label = "rot"
+    )
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Icon(
+            painter = painterResource(R.drawable.ic_experience_points),
+            contentDescription = null,
+            modifier = Modifier.size(56.dp).graphicsLayer { rotationZ = rotation },
+            tint = Color.Unspecified
+        )
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Submitting Overlay (after completing all sentences)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun SubmittingOverlay() {
+    val infiniteTransition = rememberInfiniteTransition(label = "submit_loading")
+    val dot1Alpha by infiniteTransition.animateFloat(
+        initialValue = 0.2f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(animation = keyframes { durationMillis = 900; 0.2f at 0; 1f at 150; 0.2f at 450 }, repeatMode = RepeatMode.Restart), label = "d1"
+    )
+    val dot2Alpha by infiniteTransition.animateFloat(
+        initialValue = 0.2f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(animation = keyframes { durationMillis = 900; 0.2f at 150; 1f at 300; 0.2f at 600 }, repeatMode = RepeatMode.Restart), label = "d2"
+    )
+    val dot3Alpha by infiniteTransition.animateFloat(
+        initialValue = 0.2f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(animation = keyframes { durationMillis = 900; 0.2f at 300; 1f at 450; 0.2f at 750 }, repeatMode = RepeatMode.Restart), label = "d3"
+    )
+    val dot1Scale by infiniteTransition.animateFloat(
+        initialValue = 1f, targetValue = 1.4f,
+        animationSpec = infiniteRepeatable(animation = keyframes { durationMillis = 900; 1f at 0; 1.4f at 150; 1f at 450 }, repeatMode = RepeatMode.Restart), label = "s1"
+    )
+    val dot2Scale by infiniteTransition.animateFloat(
+        initialValue = 1f, targetValue = 1.4f,
+        animationSpec = infiniteRepeatable(animation = keyframes { durationMillis = 900; 1f at 150; 1.4f at 300; 1f at 600 }, repeatMode = RepeatMode.Restart), label = "s2"
+    )
+    val dot3Scale by infiniteTransition.animateFloat(
+        initialValue = 1f, targetValue = 1.4f,
+        animationSpec = infiniteRepeatable(animation = keyframes { durationMillis = 900; 1f at 300; 1.4f at 450; 1f at 750 }, repeatMode = RepeatMode.Restart), label = "s3"
+    )
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(animation = tween(1200, easing = LinearEasing), repeatMode = RepeatMode.Restart), label = "rot"
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.45f))
+            .clickable(enabled = false) {},
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_experience_points),
+                contentDescription = null,
+                modifier = Modifier.size(56.dp).graphicsLayer { rotationZ = rotation },
+                tint = Color.Unspecified
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                listOf(dot1Alpha to dot1Scale, dot2Alpha to dot2Scale, dot3Alpha to dot3Scale).forEach { (alpha, scale) ->
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .graphicsLayer { scaleX = scale; scaleY = scale; this.alpha = alpha }
+                            .background(Color(0xFF58CC02), androidx.compose.foundation.shape.CircleShape)
+                    )
+                }
+            }
+            Text(
+                text = "Đang tính điểm...",
+                style = MaterialTheme.typography.bodyLarge.copy(color = Color.White, fontWeight = FontWeight.Bold)
+            )
+        }
+    }
 }
